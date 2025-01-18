@@ -1,0 +1,1 @@
+{"flutter":{"platforms":{"android":{"default":{"projectId":"fbla-finance","appId":"1:307046751911:android:3e5786bfcc3eb90d4a0582","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"fbla-finance","configurations":{"android":"1:307046751911:android:3e5786bfcc3eb90d4a0582","web":"1:307046751911:web:8297a905c52d7d124a0582"}}}}}}

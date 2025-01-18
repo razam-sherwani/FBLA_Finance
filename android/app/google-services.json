@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "307046751911",
+    "project_id": "fbla-finance",
+    "storage_bucket": "fbla-finance.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:307046751911:android:3e5786bfcc3eb90d4a0582",
+        "android_client_info": {
+          "package_name": "com.example.fbla_finance"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAwtBz475JG67VAo6oi47N5cAOCvvFguGE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
