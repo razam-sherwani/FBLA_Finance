@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     projectId: 'fbla-finance',
     storageBucket: 'fbla-finance.firebasestorage.app',
   );
+
 }

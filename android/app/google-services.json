@@ -12,7 +12,12 @@
           "package_name": "com.example.fbla_finance"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "307046751911-4660pq98lpil1bsg0domm30gob7kkrqm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAwtBz475JG67VAo6oi47N5cAOCvvFguGE"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "307046751911-4660pq98lpil1bsg0domm30gob7kkrqm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

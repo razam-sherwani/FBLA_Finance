@@ -1,59 +1,52 @@
 import 'package:flutter/material.dart';
 
-class ToDoList1 extends StatefulWidget {
+class Transactions extends StatefulWidget{
   @override
-  _TodoListState createState() => _TodoListState();
+  State<Transactions> createState() => _TransactionState();
 }
 
-class _TodoListState extends State<ToDoList1> {
-  final List<Map<String, dynamic>> _todoItems = [];
+class _TransactionState extends State<Transactions> {
+  final List<Map<String, dynamic>> _transactionsList = [];
 
-  void _addTodoItem(String task) {
-    if (task.isNotEmpty) {
-      setState(() => _todoItems.add({'task': task}));
+  void _addTransaction(double amount, String type, String category, String date) {
+    if(!amount.isNaN) {
+      setState(() => _transactionsList.add({'amount' : amount, 'type' : type, 'category' : category, 'date' : date}));
     }
   }
 
-  void _removeTodoItem(int index) {
-    setState(() => _todoItems.removeAt(index));
+  void _removeTransaction(int index) {
+    setState(() => _transactionsList.removeAt(index));
   }
 
-  void _toggleTodoItem(int index) {
-    setState(() {
-      _todoItems[index]['completed'] = !_todoItems[index]['completed'];
-    });
-  }
-
-  void _promptAddTodoItem() {
+  void _promptAddTransaction() {
     showDialog(
-      context: context,
+      context: context, 
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('New Expense'),
+          title: Text('New Transaction'),
           content: TextField(
             autofocus: true,
-            onSubmitted: (val) {
-              Navigator.of(context).pop();
-              _addTodoItem(val);
-            },
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+          )
         );
+      },
+      );
+  }
+
+  Widget _buildTransactionList() {
+    return ListView.builder(
+      itemCount: _transactionsList.length,
+      itemBuilder: (context, index) {
+        return _buildTransactionItem(_transactionsList[index], index);
       },
     );
   }
 
-  Widget _buildTodoItem(Map<String, dynamic> todoItem, int index) {
+   Widget _buildTransactionItem(Map<String, dynamic> todoItem, int index) {
     return Dismissible(
       key: Key(todoItem['task']),
       direction: DismissDirection.endToStart,
       onDismissed: (direction) {
-        _removeTodoItem(index);
+        _removeTransaction(index);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Task "${todoItem['task']}" deleted; Add a NEW Task!')),
         );
@@ -68,12 +61,6 @@ class _TodoListState extends State<ToDoList1> {
         elevation: 4,
         margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: ListTile(
-          leading: Checkbox(
-            value: todoItem['completed'],
-            onChanged: (bool? value) {
-              _toggleTodoItem(index);
-            },
-          ),
           title: Text(
             todoItem['task'],
             style: TextStyle(
@@ -86,15 +73,6 @@ class _TodoListState extends State<ToDoList1> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildTodoList() {
-    return ListView.builder(
-      itemCount: _todoItems.length,
-      itemBuilder: (context, index) {
-        return _buildTodoItem(_todoItems[index], index);
-      },
     );
   }
 
@@ -121,7 +99,7 @@ class _TodoListState extends State<ToDoList1> {
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: _todoItems.isEmpty
+          child: _transactionsList.isEmpty
               ? Center(
                   child: Text(
                     'No tasks just yet. Add a task!',
@@ -131,15 +109,16 @@ class _TodoListState extends State<ToDoList1> {
                     ),
                   ),
                 )
-              : _buildTodoList(),
+              : _buildTransactionList(),
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _promptAddTodoItem,
+        onPressed: _promptAddTransaction,
         tooltip: 'Add a task',
         backgroundColor: const Color.fromARGB(255, 252, 192, 12),
         child: Icon(Icons.add),
       ),
     );
   }
+
 }

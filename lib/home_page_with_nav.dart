@@ -11,6 +11,7 @@ import 'package:fbla_finance/pages/to_do.dart';
 import 'package:fbla_finance/pages/welcome_screen.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';
 import 'package:fbla_finance/firebase_options.dart';
+import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/pages/social_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -31,7 +32,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
   static List<Widget> _pages = <Widget>[
     HomePage(),
     SocialPage(),
-    ToDoList1(),
+    Transactions(),
     ScholarshipFinder(),
     SettingsPage(),
   ];

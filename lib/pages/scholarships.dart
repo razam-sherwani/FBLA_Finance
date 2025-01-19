@@ -64,7 +64,7 @@ class _ScholarshipScreenState extends State<ScholarshipFinder> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Scholar Sphere Scholarship Finder',style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text('Expense Tracking',style: TextStyle(fontWeight: FontWeight.bold),),
         backgroundColor: Colors.deepPurple,
       ),
       body: Padding(
