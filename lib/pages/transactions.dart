@@ -9,9 +9,8 @@ class Transactions extends StatefulWidget {
 class _TransactionState extends State<Transactions> {
   final List<Map<String, dynamic>> _transactionsList = [];
   DateTime date = DateTime.now();
-  double amt = 0.0;
+  double amt = 0;
   String? type1;
-  String? cat;
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -55,29 +54,21 @@ class _TransactionState extends State<Transactions> {
                 width: 250,
                 child: Column(
                   children: [
-                    TextFormField(
+                    TextField(
                       autofocus: true,
                       keyboardType:
                           TextInputType.numberWithOptions(decimal: true),
                       decoration:
                           InputDecoration(labelText: 'Enter the amount'),
-                      validator: (amt) {
-                        if (amt == null || amt.isEmpty) {
-                          return 'Please enter a number';
-                        }
-                        try {
-                          double.parse(amt);
-                          return null;
-                        } catch (e) {
-                          return 'Please enter a valid number';
-                        }
+                      onSubmitted: (String? val) {
+                        amt = double.parse(val!);
                       },
                     ),
                     Container(
                       width: 200,
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: 'Expense',
+                        value: type1,
                         hint: Text('Select type'),
                         items:
                             <String>['Expense', 'Income'].map((String value) {
@@ -98,7 +89,7 @@ class _TransactionState extends State<Transactions> {
                           InputDecoration(labelText: 'Please enter category'),
                       onSubmitted: (String? cat) {
                         Navigator.of(context).pop();
-                        _addTransaction(amt, type1!, cat!, date);
+                        _addTransaction(amt, type1, cat, date);
                       },
                     ),
                     Column(
@@ -143,38 +134,75 @@ class _TransactionState extends State<Transactions> {
   }
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-    return Dismissible(
-      key: Key(transaction['category']),
-      direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        _removeTransaction(index);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Transaction "${transaction['transaction']}" deleted; Add a NEW Transaction!')),
-        );
-      },
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Icon(Icons.delete, color: Colors.white),
-      ),
-      child: Card(
-        elevation: 4,
-        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        child: ListTile(
-          title: Text(
-            transaction['category'] + "${transaction['date'].toLocal()}".split(' ')[0] + transaction['type'] + transaction['amount'].toString(),
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+  return Dismissible(
+    key: Key(transaction['category']),
+    direction: DismissDirection.endToStart,
+    onDismissed: (direction) {
+      _removeTransaction(index);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Transaction "${transaction['category']}" deleted; Add a NEW Transaction!')),
+      );
+    },
+    background: Container(
+      color: Colors.red,
+      alignment: Alignment.centerRight,
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      child: Icon(Icons.delete, color: Colors.white),
+    ),
+    child: Card(
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListTile(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  transaction['category'],
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  "${transaction['date'].toLocal()}".split(' ')[0],
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  transaction['type'],
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  transaction['amount'].toString(),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
