@@ -13,6 +13,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:fbla_finance/util/profile_picture.dart';
+import 'package:fbla_finance/pages/spending_habit.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -237,6 +238,20 @@ class _HomePageState extends State<HomePage> {
                                       child: EcTile(
                                         icon: Icons.lightbulb,
                                         EcName: 'Academics',
+                                        color: Colors.orange,
+                                      ),
+                                    ),
+                                    GestureDetector( //ABHINAV EDIT.
+                                      onTap: () {
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    SpendingHabitPage(userId: docID,)));
+                                      },
+                                      child: EcTile(
+                                        icon: Icons.lightbulb,
+                                        EcName: 'Spending Habit',
                                         color: Colors.orange,
                                       ),
                                     ),

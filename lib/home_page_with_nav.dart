@@ -17,6 +17,7 @@ import 'firebase_options.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'dart:io';
+import 'package:fbla_finance/pages/spending_habit.dart';
 
 class HomePageWithNav extends StatefulWidget {
   @override
@@ -33,7 +34,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
     SocialPage(),
     ToDoList1(),
     ScholarshipFinder(),
-    SettingsPage(),
+    SettingsPage()
   ];
 
   void _onItemTapped(int index) {
