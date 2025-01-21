@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/pages/transactions.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';
 import 'package:fbla_finance/pages/awards_page.dart';
