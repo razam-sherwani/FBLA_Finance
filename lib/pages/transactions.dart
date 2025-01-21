@@ -2,19 +2,32 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class Transactions extends StatefulWidget {
-
   @override
   State<Transactions> createState() => _TransactionState();
 }
 
 class _TransactionState extends State<Transactions> {
   final List<Map<String, dynamic>> _transactionsList = [];
+  DateTime date = DateTime.now();
   double amt = 0.0;
   String? type1;
-  String cat = '';
-  String date1 = '';
+  String? cat;
 
-  void _addTransaction(double amount, String type, String category, String date) {
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: date,
+        firstDate: DateTime(2015, 8),
+        lastDate: DateTime(2101));
+    if (picked != null && picked != date) {
+      setState(() {
+        date = picked;
+      });
+    }
+  }
+
+  void _addTransaction(
+      double amount, String? type, String? category, DateTime date) {
     if (!amount.isNaN) {
       setState(() => _transactionsList.add({
             'amount': amount,
@@ -33,58 +46,88 @@ class _TransactionState extends State<Transactions> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('New Transaction'),
-          content: Container(
-            height: 250,
-            child: Column(
-              children: [
-                TextFormField(
-                  autofocus: true,
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(labelText: 'Enter the amount'),
-                  validator: (amt) {
-                    if (amt == null || amt.isEmpty) {
-                      return 'Please enter a number';
-                    }
-                    try {
-                      double.parse(amt);
-                      return null;
-                    } catch (e) {
-                      return 'Please enter a valid number';
-                    }
-                  },
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('New Transaction'),
+              content: Container(
+                height: 230,
+                width: 250,
+                child: Column(
+                  children: [
+                    TextFormField(
+                      autofocus: true,
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                      decoration:
+                          InputDecoration(labelText: 'Enter the amount'),
+                      validator: (amt) {
+                        if (amt == null || amt.isEmpty) {
+                          return 'Please enter a number';
+                        }
+                        try {
+                          double.parse(amt);
+                          return null;
+                        } catch (e) {
+                          return 'Please enter a valid number';
+                        }
+                      },
+                    ),
+                    Container(
+                      width: 200,
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: 'Expense',
+                        hint: Text('Select type'),
+                        items:
+                            <String>['Expense', 'Income'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            type1 = newValue!;
+                          });
+                        },
+                      ),
+                    ),
+                    TextField(
+                      decoration:
+                          InputDecoration(labelText: 'Please enter category'),
+                      onSubmitted: (String? cat) {
+                        Navigator.of(context).pop();
+                        _addTransaction(amt, type1!, cat!, date);
+                      },
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.max,
+                      children: <Widget>[
+                        const SizedBox(
+                          height: 20.0,
+                        ),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await _selectDate(context);
+                            setState(
+                                () {}); // This ensures the dialog updates with the new date
+                          },
+                          child: Text("${date.toLocal()}".split(' ')[0]),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                DropdownButton<String>(
-                value: type1,
-                hint: Text('Select type'),
-                items: <String>['Expense', 'Income'].map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (newValue) {
-                  setState(() {
-                    type1 = newValue;
-                  });
-                },
               ),
-                TextField(
-                  decoration: InputDecoration(labelText: 'Please enter category'),
-                  onSubmitted: (cat) {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                TextField(
-                  decoration: InputDecoration(labelText: 'date of transaction'),
-                  onSubmitted: (date1) {
-                    Navigator.of(context).pop();
-                  },
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -99,16 +142,16 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> todoItem, int index) {
+  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Dismissible(
-      key: Key(todoItem['task']),
+      key: Key(transaction['transaction']),
       direction: DismissDirection.endToStart,
       onDismissed: (direction) {
         _removeTransaction(index);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content:
-                  Text('Task "${todoItem['task']}" deleted; Add a NEW Task!')),
+              content: Text(
+                  'Transaction "${transaction['transaction']}" deleted; Add a NEW Transaction!')),
         );
       },
       background: Container(
@@ -122,13 +165,10 @@ class _TransactionState extends State<Transactions> {
         margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: ListTile(
           title: Text(
-            todoItem['task'],
+            transaction['transaction'],
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              decoration: todoItem['completed']
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
             ),
           ),
         ),
@@ -165,7 +205,7 @@ class _TransactionState extends State<Transactions> {
           child: _transactionsList.isEmpty
               ? Center(
                   child: Text(
-                    'No tasks just yet. Add a task!',
+                    'No transactions yet. Add a transaction!',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -177,7 +217,7 @@ class _TransactionState extends State<Transactions> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _promptAddTransaction,
-        tooltip: 'Add a task',
+        tooltip: 'Add a transaction',
         backgroundColor: const Color.fromARGB(255, 252, 192, 12),
         child: Icon(Icons.add),
       ),
