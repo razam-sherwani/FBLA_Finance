@@ -1,3 +1,4 @@
+import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/custom_nav_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,7 +33,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
     HomePage(),
     SocialPage(),
     ToDoList1(),
-    ScholarshipFinder(),
+    Transactions(),
     SettingsPage(),
   ];
 

@@ -144,7 +144,7 @@ class _TransactionState extends State<Transactions> {
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Dismissible(
-      key: Key(transaction['transaction']),
+      key: Key(transaction['category']),
       direction: DismissDirection.endToStart,
       onDismissed: (direction) {
         _removeTransaction(index);
@@ -165,7 +165,7 @@ class _TransactionState extends State<Transactions> {
         margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: ListTile(
           title: Text(
-            transaction['transaction'],
+            transaction['category'] + "${transaction['date'].toLocal()}".split(' ')[0] + transaction['type'] + transaction['amount'].toString(),
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
