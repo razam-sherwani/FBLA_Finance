@@ -1,16 +1,27 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class Transactions extends StatefulWidget{
+class Transactions extends StatefulWidget {
+
   @override
   State<Transactions> createState() => _TransactionState();
 }
 
 class _TransactionState extends State<Transactions> {
   final List<Map<String, dynamic>> _transactionsList = [];
+  double amt = 0.0;
+  String? type1;
+  String cat = '';
+  String date1 = '';
 
   void _addTransaction(double amount, String type, String category, String date) {
-    if(!amount.isNaN) {
-      setState(() => _transactionsList.add({'amount' : amount, 'type' : type, 'category' : category, 'date' : date}));
+    if (!amount.isNaN) {
+      setState(() => _transactionsList.add({
+            'amount': amount,
+            'type': type,
+            'category': category,
+            'date': date
+          }));
     }
   }
 
@@ -20,16 +31,63 @@ class _TransactionState extends State<Transactions> {
 
   void _promptAddTransaction() {
     showDialog(
-      context: context, 
+      context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('New Transaction'),
-          content: TextField(
-            autofocus: true,
-          )
+          content: Container(
+            height: 250,
+            child: Column(
+              children: [
+                TextFormField(
+                  autofocus: true,
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(labelText: 'Enter the amount'),
+                  validator: (amt) {
+                    if (amt == null || amt.isEmpty) {
+                      return 'Please enter a number';
+                    }
+                    try {
+                      double.parse(amt);
+                      return null;
+                    } catch (e) {
+                      return 'Please enter a valid number';
+                    }
+                  },
+                ),
+                DropdownButton<String>(
+                value: type1,
+                hint: Text('Select type'),
+                items: <String>['Expense', 'Income'].map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    type1 = newValue;
+                  });
+                },
+              ),
+                TextField(
+                  decoration: InputDecoration(labelText: 'Please enter category'),
+                  onSubmitted: (cat) {
+                    Navigator.of(context).pop();
+                  },
+                ),
+                TextField(
+                  decoration: InputDecoration(labelText: 'date of transaction'),
+                  onSubmitted: (date1) {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          ),
         );
       },
-      );
+    );
   }
 
   Widget _buildTransactionList() {
@@ -41,14 +99,16 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
-   Widget _buildTransactionItem(Map<String, dynamic> todoItem, int index) {
+  Widget _buildTransactionItem(Map<String, dynamic> todoItem, int index) {
     return Dismissible(
       key: Key(todoItem['task']),
       direction: DismissDirection.endToStart,
       onDismissed: (direction) {
         _removeTransaction(index);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Task "${todoItem['task']}" deleted; Add a NEW Task!')),
+          SnackBar(
+              content:
+                  Text('Task "${todoItem['task']}" deleted; Add a NEW Task!')),
         );
       },
       background: Container(
@@ -80,7 +140,10 @@ class _TransactionState extends State<Transactions> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Income/Expenses', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text(
+          'Transactions',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
@@ -120,5 +183,4 @@ class _TransactionState extends State<Transactions> {
       ),
     );
   }
-
 }
