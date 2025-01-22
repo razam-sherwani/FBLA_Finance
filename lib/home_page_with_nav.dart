@@ -33,7 +33,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
     HomePage(),
     SocialPage(),
     ToDoList1(),
-    Transactions(),
+    ScholarshipFinder(),
     SettingsPage(),
   ];
 

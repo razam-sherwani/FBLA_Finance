@@ -1,16 +1,58 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class Transactions extends StatefulWidget {
+  final String userId;
+
+  Transactions({Key? key, required this.userId}) : super(key: key);
+
   @override
-  State<Transactions> createState() => _TransactionState();
+  _TransactionState createState() => _TransactionState();
 }
 
 class _TransactionState extends State<Transactions> {
   final List<Map<String, dynamic>> _transactionsList = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  double _totalBalance = 0.0;
   DateTime date = DateTime.now();
   double amt = 0;
   String? type1;
+  String? categ;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTransactions();
+  }
+
+  void _fetchTransactions() {
+    _firestore.collection('users').doc(widget.userId).collection('Transactions').get().then((querySnapshot) {
+      setState(() {
+        _transactionsList.clear();
+        _totalBalance = 0.0;
+        querySnapshot.docs.forEach((doc) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'],
+            'type': doc['type'],
+            'category': doc['category'],
+            'date': (doc['date'] as Timestamp).toDate(),
+          };
+          _transactionsList.add(transaction);
+          // Update total balance
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
+      });
+    }).catchError((error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+    });
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -25,20 +67,50 @@ class _TransactionState extends State<Transactions> {
     }
   }
 
-  void _addTransaction(
-      double amount, String? type, String? category, DateTime date) {
+  void _addTransaction(double amount, String? type, String? category, DateTime date) {
     if (!amount.isNaN) {
-      setState(() => _transactionsList.add({
+      _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .collection('Transactions')
+          .add({
+        'amount': amount,
+        'type': type,
+        'category': category,
+        'date': date
+      }).then((value) {
+        setState(() {
+          _transactionsList.add({
+            'transactionId': value.id,
             'amount': amount,
             'type': type,
             'category': category,
             'date': date
-          }));
+          });
+          // Update total balance
+          if (type == 'Income') {
+            _totalBalance += amount;
+          } else {
+            _totalBalance -= amount;
+          }
+        });
+      });
     }
   }
 
-  void _removeTransaction(int index) {
-    setState(() => _transactionsList.removeAt(index));
+  void _removeTransaction(String transactionId, int index) {
+    var transaction = _transactionsList[index];
+    _firestore.collection('users').doc(widget.userId).collection('Transactions').doc(transactionId).delete().then((value) {
+      setState(() {
+        _transactionsList.removeAt(index);
+        // Update total balance
+        if (transaction['type'] == 'Income') {
+          _totalBalance -= transaction['amount'];
+        } else {
+          _totalBalance += transaction['amount'];
+        }
+      });
+    }).catchError((error) => print("Failed to delete transaction: $error"));
   }
 
   void _promptAddTransaction() {
@@ -56,11 +128,9 @@ class _TransactionState extends State<Transactions> {
                   children: [
                     TextField(
                       autofocus: true,
-                      keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
-                      decoration:
-                          InputDecoration(labelText: 'Enter the amount'),
-                      onSubmitted: (String? val) {
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: 'Enter the amount'),
+                      onChanged: (String? val) {
                         amt = double.parse(val!);
                       },
                     ),
@@ -70,8 +140,7 @@ class _TransactionState extends State<Transactions> {
                         isExpanded: true,
                         value: type1,
                         hint: Text('Select type'),
-                        items:
-                            <String>['Expense', 'Income'].map((String value) {
+                        items: <String>['Expense', 'Income'].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -85,24 +154,19 @@ class _TransactionState extends State<Transactions> {
                       ),
                     ),
                     TextField(
-                      decoration:
-                          InputDecoration(labelText: 'Please enter category'),
-                      onSubmitted: (String? cat) {
-                        Navigator.of(context).pop();
-                        _addTransaction(amt, type1, cat, date);
+                      decoration: InputDecoration(labelText: 'Please enter category'),
+                      onChanged: (String? cat) {
+                        categ = cat;
                       },
                     ),
                     Column(
                       mainAxisSize: MainAxisSize.max,
                       children: <Widget>[
-                        const SizedBox(
-                          height: 20.0,
-                        ),
+                        const SizedBox(height: 20.0),
                         ElevatedButton(
                           onPressed: () async {
                             await _selectDate(context);
-                            setState(
-                                () {}); // This ensures the dialog updates with the new date
+                            setState(() {}); // This ensures the dialog updates with the new date
                           },
                           child: Text("${date.toLocal()}".split(' ')[0]),
                         ),
@@ -112,9 +176,21 @@ class _TransactionState extends State<Transactions> {
                 ),
               ),
               actions: <Widget>[
-                TextButton(
-                  child: Text('Cancel'),
-                  onPressed: () => Navigator.of(context).pop(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      child: Text('Cancel'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    TextButton(
+                      child: Text('Enter'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _addTransaction(amt, type1, categ, date);
+                      },
+                    ),
+                  ],
                 ),
               ],
             );
@@ -134,114 +210,139 @@ class _TransactionState extends State<Transactions> {
   }
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-  return Dismissible(
-    key: Key(transaction['category']),
-    direction: DismissDirection.endToStart,
-    onDismissed: (direction) {
-      _removeTransaction(index);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Transaction "${transaction['category']}" deleted; Add a NEW Transaction!')),
-      );
-    },
-    background: Container(
-      color: Colors.red,
-      alignment: Alignment.centerRight,
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Icon(Icons.delete, color: Colors.white),
-    ),
-    child: Card(
-      elevation: 4,
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: ListTile(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  transaction['category'],
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+    return Dismissible(
+      key: Key(transaction['transactionId']),
+      direction: DismissDirection.endToStart,
+      onDismissed: (direction) {
+        _removeTransaction(transaction['transactionId'], index);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Transaction "${transaction['category']}" deleted; Add a NEW Transaction!')),
+        );
+      },
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Icon(Icons.delete, color: Colors.white),
+      ),
+      child: Card(
+        elevation: 4,
+        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: ListTile(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    transaction['category'],
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-                Text(
-                  "${transaction['date'].toLocal()}".split(' ')[0],
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    "${(transaction['date'] as DateTime).toLocal()}".split(' ')[0],
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  transaction['type'],
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    transaction['type'],
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                Text(
-                  transaction['amount'].toString(),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
+                  Text(
+                    NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(transaction['amount']),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Transactions',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            stops: [0.3, 0.6, 0.9],
-            colors: [
-              Color(0xff56018D),
-              Color(0xff8B139C),
-              Colors.pink,
-            ],
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                stops: [0.3, 0.6, 0.9],
+                colors: [
+                  Color(0xff56018D),
+                  Color(0xff8B139C),
+                  Colors.pink,
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: _transactionsList.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No transactions yet. Add a transaction!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                        ),
+                      ),
+                    )
+                  : _buildTransactionList(),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _transactionsList.isEmpty
-              ? Center(
-                  child: Text(
-                    'No transactions yet. Add a transaction!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                    ),
+          Positioned(
+            bottom: 41,
+            left: 16,
+            child: Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
                   ),
-                )
-              : _buildTransactionList(),
-        ),
+                ],
+              ),
+              child: Text(
+                'Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: _totalBalance >= 0 ? Colors.green : Colors.red,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _promptAddTransaction,
