@@ -1,35 +1,345 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
-class Transactions extends StatefulWidget{
+class Transactions extends StatefulWidget {
+  final String userId;
+
+  Transactions({Key? key, required this.userId}) : super(key: key);
+
   @override
-  State<Transactions> createState() => _TransactionState();
+  _TransactionState createState() => _TransactionState();
 }
 
 class _TransactionState extends State<Transactions> {
   final List<Map<String, dynamic>> _transactionsList = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  double _totalBalance = 0.0;
+  DateTime date = DateTime.now();
+  double amt = 0;
+  String? type1;
+  String? categ;
 
-  void _addTransaction(double amount, String type, String category, String date) {
-    if(!amount.isNaN) {
-      setState(() => _transactionsList.add({'amount' : amount, 'type' : type, 'category' : category, 'date' : date}));
+  @override
+  void initState() {
+    super.initState();
+    _fetchTransactions();
+  }
+
+  void _fetchTransactions() {
+    _firestore.collection('users').doc(widget.userId).collection('Transactions').get().then((querySnapshot) {
+      setState(() {
+        _transactionsList.clear();
+        _totalBalance = 0.0;
+        querySnapshot.docs.forEach((doc) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'],
+            'type': doc['type'],
+            'category': doc['category'],
+            'date': (doc['date'] as Timestamp).toDate(),
+          };
+          _transactionsList.add(transaction);
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
+      });
+    }).catchError((error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+    });
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+        context: context,
+        initialDate: date,
+        firstDate: DateTime(2015, 8),
+        lastDate: DateTime(2101));
+    if (picked != null && picked != date) {
+      setState(() {
+        date = picked;
+      });
     }
   }
 
-  void _removeTransaction(int index) {
-    setState(() => _transactionsList.removeAt(index));
+  void _addTransaction(double amount, String? type, String? category, DateTime date) {
+    if (!amount.isNaN) {
+      _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .collection('Transactions')
+          .add({
+        'amount': amount,
+        'type': type,
+        'category': category,
+        'date': date
+      }).then((value) {
+        setState(() {
+          _transactionsList.add({
+            'transactionId': value.id,
+            'amount': amount,
+            'type': type,
+            'category': category,
+            'date': date
+          });
+          if (type == 'Income') {
+            _totalBalance += amount;
+          } else {
+            _totalBalance -= amount;
+          }
+        });
+      });
+    }
+  }
+
+  void _removeTransaction(String transactionId, int index) {
+    var transaction = _transactionsList[index];
+    _firestore.collection('users').doc(widget.userId).collection('Transactions').doc(transactionId).delete().then((value) {
+      setState(() {
+        _transactionsList.removeAt(index);
+        if (transaction['type'] == 'Income') {
+          _totalBalance -= transaction['amount'];
+        } else {
+          _totalBalance += transaction['amount'];
+        }
+      });
+    }).catchError((error) => print("Failed to delete transaction: $error"));
   }
 
   void _promptAddTransaction() {
     showDialog(
-      context: context, 
+      context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('New Transaction'),
-          content: TextField(
-            autofocus: true,
-          )
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('New Transaction'),
+              content: Container(
+                height: 230,
+                width: 250,
+                child: Column(
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: 'Enter the amount'),
+                      onChanged: (String? val) {
+                        amt = double.parse(val!);
+                      },
+                    ),
+                    Container(
+                      width: 200,
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: type1,
+                        hint: Text('Select type'),
+                        items: <String>['Expense', 'Income'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            type1 = newValue!;
+                          });
+                        },
+                      ),
+                    ),
+                    Container(
+                      width: 200,
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: categ,
+                        hint: Text('Select category'),
+                        menuMaxHeight: 200,
+                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newCateg) {
+                          setState(() {
+                            categ = newCateg!;
+                          });
+                        },
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.max,
+                      children: <Widget>[
+                        const SizedBox(height: 20.0),
+                        ElevatedButton(
+                          onPressed: () async {
+                            await _selectDate(context);
+                            setState(() {});
+                          },
+                          child: Text("${date.toLocal()}".split(' ')[0]),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      child: Text('Cancel'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    TextButton(
+                      child: Text('Enter'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _addTransaction(amt, type1, categ, date);
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
         );
       },
-      );
+    );
+  }
+
+  void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String updatedCategory = transaction['category'];
+        double updatedAmount = transaction['amount'];
+        String updatedType = transaction['type'];
+        DateTime updatedDate = transaction['date'];
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Edit Transaction'),
+              content: Container(
+                height: 230,
+                width: 250,
+                child: Column(
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: 'Enter the amount'),
+                      controller: TextEditingController(text: updatedAmount.toString()),
+                      onChanged: (String? val) {
+                        updatedAmount = double.parse(val!);
+                      },
+                    ),
+                    DropdownButton<String>(
+                      isExpanded: true,
+                      value: updatedType,
+                      hint: Text('Select type'),
+                      items: <String>['Expense', 'Income'].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setState(() {
+                          updatedType = newValue!;
+                        });
+                      },
+                    ),
+                    Container(
+                      width: 200,
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: categ,
+                        hint: Text('Select category'),
+                        menuMaxHeight: 200,
+                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (updatedCateg) {
+                          setState(() {
+                            updatedCategory = updatedCateg!;
+                          });
+                        },
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final DateTime? picked = await showDatePicker(
+                            context: context,
+                            initialDate: updatedDate,
+                            firstDate: DateTime(2015, 8),
+                            lastDate: DateTime(2101));
+                        if (picked != null && picked != updatedDate) {
+                          setState(() {
+                            updatedDate = picked;
+                          });
+                        }
+                      },
+                      child: Text("${updatedDate.toLocal()}".split(' ')[0]),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Cancel'),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+                TextButton(
+                  child: Text('Update'),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _updateTransaction(transaction['transactionId'], updatedAmount, updatedType, updatedCategory, updatedDate, index);
+                  },
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
+    _firestore.collection('users').doc(widget.userId).collection('Transactions').doc(transactionId).update({
+      'amount': amount,
+      'type': type,
+      'category': category,
+      'date': date
+    }).then((value) {
+      setState(() {
+        _transactionsList[index] = {
+          'transactionId': transactionId,
+          'amount': amount,
+          'type': type,
+          'category': category,
+          'date': date
+        };
+        _totalBalance = 0.0;
+        _transactionsList.forEach((transaction) {
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
+      });
+    }).catchError((error) {
+      print("Failed to update transaction: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update transaction')));
+    });
   }
 
   Widget _buildTransactionList() {
@@ -41,46 +351,65 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
-   Widget _buildTransactionItem(Map<String, dynamic> todoItem, int index) {
-    return Dismissible(
-      key: Key(todoItem['task']),
-      direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        _removeTransaction(index);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Task "${todoItem['task']}" deleted; Add a NEW Task!')),
-        );
-      },
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Icon(Icons.delete, color: Colors.white),
-      ),
-      child: Card(
-        elevation: 4,
-        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        child: ListTile(
-          title: Text(
-            todoItem['task'],
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              decoration: todoItem['completed']
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
+  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
+  return Dismissible(
+    key: Key(transaction['transactionId']),
+    direction: DismissDirection.endToStart,
+    onDismissed: (direction) {
+      _removeTransaction(transaction['transactionId'], index);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Transaction "${transaction['category']}" deleted. Add a NEW Transaction!',
+          ),
+        ),
+      );
+    },
+    background: Container(
+      color: Colors.red,
+      alignment: Alignment.centerRight,
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      child: Icon(Icons.delete, color: Colors.white),
+    ),
+    child: Card(
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListTile(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              transaction['category'],
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            Text(
+              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+              style: TextStyle(fontSize: 14, color: Colors.black),
+            ),
+          ],
+        ),
+        trailing: Text(
+          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+              .format(transaction['amount']),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Income/Expenses', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold),),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
@@ -97,28 +426,25 @@ class _TransactionState extends State<Transactions> {
             ],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _transactionsList.isEmpty
-              ? Center(
-                  child: Text(
-                    'No tasks just yet. Add a task!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                    ),
-                  ),
-                )
-              : _buildTransactionList(),
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.all(15),
+              child: Text(
+                'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
+              ),
+              
+            ),
+            Expanded(child: _buildTransactionList()),
+          ],
+          
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _promptAddTransaction,
-        tooltip: 'Add a task',
-        backgroundColor: const Color.fromARGB(255, 252, 192, 12),
         child: Icon(Icons.add),
       ),
     );
   }
-
 }

@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/pages/filter_by_category.dart';
+import 'package:fbla_finance/pages/transactions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -261,11 +263,11 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    AwardsPage(userId: docID,)));
+                                                    Transactions(userId: docID,)));
                                       },
                                       child: EcTile(
                                         icon: Icons.emoji_events,
-                                        EcName: 'Awards',
+                                        EcName: 'Transactions',
                                         color: Colors.blue,
                                       ),
                                     ),
@@ -275,11 +277,11 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    ClubsPage(userId: docID,)));
+                                                    Transactions(userId: docID,)));
                                       },
                                       child: EcTile(
                                       icon: Icons.groups,
-                                      EcName: 'Clubs',
+                                      EcName: 'Filter by Category',
                                       color: Colors.pink,
                                     ),
                                     ),
@@ -289,7 +291,7 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    EcsPage(userId: docID,)));
+                                                    TransactionsByCategory(userId: docID,)));
                                       },
                                       child: EcTile(
                                       icon: Icons.assignment,
