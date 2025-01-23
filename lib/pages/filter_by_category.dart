@@ -1,0 +1,170 @@
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
+class TransactionsByCategory extends StatefulWidget {
+  final String userId;
+
+  TransactionsByCategory({Key? key, required this.userId}) : super(key: key);
+
+  @override
+  _TransactionsByCategoryState createState() => _TransactionsByCategoryState();
+}
+
+class _TransactionsByCategoryState extends State<TransactionsByCategory> {
+  final List<Map<String, dynamic>> _transactionsList = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final List<Map<String, dynamic>> _filteredTransactions = [];
+  String? _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAllTransactions();
+  }
+
+  void _fetchAllTransactions() {
+    _firestore
+        .collection('users')
+        .doc(widget.userId)
+        .collection('Transactions')
+        .get()
+        .then((querySnapshot) {
+      setState(() {
+        _transactionsList.clear();
+        _filteredTransactions.clear();
+        querySnapshot.docs.forEach((doc) {
+          // Add null checks for all fields
+          var data = doc.data();
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': data['amount'] ?? 0.0, // Default to 0 if missing
+            'type': data['type'] ?? 'Unknown', // Default to 'Unknown' if missing
+            'category': data['category'] ?? 'Uncategorized', // Default category
+            'date': (data['date'] != null)
+                ? (data['date'] as Timestamp).toDate()
+                : DateTime.now(), // Default to current date
+          };
+          _transactionsList.add(transaction);
+        });
+        // Initially, show all transactions
+        _filteredTransactions.addAll(_transactionsList);
+      });
+    }).catchError((error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch transactions')),
+      );
+    });
+  }
+
+  void _filterTransactionsByCategory(String? category) {
+    setState(() {
+      if (category == null || category.isEmpty) {
+        _filteredTransactions.clear();
+        _filteredTransactions.addAll(_transactionsList);
+      } else {
+        _filteredTransactions.clear();
+        _filteredTransactions.addAll(
+          _transactionsList.where((transaction) => transaction['category'] == category),
+        );
+      }
+    });
+  }
+
+  Widget _buildTransactionList() {
+    return ListView.builder(
+      itemCount: _filteredTransactions.length,
+      itemBuilder: (context, index) {
+        return _buildTransactionItem(_filteredTransactions[index]);
+      },
+    );
+  }
+
+  Widget _buildTransactionItem(Map<String, dynamic> transaction) {
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListTile(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              transaction['category'],
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+              style: TextStyle(fontSize: 14, color: Colors.black),
+            ),
+          ],
+        ),
+        trailing: Text(
+          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+              .format(transaction['amount']),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'Filter Transactions by Category',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+          ),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: _selectedCategory,
+              hint: Text(
+                'Select a category to filter',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                )
+              ),
+              items: <String>['All', 'Work', 'Food', 'Entertainment', 'Other']
+                  .map((String category) {
+                return DropdownMenuItem<String>(
+                  value: category,
+                  child: Text(category),
+                );
+              }).toList(),
+              onChanged: (String? newCategory) {
+                setState(() {
+                  _selectedCategory = newCategory == 'All' ? null : newCategory;
+                  _filterTransactionsByCategory(_selectedCategory);
+                });
+              },
+            ),
+          ),
+          Expanded(
+            child: _filteredTransactions.isEmpty
+                ? Center(
+                    child: Text(
+                      'No transactions found',
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
+                  )
+                : _buildTransactionList(),
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -150,11 +150,25 @@ class _TransactionState extends State<Transactions> {
                         },
                       ),
                     ),
-                    TextField(
-                      decoration: InputDecoration(labelText: 'Please enter category'),
-                      onChanged: (String? cat) {
-                        categ = cat;
-                      },
+                    Container(
+                      width: 200,
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: categ,
+                        hint: Text('Select category'),
+                        menuMaxHeight: 200,
+                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newCateg) {
+                          setState(() {
+                            categ = newCateg!;
+                          });
+                        },
+                      ),
                     ),
                     Column(
                       mainAxisSize: MainAxisSize.max,
@@ -240,12 +254,25 @@ class _TransactionState extends State<Transactions> {
                         });
                       },
                     ),
-                    TextField(
-                      decoration: InputDecoration(labelText: 'Please enter category'),
-                      controller: TextEditingController(text: updatedCategory),
-                      onChanged: (String? cat) {
-                        updatedCategory = cat!;
-                      },
+                    Container(
+                      width: 200,
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: categ,
+                        hint: Text('Select category'),
+                        menuMaxHeight: 200,
+                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (updatedCateg) {
+                          setState(() {
+                            updatedCategory = updatedCateg!;
+                          });
+                        },
+                      ),
                     ),
                     ElevatedButton(
                       onPressed: () async {
@@ -325,77 +352,58 @@ class _TransactionState extends State<Transactions> {
   }
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-    return Dismissible(
-      key: Key(transaction['transactionId']),
-      direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        _removeTransaction(transaction['transactionId'], index);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Transaction "${transaction['category']}" deleted; Add a NEW Transaction!')),
-        );
-      },
-      background: Container(
-        color: Colors.red,
-        alignment: Alignment.centerRight,
-        padding: EdgeInsets.symmetric(horizontal: 20),
-        child: Icon(Icons.delete, color: Colors.white),
-      ),
-      child: Card(
-        elevation: 4,
-        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        child: ListTile(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    transaction['category'],
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    "${(transaction['date'] as DateTime).toLocal()}".split(' ')[0],
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    transaction['type'],
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(transaction['amount']),
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+  return Dismissible(
+    key: Key(transaction['transactionId']),
+    direction: DismissDirection.endToStart,
+    onDismissed: (direction) {
+      _removeTransaction(transaction['transactionId'], index);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Transaction "${transaction['category']}" deleted. Add a NEW Transaction!',
           ),
-          trailing: IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () => _promptEditTransaction(transaction, index),
+        ),
+      );
+    },
+    background: Container(
+      color: Colors.red,
+      alignment: Alignment.centerRight,
+      padding: EdgeInsets.symmetric(horizontal: 20),
+      child: Icon(Icons.delete, color: Colors.white),
+    ),
+    child: Card(
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListTile(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              transaction['category'],
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+              style: TextStyle(fontSize: 14, color: Colors.black),
+            ),
+          ],
+        ),
+        trailing: Text(
+          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+              .format(transaction['amount']),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -424,7 +432,7 @@ class _TransactionState extends State<Transactions> {
               padding: EdgeInsets.all(15),
               child: Text(
                 'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
               ),
               
             ),
