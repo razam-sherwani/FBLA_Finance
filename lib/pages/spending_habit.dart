@@ -90,8 +90,8 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
       _income[month][day] += amount;
     }
     }
-    print(_expense);
-    print(_income);
+    // print(_expense);
+    // print(_income);
 
   }
 
@@ -145,7 +145,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
         child: AspectRatio(
           aspectRatio: 2.0,
           child: LineChart(
-            LineChartData(
+      LineChartData(
               lineBarsData: [
                 LineChartBarData(
                   spots: _expense[_currentMonthIndex]
@@ -163,7 +163,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
                               
                   gradient: const LinearGradient(
                     colors: [
-                    Colors.red,
+                    // Colors.red,
                     Colors.purple
                     ],
                     begin: Alignment.bottomCenter,
@@ -175,10 +175,28 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
                 )
 
               ],
+              minX: overallMin -5,
+              maxX: overallMax + 5,
+              gridData: FlGridData(
+                show: true,
+                drawHorizontalLine: true,
+                drawVerticalLine: true,
+                horizontalInterval: 5,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey,    // Choose a visible color
+                    strokeWidth: 0.5,      // Set line thickness
+                    dashArray: [8, 4],     // Use dashed lines (optional)
+                  );
+                },
+              ),
               titlesData: FlTitlesData(              
                 topTitles: const AxisTitles(
                   sideTitles: SideTitles(showTitles: false), // This disables the top labels
                 ),
+              ),
+              lineTouchData: LineTouchData(
+
               )
             ),
           )
