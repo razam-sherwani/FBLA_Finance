@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/pages/filter_by_amount.dart';
 import 'package:fbla_finance/pages/filter_by_category.dart';
+import 'package:fbla_finance/pages/filter_by_date.dart';
+import 'package:fbla_finance/pages/filter_by_type.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -235,11 +238,11 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    AcademicsPage(userId: docID,)));
+                                                    Transactions(userId: docID,)));
                                       },
                                       child: EcTile(
                                         icon: Icons.lightbulb,
-                                        EcName: 'Academics',
+                                        EcName: 'Transactions',
                                         color: Colors.orange,
                                       ),
                                     ),
@@ -263,11 +266,11 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    Transactions(userId: docID,)));
+                                                    FilterByAmountPage(userId: docID,)));
                                       },
                                       child: EcTile(
                                         icon: Icons.emoji_events,
-                                        EcName: 'Transactions',
+                                        EcName: 'Filter by Amount',
                                         color: Colors.blue,
                                       ),
                                     ),
@@ -277,7 +280,7 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    Transactions(userId: docID,)));
+                                                    TransactionsByCategory(userId: docID,)));
                                       },
                                       child: EcTile(
                                       icon: Icons.groups,
@@ -291,11 +294,25 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    TransactionsByCategory(userId: docID,)));
+                                                    FilterByTypePage(userId: docID,)));
                                       },
                                       child: EcTile(
                                       icon: Icons.assignment,
-                                      EcName: 'Extracurricular',
+                                      EcName: 'Filter by Type',
+                                      color: Colors.green,
+                                    ),
+                                    ),
+                                    GestureDetector(
+                                      onTap: (){
+                                        Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    FilterByDatePage(userId: docID,)));
+                                      },
+                                      child: EcTile(
+                                      icon: Icons.assignment,
+                                      EcName: 'Filter by Date',
                                       color: Colors.green,
                                     ),
                                     ),
