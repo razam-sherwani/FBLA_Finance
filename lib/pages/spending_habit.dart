@@ -127,10 +127,16 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Transaction Analysis', style: TextStyle(fontWeight: FontWeight.bold),),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple,
+      ),
       body: Center(
         child: AspectRatio(
           aspectRatio: 2.0,
           child: LineChart(
+            curve: Curves.linear,
             LineChartData(
               lineBarsData: [
                 LineChartBarData(
@@ -154,7 +160,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
                     end: Alignment.topCenter,
                   ),
                   barWidth: 4,
-                  curveSmoothness: 0.2,
+                  curveSmoothness: 0.5,
                   preventCurveOverShooting: true,
                 )
               ],

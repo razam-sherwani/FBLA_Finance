@@ -77,18 +77,17 @@ class _HomePageState extends State<HomePage> {
           .collection('transactions')
           .where('userId', isEqualTo: docID)
           .get();
-
-      double total = 0.0;
-
       for (var doc in snapshot.docs) {
-        var data = doc.data() as Map<String, dynamic>;
-        if (data['amount'] != null) {
-          total += data['amount'];
+        var transaction = doc.data() as Map<String, dynamic>;
+        if (transaction['type'] == 'Income') {
+          _totalBalance += transaction['amount'];
+        } else {
+          _totalBalance -= transaction['amount'];
         }
       }
 
       setState(() {
-        _totalBalance = total;
+        _totalBalance = _totalBalance;
       });
     } catch (e) {
       print('Error calculating total balance: $e');
