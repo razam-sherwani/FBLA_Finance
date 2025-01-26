@@ -35,14 +35,18 @@ class _HomePageState extends State<HomePage> {
   String? formattedDate;
   String docID = "6cHwPquSMMkpue7r6RRN";
   double _totalBalance = 0.0;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
     formattedDate = formatter.format(now);
     fetchDocID();
-    calculateTotalBalance(); // Fetch the total balance
+    
+    // Fetch the total balance
   }
+
+  
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -68,30 +72,33 @@ class _HomePageState extends State<HomePage> {
         });
       });
     }
+    calculateTotalBalance(); 
   }
 
   Future<void> calculateTotalBalance() async {
-    try {
-      // Replace 'transactions' with your Firestore collection name
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('transactions')
-          .where('userId', isEqualTo: docID)
-          .get();
-      for (var doc in snapshot.docs) {
-        var transaction = doc.data() as Map<String, dynamic>;
-        if (transaction['type'] == 'Income') {
-          _totalBalance += transaction['amount'];
-        } else {
-          _totalBalance -= transaction['amount'];
-        }
-      }
-
+    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
       setState(() {
-        _totalBalance = _totalBalance;
+        _totalBalance = 0.0;
+        querySnapshot.docs.forEach((doc) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'],
+            'type': doc['type'],
+            'category': doc['category'],
+            'date': (doc['date'] as Timestamp).toDate(),
+          };
+          //_transactionsList.add(transaction);
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
       });
-    } catch (e) {
-      print('Error calculating total balance: $e');
-    }
+    }).catchError((error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+    });
   }
 
   Future<void> signOut() async {
@@ -202,7 +209,7 @@ class _HomePageState extends State<HomePage> {
                           padding: const EdgeInsets.only(left: 4),
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            "Current Balance: \$${_totalBalance.toStringAsFixed(2)}",
+                            'Current Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
                             textAlign: TextAlign.left,
                             style: const TextStyle(
                               fontSize: 25,
@@ -247,10 +254,14 @@ class _HomePageState extends State<HomePage> {
                                     GestureDetector(
                                       onTap: () {
                                         Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    Transactions(userId: docID)));
+  context,
+  MaterialPageRoute(
+    builder: (context) => Transactions(userId: docID),
+  ),
+).then((_) {
+  // Recalculate the balance when returning to the home page
+  calculateTotalBalance();
+});
                                       },
                                       child: EcTile(
                                         icon: Icons.lightbulb,
