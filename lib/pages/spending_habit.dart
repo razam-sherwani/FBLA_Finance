@@ -132,48 +132,54 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
-      body: Center(
-        child: AspectRatio(
-          aspectRatio: 2.0,
-          child: LineChart(
-            curve: Curves.linear,
-            LineChartData(
-              lineBarsData: [
-                LineChartBarData(
-                  spots: _expense[_currentMonthIndex]
-                      .asMap()
-                      .entries
-                      .map((e) {
-                    final index = e.key;
-                    final val = e.value;
-                    return FlSpot(
-                      index.toDouble(),
-                      val,
-                    );
-                  }).toList(),
-                  isCurved: true,
-                  dotData: const FlDotData(show: false),
-                  color: Colors.lightBlue,
-                  gradient: const LinearGradient(
-                    colors: [Colors.red, Colors.purple],
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
+      body: Column(
+        children: [
+          Text('Expenses Per Month', style: TextStyle(fontSize: 22,fontWeight: FontWeight.bold),),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: AspectRatio(
+                aspectRatio: 2.0,
+                child: LineChart(
+                  curve: Curves.linear,
+                  LineChartData(
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: _expense[_currentMonthIndex]
+                            .asMap()
+                            .entries
+                            .map((e) {
+                          final index = e.key;
+                          final val = e.value;
+                          return FlSpot(
+                            index.toDouble(),
+                            val,
+                          );
+                        }).toList(),
+                        isCurved: true,
+                        dotData: const FlDotData(show: false),
+                        color: Colors.lightBlue,
+                        gradient: const LinearGradient(
+                          colors: [Colors.red, Colors.purple],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                        barWidth: 4,
+                        curveSmoothness: 0.5,
+                        preventCurveOverShooting: true,
+                      )
+                    ],
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                    ),
                   ),
-                  barWidth: 4,
-                  curveSmoothness: 0.5,
-                  preventCurveOverShooting: true,
-                )
-              ],
-              titlesData: FlTitlesData(
-                topTitles: const AxisTitles(
-                  sideTitles: SideTitles(showTitles: false),
                 ),
               ),
-            ),
           ),
-        ),
+        ],
       ),
-    );
+      );
   }
 
   bool get _canGoNext => _currentMonthIndex < 11;

@@ -157,7 +157,7 @@ class _TransactionState extends State<Transactions> {
                         value: categ,
                         hint: Text('Select category'),
                         menuMaxHeight: 200,
-                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                        items: (type1 == 'Income' ? <String>['Work', 'Stocks', 'Other'] : <String>['Food', 'Entertainment','Other']).map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
