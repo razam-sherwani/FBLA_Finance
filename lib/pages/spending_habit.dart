@@ -114,6 +114,49 @@ final Map<String, double> _categoryTotals = {};
   }
 }
 
+void _fetchRawDataLine() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .collection('Transactions')
+          .get();
+
+      setState(() {
+        _rawData.clear();
+        for (var doc in querySnapshot.docs) {
+          _rawData.add({
+            'amount': doc['amount'] as double, // Ensuring double type
+            'date': (doc['date'] as Timestamp).toDate(),
+            'type': doc['type']
+          });
+        }
+        _createCleanDataLine();
+      });
+    } catch (error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch transactions')),
+      );
+    }
+  }
+
+  void _createCleanDataLine() {
+    for (var transaction in _rawData) {
+      DateTime date = transaction['date'];
+      int month = date.month - 1;
+      int day = date.day - 1;
+      double amount = transaction['amount'];
+
+      if (transaction['type'] == 'Expense') {
+        _expense[month][day] += amount;
+      } else {
+        _income[month][day] += amount;
+      }
+    }
+  }
+
+
   double findMinExpense() {
     return _expense[_currentMonthIndex].reduce((a, b) => a < b ? a : b);
   }
@@ -141,6 +184,7 @@ final Map<String, double> _categoryTotals = {};
   @override
   void initState() {
     super.initState();
+    _fetchRawDataLine();
     _fetchRawData();
     minExpense = findMinExpense();
     maxExpense = findMaxExpense();
