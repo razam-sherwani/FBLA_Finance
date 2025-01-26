@@ -48,6 +48,9 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     'December',
   ];
 
+  // Add this map to store category-wise totals
+final Map<String, double> _categoryTotals = {};
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   void _fetchRawData() async {
@@ -60,14 +63,25 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
 
       setState(() {
         _rawData.clear();
+        _categoryTotals.clear(); // Reset category totals
         for (var doc in querySnapshot.docs) {
+          final amount = doc['amount'] as double;
+          final date = (doc['date'] as Timestamp).toDate();
+          final type = doc['type'];
+          final category = doc['category'] ?? 'Other'; // Default to 'Other'
+
           _rawData.add({
-            'amount': doc['amount'] as double, // Ensuring double type
-            'date': (doc['date'] as Timestamp).toDate(),
-            'type': doc['type']
+            'amount': amount,
+            'date': date,
+            'type': type,
+            'category': category,
           });
+
+          // Filter data for the selected month and only for expenses
+          if (type == 'Expense' && date.month - 1 == _currentMonthIndex) {
+            _categoryTotals[category] = (_categoryTotals[category] ?? 0) + amount;
+          }
         }
-        _createCleanData();
       });
     } catch (error) {
       print("Error fetching transactions: $error");
@@ -78,19 +92,27 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   }
 
   void _createCleanData() {
-    for (var transaction in _rawData) {
-      DateTime date = transaction['date'];
-      int month = date.month - 1;
-      int day = date.day - 1;
-      double amount = transaction['amount'];
+  for (var transaction in _rawData) {
+    DateTime date = transaction['date'];
+    int month = date.month - 1;
+    int day = date.day - 1;
+    double amount = transaction['amount'];
 
-      if (transaction['type'] == 'Expense') {
-        _expense[month][day] += amount;
+    if (transaction['type'] == 'Expense') {
+      _expense[month][day] += amount;
+
+      // Update the category totals
+      String category = transaction['category'] ?? 'Other'; // Default to "Other" if category is missing
+      if (_categoryTotals.containsKey(category)) {
+        _categoryTotals[category] = _categoryTotals[category]! + amount;
       } else {
-        _income[month][day] += amount;
+        _categoryTotals['Other'] = _categoryTotals['Other']! + amount;
       }
+    } else {
+      _income[month][day] += amount;
     }
   }
+}
 
   double findMinExpense() {
     return _expense[_currentMonthIndex].reduce((a, b) => a < b ? a : b);
@@ -296,69 +318,42 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   void dispose() {
     super.dispose();
   }
+List<PieChartSectionData> showingSections() {
+    // Calculate total expenses for the selected month
+    final totalExpenses = _categoryTotals.values.fold(0.0, (sum, val) => sum + val);
 
-  List<PieChartSectionData> showingSections() {
-    return List.generate(4, (i) {
-      final isTouched = i == touchedIndex;
+    // Generate pie chart sections
+    return _categoryTotals.entries.map((entry) {
+      final category = entry.key;
+      final amount = entry.value;
+      final percentage = (amount / totalExpenses) * 100;
+
+      final isTouched = category == touchedIndex;
       final fontSize = isTouched ? 25.0 : 16.0;
       final radius = isTouched ? 60.0 : 50.0;
-      const shadows = [Shadow(color: Colors.black, blurRadius: 2)];
-      switch (i) {
-        case 0:
-          return PieChartSectionData(
-            color: AppColors.contentColorBlue,
-            value: 40,
-            title: '40%',
-            radius: radius,
-            titleStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: AppColors.mainTextColor1,
-              shadows: shadows,
-            ),
-          );
-        case 1:
-          return PieChartSectionData(
-            color: AppColors.contentColorYellow,
-            value: 30,
-            title: '30%',
-            radius: radius,
-            titleStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: AppColors.mainTextColor1,
-              shadows: shadows,
-            ),
-          );
-        case 2:
-          return PieChartSectionData(
-            color: AppColors.contentColorPurple,
-            value: 15,
-            title: '15%',
-            radius: radius,
-            titleStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: AppColors.mainTextColor1,
-              shadows: shadows,
-            ),
-          );
-        case 3:
-          return PieChartSectionData(
-            color: AppColors.contentColorGreen,
-            value: 15,
-            title: '15%',
-            radius: radius,
-            titleStyle: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.bold,
-              color: AppColors.mainTextColor1,
-              shadows: shadows,
-            ),
-          );
-        default:
-          throw Error();
-      }
-    });
+
+      // Assign colors to categories
+      final categoryColors = {
+        'Food': AppColors.contentColorBlue,
+        'Entertainment': AppColors.contentColorYellow,
+        'Utilities': AppColors.contentColorPurple,
+        'Other': AppColors.contentColorGreen,
+      };
+
+      return PieChartSectionData(
+        color: categoryColors[category] ?? AppColors.contentColorGreen,
+        value: percentage,
+        title: '${percentage.toStringAsFixed(1)}%',
+        radius: radius,
+        titleStyle: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+          color: AppColors.mainTextColor1,
+          shadows: const [Shadow(color: Colors.black, blurRadius: 2)],
+        ),
+      );
+    }).toList();
   }
 }
+
+
