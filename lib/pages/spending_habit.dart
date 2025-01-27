@@ -251,9 +251,10 @@ void _fetchRawDataLine() async {
       ),
       body: Column(
         children: [
+          SizedBox(height: 35,),
           Padding(
             padding: const EdgeInsets.only(top: 8.0),
-            child: Text('Expenses Per Month', style: TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+            child: Text('Expenses Per Day', style: TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 10),
@@ -276,7 +277,7 @@ void _fetchRawDataLine() async {
                           );
                         }).toList(),
                         isCurved: true,
-                        dotData: const FlDotData(show: false),
+                        dotData: const FlDotData(show: true),
                         color: Colors.lightBlue,
                         gradient: const LinearGradient(
                           colors: [Colors.red, Colors.purple],
@@ -290,92 +291,97 @@ void _fetchRawDataLine() async {
                     ],
                     titlesData: FlTitlesData(
                       topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
+                        sideTitles: SideTitles(showTitles: false, interval: 1),
                       ),
                     ),
                   ),
                 ),
               ),
           ),
-          AspectRatio(
-      aspectRatio: 1.3,
-      child: Row(
-        children: <Widget>[
-          const SizedBox(
-            height: 18,
+          SizedBox(height: 50),
+          Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Text('Expenses By Category', style: TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
           ),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.all(10),
             child: AspectRatio(
-              aspectRatio: 1,
-              child: PieChart(
-                PieChartData(
-                  pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                      setState(() {
-                        if (!event.isInterestedForInteractions ||
-                            pieTouchResponse == null ||
-                            pieTouchResponse.touchedSection == null) {
-                          touchedIndex = -1;
-                          return;
-                        }
-                        touchedIndex = pieTouchResponse
-                            .touchedSection!.touchedSectionIndex;
-                      });
-                    },
+                  aspectRatio: 2,
+                  child: Row(
+                    children: <Widget>[
+            Expanded(
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: PieChart(
+                  PieChartData(
+                    pieTouchData: PieTouchData(
+                      touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                        setState(() {
+                          if (!event.isInterestedForInteractions ||
+                              pieTouchResponse == null ||
+                              pieTouchResponse.touchedSection == null) {
+                            touchedIndex = -1;
+                            return;
+                          }
+                          touchedIndex = pieTouchResponse
+                              .touchedSection!.touchedSectionIndex;
+                        });
+                      },
+                    ),
+                    borderData: FlBorderData(
+                      show: false,
+                    ),
+                    sectionsSpace: 0,
+                    centerSpaceRadius: 40,
+                    sections: showingSections(),
                   ),
-                  borderData: FlBorderData(
-                    show: false,
-                  ),
-                  sectionsSpace: 0,
-                  centerSpaceRadius: 40,
-                  sections: showingSections(),
                 ),
               ),
             ),
-          ),
-          const Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Indicator(
-                color: AppColors.contentColorBlue,
-                text: 'Food',
-                isSquare: true,
-              ),
-              SizedBox(
-                height: 4,
-              ),
-              Indicator(
-                color: AppColors.contentColorYellow,
-                text: 'Entertainment',
-                isSquare: true,
-              ),
-              SizedBox(
-                height: 4,
-              ),
-              Indicator(
-                color: AppColors.contentColorPurple,
-                text: 'Utilties',
-                isSquare: true,
-              ),
-              SizedBox(
-                height: 4,
-              ),
-              Indicator(
-                color: AppColors.contentColorGreen,
-                text: 'Other',
-                isSquare: true,
-              ),
-              SizedBox(
-                height: 18,
-              ),
-            ],
-          ),
-          const SizedBox(
-            width: 28,
-          ),
-        ],
-      ),
+            const Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Indicator(
+                  color: AppColors.contentColorBlue,
+                  text: 'Food',
+                  isSquare: true,
+                ),
+                SizedBox(
+                  height: 4,
+                ),
+                Indicator(
+                  color: AppColors.contentColorYellow,
+                  text: 'Entertainment',
+                  isSquare: true,
+                ),
+                SizedBox(
+                  height: 4,
+                ),
+                Indicator(
+                  color: AppColors.contentColorPurple,
+                  text: 'Utilties',
+                  isSquare: true,
+                ),
+                SizedBox(
+                  height: 4,
+                ),
+                Indicator(
+                  color: AppColors.contentColorGreen,
+                  text: 'Other',
+                  isSquare: true,
+                ),
+                SizedBox(
+                  height: 18,
+                ),
+              ],
+            ),
+            const SizedBox(
+              width: 28,
+            ),
+                    ],
+                  ),
+            ),
           ),
       ],
       ),
