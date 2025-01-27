@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/pages/openai_entry_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/read_data/get_user_name.dart';
 import 'package:fbla_finance/pages/appearance_page.dart';
-import 'package:fbla_finance/pages/chatbot.dart';
 import 'package:fbla_finance/util/profile_picture.dart';
 import 'package:fbla_finance/util/setting_item.dart';
 import 'package:fbla_finance/util/setting_switch.dart';
@@ -168,7 +168,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => AdvancedChatbot()),
+                    MaterialPageRoute(builder: (context) => OpenAIEntryScreen()),
                   );
                 },
               ),

@@ -31,6 +31,10 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     12,
     (_) => List.generate(31, (_) => 0.0),
   );
+  final List<List<double>> _curBal = List.generate(
+    12,
+    (_) => List.generate(31, (_) => 0.0),
+  );
 
   int _currentMonthIndex = 0;
   late final List<String> monthsNames = [
@@ -156,6 +160,48 @@ void _fetchRawDataLine() async {
     }
   }
 
+  void _fetchRawDataTotalBalance() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .collection('Transactions')
+          .get();
+
+      setState(() {
+        _rawData.clear();
+        for (var doc in querySnapshot.docs) {
+          _rawData.add({
+            'amount': doc['amount'] as double, // Ensuring double type
+            'date': (doc['date'] as Timestamp).toDate(),
+            'type': doc['type']
+          });
+        }
+        _createCleanDataTotalBalance();
+      });
+    } catch (error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch transactions')),
+      );
+    }
+  }
+
+  void _createCleanDataTotalBalance() {
+    for (var transaction in _rawData) {
+      DateTime date = transaction['date'];
+      int month = date.month - 1;
+      int day = date.day - 1;
+      double amount = transaction['amount'];
+
+      if (transaction['type'] == 'Expense') {
+        _curBal[month][day] -= amount;
+      } else {
+        _curBal[month][day] += amount;
+      }
+    }
+  }
+
 
   double findMinExpense() {
     return _expense[_currentMonthIndex].reduce((a, b) => a < b ? a : b);
@@ -186,6 +232,7 @@ void _fetchRawDataLine() async {
     super.initState();
     _fetchRawDataLine();
     _fetchRawData();
+    _fetchRawDataTotalBalance();
     minExpense = findMinExpense();
     maxExpense = findMaxExpense();
     minIncome = findMinIncome();
