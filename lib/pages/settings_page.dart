@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fbla_finance/pages/openai_entry_screen.dart';
+import 'package:fbla_finance/pages/chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/auth.dart';
@@ -168,7 +168,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => OpenAIEntryScreen()),
+                    MaterialPageRoute(builder: (context) => ChatScreen()),
                   );
                 },
               ),
