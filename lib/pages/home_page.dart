@@ -135,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                                       return Text(
                                         "Hi $userName!",
                                         style: TextStyle(
-                                          color: Colors.white,
+                                          color: Colors.black,
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -168,7 +168,7 @@ class _HomePageState extends State<HomePage> {
                                 Text(
                                   formattedDate!,
                                   style: TextStyle(
-                                      color: Colors.blue[200], fontSize: 20),
+                                      color: Colors.black, fontSize: 20),
                                 )
                               ],
                             ),

@@ -260,7 +260,7 @@ class _SocialPageState extends State<SocialPage> {
                                         return Text(
                                           "Hi $userName!",
                                           style: TextStyle(
-                                            color: Colors.white,
+                                            color: Colors.black,
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
                                           ),
@@ -295,7 +295,7 @@ class _SocialPageState extends State<SocialPage> {
                                   Text(
                                     formattedDate!,
                                     style: TextStyle(
-                                        color: Colors.blue[200], fontSize: 20),
+                                        color: Colors.black, fontSize: 20),
                                   )
                                 ],
                               ),
@@ -334,7 +334,7 @@ class _SocialPageState extends State<SocialPage> {
                             BorderRadius.vertical(top: Radius.circular(25)),
                         child: Container(
                           padding: EdgeInsets.all(25),
-                          color: Colors.grey[300],
+                          color: const Color.fromARGB(255, 216, 240, 230), //changes background color
                           child: Center(
                             child: Column(
                               children: [
@@ -376,7 +376,7 @@ class _SocialPageState extends State<SocialPage> {
                                           child: Text(
                                             'Generate PDF',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: Colors.black,
                                               fontSize: 16.0,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -405,7 +405,7 @@ class _SocialPageState extends State<SocialPage> {
                                           child: Text(
                                             'Share PDF Link',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: Colors.black,
                                               fontSize: 16.0,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -433,7 +433,7 @@ class _SocialPageState extends State<SocialPage> {
                                           child: Text(
                                             'Share Portfolio Text',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: Colors.black,
                                               fontSize: 16.0,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -461,7 +461,7 @@ class _SocialPageState extends State<SocialPage> {
                                           child: Text(
                                             'Share to Instagram Story',
                                             style: TextStyle(
-                                              color: Colors.white,
+                                              color: Colors.black,
                                               fontSize: 16.0,
                                               fontWeight: FontWeight.bold,
                                             ),
