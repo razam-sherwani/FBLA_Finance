@@ -12,10 +12,17 @@ class AppearancePage extends StatefulWidget {
 class _AppearancePageState extends State<AppearancePage> {
   List<List<Color>> gradients = [
     [Color(0xff56018D), Colors.pink],
-    [Colors.blue, Colors.green],
-    [Colors.red, Colors.orange],
-    [Colors.yellow, Colors.green],
+    [Colors.black, Colors.orange, Colors.pink],
     [Colors.teal, Colors.cyan],
+    [Color(0xffABF2FF), Color(0xffB8E8FF), Color(0xffBADFFF)],
+    [Color(0xffFFEAB0), Color(0xffFFFDB0), Color(0xffFFF3B1)],
+    [Color(0xff73F08F), Color(0xff86F0C1), Color(0xff85F0D1)],
+    [Color(0xfffaf3dd), Color(0xffc8d5b9), Color(0xff8fc0a9)],
+    [Color(0xff6b9080), Color(0xffa4c3b2), Color(0xffcce3de)],
+    [Color(0xffC999DE), Color(0xffDF9ADB), Color(0xffDE99B1)],
+    [Color(0xffE0B26E), Color(0xffE1C06F), Color(0xffE0CE6E)],
+    [Color(0xff90E082), Color(0xff82E096), Color(0xff82E0B7)],
+    [Color(0xffD7A7E0), Color(0xffE0A1C0)]
   ];
 
   List<Color> selectedGradient = [Color(0xff56018D), Colors.pink];
@@ -72,7 +79,7 @@ class _AppearancePageState extends State<AppearancePage> {
                 style: TextStyle(
                   fontSize: 34,
                   fontWeight: FontWeight.bold,
-                  color: Colors.black,
+                  color: Color.fromARGB(255, 236, 233, 233),
                 ),
                 textAlign: TextAlign.center,
               ),

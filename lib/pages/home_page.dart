@@ -165,8 +165,8 @@ class _HomePageState extends State<HomePage> {
                                       String userName = snapshot.data!;
                                       return Text(
                                         "Hi $userName!",
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                        style: TextStyle(
+                                          color: Colors.black,
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                         ),
@@ -196,8 +196,8 @@ class _HomePageState extends State<HomePage> {
                                 Text(
                                   formattedDate!,
                                   style: TextStyle(
-                                      color: Colors.blue[200], fontSize: 20),
-                                ),
+                                      color: Colors.black, fontSize: 20),
+                                )
                               ],
                             ),
                           ],
