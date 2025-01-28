@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/indicator.dart';
 import 'package:fbla_finance/backend/app_colors.dart';
-
+import 'package:fbla_finance/backend/app_utils.dart';
 
 class SpendingHabitPage extends StatefulWidget {
   final String userId;
@@ -36,24 +36,15 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     (_) => List.generate(31, (_) => 0.0),
   );
 
+  final int minDays = 1;
+  final int maxDays = 31;
+
   int _currentMonthIndex = 0;
-  late final List<String> monthsNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
+  late final List<String> monthsNames;
+
 
   // Add this map to store category-wise totals
-final Map<String, double> _categoryTotals = {};
+  final Map<String, double> _categoryTotals = {};
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -83,7 +74,8 @@ final Map<String, double> _categoryTotals = {};
 
           // Filter data for the selected month and only for expenses
           if (type == 'Expense' && date.month - 1 == _currentMonthIndex) {
-            _categoryTotals[category] = (_categoryTotals[category] ?? 0) + amount;
+            _categoryTotals[category] =
+                (_categoryTotals[category] ?? 0) + amount;
           }
         }
       });
@@ -96,29 +88,30 @@ final Map<String, double> _categoryTotals = {};
   }
 
   void _createCleanData() {
-  for (var transaction in _rawData) {
-    DateTime date = transaction['date'];
-    int month = date.month - 1;
-    int day = date.day - 1;
-    double amount = transaction['amount'];
+    for (var transaction in _rawData) {
+      DateTime date = transaction['date'];
+      int month = date.month - 1;
+      int day = date.day - 1;
+      double amount = transaction['amount'];
 
-    if (transaction['type'] == 'Expense') {
-      _expense[month][day] += amount;
+      if (transaction['type'] == 'Expense') {
+        _expense[month][day] += amount;
 
-      // Update the category totals
-      String category = transaction['category'] ?? 'Other'; // Default to "Other" if category is missing
-      if (_categoryTotals.containsKey(category)) {
-        _categoryTotals[category] = _categoryTotals[category]! + amount;
+        // Update the category totals
+        String category = transaction['category'] ??
+            'Other'; // Default to "Other" if category is missing
+        if (_categoryTotals.containsKey(category)) {
+          _categoryTotals[category] = _categoryTotals[category]! + amount;
+        } else {
+          _categoryTotals['Other'] = _categoryTotals['Other']! + amount;
+        }
       } else {
-        _categoryTotals['Other'] = _categoryTotals['Other']! + amount;
+        _income[month][day] += amount;
       }
-    } else {
-      _income[month][day] += amount;
     }
   }
-}
 
-void _fetchRawDataLine() async {
+  void _fetchRawDataLine() async {
     try {
       final querySnapshot = await _firestore
           .collection('users')
@@ -202,6 +195,61 @@ void _fetchRawDataLine() async {
     }
   }
 
+  void _fetchRawDataCurrentBalance() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .collection('Transactions')
+          .get();
+
+      setState(() {
+        _rawData.clear();
+        for (var doc in querySnapshot.docs) {
+          _rawData.add({
+            'amount': doc['amount'] as double, // Ensuring double type
+            'date': (doc['date'] as Timestamp).toDate(),
+            'type': doc['type']
+          });
+        }
+        _createCleanDataCurrentBalance();
+      });
+    } catch (error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch transactions')),
+      );
+    }
+  }
+
+  void _createCleanDataCurrentBalance() {
+    for (var transaction in _rawData) {
+      DateTime date = transaction['date'];
+      int month = date.month - 1;
+      int day = date.day - 1;
+      double amount = transaction['amount'];
+
+      if ((month == 0) && (day == 0)) {
+        double bal = _curBal[11][30];
+      } else {
+        if (day != 31) {
+          _curBal[month][day] = _curBal[month][day - 1];
+          if (transaction['type'] == 'Expense') {
+            _curBal[month][day] -= amount;
+          } else {
+            _curBal[month][day] += amount;
+          }
+        } else {
+          _curBal[month][day] = _curBal[month - 1][30];
+          if (transaction['type'] == 'Expense') {
+            _curBal[month][day] -= amount;
+          } else {
+            _curBal[month][day] += amount;
+          }
+        }
+      }
+    }
+  }
 
   double findMinExpense() {
     return _expense[_currentMonthIndex].reduce((a, b) => a < b ? a : b);
@@ -229,6 +277,20 @@ void _fetchRawDataLine() async {
 
   @override
   void initState() {
+    monthsNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
     super.initState();
     _fetchRawDataLine();
     _fetchRawData();
@@ -245,34 +307,89 @@ void _fetchRawDataLine() async {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transaction Analysis', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text(
+          'Transaction Analysis',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
       ),
-      body: Column(
-        children: [
-          SizedBox(height: 35,),
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text('Expenses Per Day', style: TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 35,
+            ),
+            
+        Padding(
+          padding: const EdgeInsets.only(top: 25),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Expenses Per Month 2025',
+                style: TextStyle(
+                  color: Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: AspectRatio(
-                aspectRatio: 2.0,
+        ),
+        Row(
+          children: [
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  onPressed: _canGoPrevious ? _previousMonth : null,
+                  icon: const Icon(Icons.navigate_before_rounded),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: 92,
+              child: Text(
+                monthsNames[_currentMonthIndex],
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppColors.contentColorBlue,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: IconButton(
+                  onPressed: _canGoNext ? _nextMonth : null,
+                  icon: const Icon(Icons.navigate_next_rounded),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        AspectRatio(
+          aspectRatio: 1.5,
+          child: Stack(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                  right: 18.0,
+                ),
                 child: LineChart(
-                  curve: Curves.linear,
                   LineChartData(
                     lineBarsData: [
                       LineChartBarData(
-                        spots: _expense[_currentMonthIndex]
-                            .asMap()
-                            .entries
-                            .map((e) {
+                        spots:
+                            _expense[_currentMonthIndex].asMap().entries.map((e) {
                           final index = e.key;
                           final val = e.value;
                           return FlSpot(
-                            index.toDouble(),
+                            (index).toDouble(),
                             val,
                           );
                         }).toList(),
@@ -287,108 +404,211 @@ void _fetchRawDataLine() async {
                         barWidth: 4,
                         curveSmoothness: 0.5,
                         preventCurveOverShooting: true,
+                      ),
+                    ],
+                    gridData: FlGridData(
+                      show: true,
+                      drawHorizontalLine: true,
+                      drawVerticalLine: false,
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+
+                      bottomTitles: AxisTitles(
+                        axisNameWidget: Container(
+                          margin: const EdgeInsets.only(bottom: 20),
+                          child: const Text(
+                            'Day of month',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        axisNameSize: 40,
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 38,
+                          maxIncluded: false,
+                          interval: 1,
+                          getTitlesWidget: _bottomTitles,
+                        ),
+                      ),
+                    ),
+                    lineTouchData: LineTouchData(
+                      enabled: true,
+                      handleBuiltInTouches: false,
+                      touchCallback: _touchCallback,
+                    ),
+                  ),
+                ),
+              )
+            ],
+          ),
+        ),
+
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('Current Balance Per Day',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 18),
+              child: AspectRatio(
+                aspectRatio: 1.5,
+                child: LineChart(
+                  curve: Curves.linear,
+                  LineChartData(
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots:
+                            _curBal[_currentMonthIndex].asMap().entries.map((e) {
+                          final index = e.key;
+                          final val = e.value;
+                          return FlSpot(
+                            (index).toDouble(),
+                            val,
+                          );
+                        }).toList(),
+                        isCurved: true,
+                        dotData: const FlDotData(show: true),
+                        color: Colors.lightBlue,
+                        gradient: const LinearGradient(
+                          colors: [Colors.green, Colors.blue],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                        ),
+                        barWidth: 4,
+                        curveSmoothness: 0.5,
+                        preventCurveOverShooting: true,
                       )
                     ],
                     titlesData: FlTitlesData(
+                      show: true,
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                       topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false, interval: 1),
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+
+                      bottomTitles: AxisTitles(
+                        axisNameSize: 40,
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 38,
+                          maxIncluded: false,
+                          interval: 1,
+                          getTitlesWidget: _bottomTitles,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-          ),
-          SizedBox(height: 50),
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text('Expenses By Category', style: TextStyle(fontSize: 22,fontWeight: FontWeight.bold)),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: AspectRatio(
-                  aspectRatio: 2,
-                  child: Row(
-                    children: <Widget>[
-            Expanded(
+            ),
+            SizedBox(height: 50),
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Text('Expenses By Category',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
               child: AspectRatio(
-                aspectRatio: 1,
-                child: PieChart(
-                  PieChartData(
-                    pieTouchData: PieTouchData(
-                      touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                        setState(() {
-                          if (!event.isInterestedForInteractions ||
-                              pieTouchResponse == null ||
-                              pieTouchResponse.touchedSection == null) {
-                            touchedIndex = -1;
-                            return;
-                          }
-                          touchedIndex = pieTouchResponse
-                              .touchedSection!.touchedSectionIndex;
-                        });
-                      },
+                aspectRatio: 2,
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: PieChart(
+                          PieChartData(
+                            pieTouchData: PieTouchData(
+                              touchCallback:
+                                  (FlTouchEvent event, pieTouchResponse) {
+                                setState(() {
+                                  if (!event.isInterestedForInteractions ||
+                                      pieTouchResponse == null ||
+                                      pieTouchResponse.touchedSection == null) {
+                                    touchedIndex = -1;
+                                    return;
+                                  }
+                                  touchedIndex = pieTouchResponse
+                                      .touchedSection!.touchedSectionIndex;
+                                });
+                              },
+                            ),
+                            borderData: FlBorderData(
+                              show: false,
+                            ),
+                            sectionsSpace: 0,
+                            centerSpaceRadius: 40,
+                            sections: showingSections(),
+                          ),
+                        ),
+                      ),
                     ),
-                    borderData: FlBorderData(
-                      show: false,
+                    const Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Indicator(
+                          color: AppColors.contentColorBlue,
+                          text: 'Food',
+                          isSquare: true,
+                        ),
+                        SizedBox(
+                          height: 4,
+                        ),
+                        Indicator(
+                          color: AppColors.contentColorYellow,
+                          text: 'Entertainment',
+                          isSquare: true,
+                        ),
+                        SizedBox(
+                          height: 4,
+                        ),
+                        Indicator(
+                          color: AppColors.contentColorPurple,
+                          text: 'Utilties',
+                          isSquare: true,
+                        ),
+                        SizedBox(
+                          height: 4,
+                        ),
+                        Indicator(
+                          color: AppColors.contentColorGreen,
+                          text: 'Other',
+                          isSquare: true,
+                        ),
+                        SizedBox(
+                          height: 18,
+                        ),
+                      ],
                     ),
-                    sectionsSpace: 0,
-                    centerSpaceRadius: 40,
-                    sections: showingSections(),
-                  ),
+                    const SizedBox(
+                      width: 28,
+                    ),
+                  ],
                 ),
               ),
             ),
-            const Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Indicator(
-                  color: AppColors.contentColorBlue,
-                  text: 'Food',
-                  isSquare: true,
-                ),
-                SizedBox(
-                  height: 4,
-                ),
-                Indicator(
-                  color: AppColors.contentColorYellow,
-                  text: 'Entertainment',
-                  isSquare: true,
-                ),
-                SizedBox(
-                  height: 4,
-                ),
-                Indicator(
-                  color: AppColors.contentColorPurple,
-                  text: 'Utilties',
-                  isSquare: true,
-                ),
-                SizedBox(
-                  height: 4,
-                ),
-                Indicator(
-                  color: AppColors.contentColorGreen,
-                  text: 'Other',
-                  isSquare: true,
-                ),
-                SizedBox(
-                  height: 18,
-                ),
-              ],
-            ),
-            const SizedBox(
-              width: 28,
-            ),
-                    ],
-                  ),
-            ),
-          ),
-      ],
+            SizedBox(height: 75)
+          ],
+        ),
       ),
-      );
+    );
   }
 
-  bool get _canGoNext => _currentMonthIndex < 11;
+ bool get _canGoNext => _currentMonthIndex < 11;
 
   bool get _canGoPrevious => _currentMonthIndex > 0;
 
@@ -396,6 +616,7 @@ void _fetchRawDataLine() async {
     if (!_canGoPrevious) {
       return;
     }
+
     setState(() {
       _currentMonthIndex--;
     });
@@ -409,15 +630,68 @@ void _fetchRawDataLine() async {
       _currentMonthIndex++;
     });
   }
-  
+
+  FlSpotErrorRangePainter _errorPainter(
+    LineChartSpotErrorRangeCallbackInput input,
+  ) =>
+      FlSimpleErrorPainter(
+        lineWidth: 1.0,
+        lineColor: _interactedSpotIndex == input.spotIndex
+            ? Colors.white
+            : Colors.white38,
+        showErrorTexts: _interactedSpotIndex == input.spotIndex,
+      );
+
+  Widget _bottomTitles(double value, TitleMeta meta) {
+    final day = value.toInt() + 1;
+
+    final isDayHovered = _interactedSpotIndex == day - 1;
+
+    final isImportantToShow = day % 5 == 0 || day == 1;
+
+    if (!isImportantToShow && !isDayHovered) {
+      return const SizedBox();
+    }
+
+    return SideTitleWidget(
+      meta: meta,
+      child: Text(
+        day.toString(),
+        style: TextStyle(
+          color: isDayHovered
+              ? Colors.black
+              : Colors.black,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  _touchCallback(FlTouchEvent event, LineTouchResponse? touchResponse) {
+    if (!event.isInterestedForInteractions ||
+        touchResponse?.lineBarSpots == null ||
+        touchResponse!.lineBarSpots!.isEmpty) {
+      setState(() {
+        _interactedSpotIndex = -1;
+      });
+      return;
+    }
+
+    setState(() {
+      _interactedSpotIndex = touchResponse.lineBarSpots!.first.spotIndex;
+    });
+  }
 
   @override
   void dispose() {
     super.dispose();
   }
-List<PieChartSectionData> showingSections() {
+
+  List<PieChartSectionData> showingSections() {
     // Calculate total expenses for the selected month
-    final totalExpenses = _categoryTotals.values.fold(0.0, (sum, val) => sum + val);
+    final totalExpenses =
+        _categoryTotals.values.fold(0.0, (sum, val) => sum + val);
 
     // Generate pie chart sections
     return _categoryTotals.entries.map((entry) {
@@ -452,5 +726,3 @@ List<PieChartSectionData> showingSections() {
     }).toList();
   }
 }
-
-
