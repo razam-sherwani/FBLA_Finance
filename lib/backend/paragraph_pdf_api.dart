@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
@@ -12,28 +14,56 @@ class ParagraphPdfApi {
   static double _totalBalance = 0.0;
 
   static Future<File> generateParagraphPdf(String docId) async {
-    _firestore = FirebaseFirestore.instance;
-    await _fetchTransactions(docId);
-    final pdf = pw.Document();
-    final userId = docId;
+  _firestore = FirebaseFirestore.instance;
+  await _fetchTransactions(docId);
+  final pdf = pw.Document();
 
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (context) => [
-          customHeader(),
-          customHeadline("Income:"),
-          buildTable(_incomeList),
-          customHeadline("Expenses:"),
-          buildTable(_expenseList),
-        ],
-        header: (context) => buildPageNumber(context),
-        footer: (context) => buildPageNumber(context),
-      ),
-    );
-    return SaveAndOpenDocument.savePdf(
-        name: 'ScholarSpherePortfolio.pdf', pdf: pdf);
+  // Load graph and pie chart images
+  final Uint8List graph1 = await loadGraphImage('expense_graph.png');
+  final Uint8List graph2 = await loadGraphImage('balance_graph.png');
+  final Uint8List pieChart = await loadGraphImage('pie_chart.png');
+
+  pdf.addPage(
+    pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      build: (context) => [
+        customHeader(),
+        customHeadline("Income:"),
+        buildTable(_incomeList),
+        pw.SizedBox(height: 20),
+        pw.Text("Income Graph:", style: const pw.TextStyle(fontSize: 20)),
+        pw.Image(pw.MemoryImage(graph1)),
+        customHeadline("Expenses:"),
+        buildTable(_expenseList),
+        pw.SizedBox(height: 20),
+        pw.Text("Expense Graph:", style: const pw.TextStyle(fontSize: 20)),
+        pw.Image(pw.MemoryImage(graph2)),
+        pw.SizedBox(height: 20),
+        pw.Text("Expense Distribution (Pie Chart):",
+            style: const pw.TextStyle(fontSize: 20)),
+        pw.Image(pw.MemoryImage(pieChart)), // Include the pie chart
+      ],
+      header: (context) => buildPageNumber(context),
+      footer: (context) => buildPageNumber(context),
+    ),
+  );
+  return SaveAndOpenDocument.savePdf(
+      name: 'ScholarSpherePortfolio.pdf', pdf: pdf);
+}
+
+// Helper function to load images
+static Future<Uint8List> loadGraphImage(String imagePath) async {
+  final directory = await getApplicationDocumentsDirectory();  // Get the directory path
+  final file = File('${directory.path}/$imagePath'); // Construct the file path
+
+  try {
+    return await file.readAsBytes(); // Read the file and return the bytes
+  } catch (e) {
+    throw Exception('Failed to load image: $e');
   }
+}
+
+
 
   static Future<void> _fetchTransactions(String docID) async {
   try {
