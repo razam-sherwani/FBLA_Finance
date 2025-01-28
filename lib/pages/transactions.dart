@@ -157,7 +157,7 @@ class _TransactionState extends State<Transactions> {
                         value: categ,
                         hint: Text('Select category'),
                         menuMaxHeight: 200,
-                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                        items: (type1 == 'Income' ? <String>['Work', 'Stocks', 'Other'] : <String>['Food', 'Entertainment', 'Utilities', 'Other']).map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -380,27 +380,39 @@ class _TransactionState extends State<Transactions> {
           children: [
             Text(
               transaction['category'],
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
               "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-              style: TextStyle(fontSize: 14, color: Colors.black),
+              style: TextStyle(fontSize: 12, color: Colors.black),
             ),
           ],
         ),
-        trailing: Text(
-          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-              .format(transaction['amount']),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                  .format(transaction['amount']),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.black,size: 30,),
+              onPressed: () {
+                _promptEditTransaction(transaction, index);
+              },
+            ),
+          ],
         ),
       ),
     ),
   );
 }
+
 
 
 
