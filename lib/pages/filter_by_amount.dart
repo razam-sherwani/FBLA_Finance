@@ -1,3 +1,4 @@
+import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -67,31 +68,33 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
         final transaction = _filteredTransactions[index];
         return Card(
           elevation: 4,
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: ListTile(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              transaction['category'],
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: ListTile(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction['category'],
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+                  style: TextStyle(fontSize: 14, color: Colors.black),
+                ),
+              ],
             ),
-            Text(
-              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-              style: TextStyle(fontSize: 14, color: Colors.black),
+            trailing: Text(
+              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                  .format(transaction['amount']),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: transaction['type'] == 'Expense'
+                    ? Colors.red
+                    : Colors.green,
+              ),
             ),
-          ],
-        ),
-        trailing: Text(
-          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-              .format(transaction['amount']),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
           ),
-        ),
-      ),
         );
       },
     );
@@ -100,45 +103,90 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Filter by Amount Range')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _minController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Min Amount',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _maxController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      labelText: 'Max Amount',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        appBar: AppBar(
+          title: Text(
+            'Filter by Amount Range',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
-          ElevatedButton(onPressed: _filterTransactions, child: Text('Filter')),
-          Expanded(
-            child: _filteredTransactions.isEmpty
-                ? Center(child: Text('No transactions found'))
-                : _buildTransactionList(),
+          centerTitle: true,
+          backgroundColor: Colors.black,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back,
+                color: Colors.white), // Set the color to white
+            onPressed: () {
+              Navigator.pop(context); // Pop to the previous screen
+            },
           ),
-        ],
-      ),
-    );
+        ),
+        body: StreamBuilder<LinearGradient>(
+            stream: widget.userId.isNotEmpty
+                ? GradientService(userId: widget.userId).getGradientStream()
+                : Stream.value(LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [Colors.cyan, Colors.teal],
+                  )),
+            builder: (context, snapshot) {
+              final gradient = snapshot.data ??
+                  LinearGradient(
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                    colors: [
+                      Colors.cyan,
+                      Colors.teal,
+                    ],
+                  );
+              return Container(
+                decoration: BoxDecoration(gradient: gradient),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Container(
+                        padding: EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _minController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                    labelText: 'Min Amount',
+                                    border: OutlineInputBorder(),
+                                    fillColor: Colors.white,
+                                    filled: true),
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: TextField(
+                                controller: _maxController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                    labelText: 'Max Amount',
+                                    border: OutlineInputBorder(),
+                                    fillColor: Colors.white,
+                                    filled: true),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                        onPressed: _filterTransactions, child: Text('Filter')),
+                    Expanded(
+                      child: _filteredTransactions.isEmpty
+                          ? Center(child: Text('No transactions found'))
+                          : _buildTransactionList(),
+                    ),
+                  ],
+                ),
+              );
+            }));
   }
 }

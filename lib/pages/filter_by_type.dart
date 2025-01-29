@@ -1,7 +1,7 @@
+import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-
 
 class FilterByTypePage extends StatefulWidget {
   final String userId;
@@ -67,31 +67,33 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
         final transaction = _filteredTransactions[index];
         return Card(
           elevation: 4,
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: ListTile(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              transaction['category'],
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: ListTile(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction['category'],
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+                  style: TextStyle(fontSize: 14, color: Colors.black),
+                ),
+              ],
             ),
-            Text(
-              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-              style: TextStyle(fontSize: 14, color: Colors.black),
+            trailing: Text(
+              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                  .format(transaction['amount']),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: transaction['type'] == 'Expense'
+                    ? Colors.red
+                    : Colors.green,
+              ),
             ),
-          ],
-        ),
-        trailing: Text(
-          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-              .format(transaction['amount']),
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
           ),
-        ),
-      ),
         );
       },
     );
@@ -100,32 +102,75 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Filter by Type')),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _selectedType,
-              hint: Text('Select Type'),
-              items: <String>['Income', 'Expense']
-                  .map((type) => DropdownMenuItem(value: type, child: Text(type)))
-                  .toList(),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedType = newValue;
-                  _filterTransactions();
-                });
-              },
+      appBar: AppBar(
+        title: Text(
+          'Filter by Type',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.black,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back,
+              color: Colors.white), // Set the color to white
+          onPressed: () {
+            Navigator.pop(context); // Pop to the previous screen
+          },
+        ),
+      ),
+      body: StreamBuilder<LinearGradient>(
+        stream: widget.userId.isNotEmpty
+            ? GradientService(userId: widget.userId).getGradientStream()
+            : Stream.value(LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Colors.cyan, Colors.teal],
+              )),
+        builder: (context, snapshot) {
+          final gradient = snapshot.data ??
+              LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  Colors.cyan,
+                  Colors.teal,
+                ],
+              );
+          return Container(
+            decoration: BoxDecoration(gradient: gradient),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0)),
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedType,
+                      hint: Text('Select Type'),
+                      items: <String>['Income', 'Expense']
+                          .map((type) =>
+                              DropdownMenuItem(value: type, child: Text(type)))
+                          .toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedType = newValue;
+                          _filterTransactions();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _filteredTransactions.isEmpty
+                      ? Center(child: Text('No transactions found'))
+                      : _buildTransactionList(),
+                ),
+              ],
             ),
-          ),
-          Expanded(
-            child: _filteredTransactions.isEmpty
-                ? Center(child: Text('No transactions found'))
-                : _buildTransactionList(),
-          ),
-        ],
+          );
+        },
       ),
     );
   }

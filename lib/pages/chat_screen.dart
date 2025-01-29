@@ -38,6 +38,7 @@ void sendMsg() async {
 			body: jsonEncode({
 			"model": "gpt-3.5-turbo",
 			"messages": [
+				{"role": "system", "content": "You are Fineas, a financial assistant. Provide financial advice, investment tips, and budgeting help. Make your responses short and concise being as helpful as possible in around 50 to 100 words."},
 				{"role": "user", "content": text}
 			]
 			}));
@@ -69,7 +70,7 @@ Widget build(BuildContext context) {
 	appBar: AppBar(
 		title: const Text("Fineas", style: TextStyle(fontSize: 40,fontWeight: FontWeight.bold,color: Colors.white),),
     centerTitle: true,
-    backgroundColor: Colors.purple,
+    backgroundColor: Colors.black,
     leading: IconButton(
     icon: Icon(Icons.arrow_back, color: Colors.white), // Set the color to white
     onPressed: () {
@@ -103,7 +104,7 @@ Widget build(BuildContext context) {
 								padding: EdgeInsets.only(left: 16, top: 4, bottom: 24),
 								child: Align(
 									alignment: Alignment.centerLeft,
-									child: Text("Typing...")),
+									child: Text("Fineas is thinking...")),
 								)
 							],
 							)
@@ -138,7 +139,7 @@ Widget build(BuildContext context) {
 						textInputAction: TextInputAction.send,
 						showCursor: true,
 						decoration: const InputDecoration(
-							border: InputBorder.none, hintText: "Enter text"),
+							border: InputBorder.none, hintText: "Ask Fineas about finance...", hintStyle: TextStyle(fontStyle: FontStyle.italic)),
 					),
 					),
 				),

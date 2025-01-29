@@ -1,3 +1,4 @@
+import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -39,7 +40,8 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
           var transaction = {
             'transactionId': doc.id,
             'amount': data['amount'] ?? 0.0, // Default to 0 if missing
-            'type': data['type'] ?? 'Unknown', // Default to 'Unknown' if missing
+            'type':
+                data['type'] ?? 'Unknown', // Default to 'Unknown' if missing
             'category': data['category'] ?? 'Uncategorized', // Default category
             'date': (data['date'] != null)
                 ? (data['date'] as Timestamp).toDate()
@@ -66,7 +68,8 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
       } else {
         _filteredTransactions.clear();
         _filteredTransactions.addAll(
-          _transactionsList.where((transaction) => transaction['category'] == category),
+          _transactionsList
+              .where((transaction) => transaction['category'] == category),
         );
       }
     });
@@ -105,7 +108,8 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
+            color:
+                (transaction['type'] == 'Expense' ? Colors.red : Colors.green),
           ),
         ),
       ),
@@ -118,52 +122,94 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
       appBar: AppBar(
         title: Text(
           'Filter Transactions by Category',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.black,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back,
+              color: Colors.white), // Set the color to white
+          onPressed: () {
+            Navigator.pop(context); // Pop to the previous screen
+          },
+        ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: DropdownButton<String>(
-              isExpanded: true,
-              value: _selectedCategory,
-              hint: Text(
-                'Select a category to filter',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                )
-              ),
-              items: <String>['All', 'Work', 'Food', 'Entertainment', 'Other']
-                  .map((String category) {
-                return DropdownMenuItem<String>(
-                  value: category,
-                  child: Text(category),
-                );
-              }).toList(),
-              onChanged: (String? newCategory) {
-                setState(() {
-                  _selectedCategory = newCategory == 'All' ? null : newCategory;
-                  _filterTransactionsByCategory(_selectedCategory);
-                });
-              },
-            ),
-          ),
-          Expanded(
-            child: _filteredTransactions.isEmpty
-                ? Center(
-                    child: Text(
-                      'No transactions found',
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+      body: StreamBuilder<LinearGradient>(
+        stream: widget.userId.isNotEmpty
+            ? GradientService(userId: widget.userId).getGradientStream()
+            : Stream.value(LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [Colors.cyan, Colors.teal],
+              )),
+        builder: (context, snapshot) {
+          final gradient = snapshot.data ??
+              LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  Colors.cyan,
+                  Colors.teal,
+                ],
+              );
+          return Container(
+            decoration: BoxDecoration(gradient: gradient),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12.0)),
+                    child: DropdownButton<String>(
+                      autofocus: true,
+                      padding: EdgeInsets.all(3),
+                      isExpanded: true,
+                      value: _selectedCategory,
+                      hint: Text('Select a category to filter',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          )),
+                      items: <String>[
+                        'All',
+                        'Work',
+                        'Stocks',
+                        'Food',
+                        'Entertainment',
+                        'Utilities',
+                        'Other'
+                      ].map((String category) {
+                        return DropdownMenuItem<String>(
+                          value: category,
+                          child: Text(category),
+                        );
+                      }).toList(),
+                      onChanged: (String? newCategory) {
+                        setState(() {
+                          _selectedCategory =
+                              newCategory == 'All' ? null : newCategory;
+                          _filterTransactionsByCategory(_selectedCategory);
+                        });
+                      },
                     ),
-                  )
-                : _buildTransactionList(),
-          ),
-        ],
+                  ),
+                ),
+                Expanded(
+                  child: _filteredTransactions.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No transactions found',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
+                        )
+                      : _buildTransactionList(),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
