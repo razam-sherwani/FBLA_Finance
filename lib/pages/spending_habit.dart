@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:ui';
 
+import 'package:fbla_finance/backend/auth.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -12,15 +14,16 @@ import 'package:fbla_finance/backend/app_utils.dart';
 import 'package:path_provider/path_provider.dart';
 
 class SpendingHabitPage extends StatefulWidget {
-  final String userId;
 
-  SpendingHabitPage({Key? key, required this.userId}) : super(key: key);
+  SpendingHabitPage({Key? key}) : super(key: key);
 
   @override
   _SpendingHabitPageState createState() => _SpendingHabitPageState();
 }
 
 class _SpendingHabitPageState extends State<SpendingHabitPage> {
+  final User? user = Auth().currentUser;
+  String docID = "";
   final List<Color> gradientColors = [
     Colors.redAccent,
     Colors.orangeAccent,
@@ -56,11 +59,37 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  Future<void> fetchDocID() async {
+    var user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: user.email)
+          .get()
+          .then((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          setState(() {
+            docID = snapshot.docs[0].id;
+          });
+        } else {
+          setState(() {
+            docID = '';
+          });
+        }
+      }).catchError((error) {
+        print('Error fetching docID: $error');
+        setState(() {
+          docID = '';
+        });
+      });
+    }
+  }
+
   void _fetchRawData() async {
     try {
       final querySnapshot = await _firestore
           .collection('users')
-          .doc(widget.userId)
+          .doc(docID)
           .collection('Transactions')
           .get();
 
@@ -123,7 +152,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     try {
       final querySnapshot = await _firestore
           .collection('users')
-          .doc(widget.userId)
+          .doc(docID)
           .collection('Transactions')
           .get();
 
@@ -167,7 +196,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     try {
       final querySnapshot = await _firestore
           .collection('users')
-          .doc(widget.userId)
+          .doc(docID)
           .collection('Transactions')
           .get();
 
@@ -245,18 +274,24 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   double overallMax = 0;
   int _interactedSpotIndex = -1;
 
+Future<void> _initializeData() async {
+  await fetchDocID();  // Wait for fetchDocID to complete
+  _fetchRawDataLine();
+  _fetchRawData();
+  _fetchRawDataCurrentBalance();
+}
+
   @override
 void initState() {
   super.initState();
+  
   monthsNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
   // Fetch data
-  _fetchRawDataLine();
-  _fetchRawData();
-  _fetchRawDataCurrentBalance();
+  _initializeData();
 
   // Wait for the first frame and then delay before capturing images
   WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -285,10 +320,10 @@ void initState() {
       appBar: AppBar(
         title: Text(
           'Transaction Analysis',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.black,
       ),
       body: SingleChildScrollView(
         child: Column(

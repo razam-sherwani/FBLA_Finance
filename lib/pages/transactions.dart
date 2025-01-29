@@ -1,19 +1,23 @@
+import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
+import 'package:fbla_finance/util/gradient_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class Transactions extends StatefulWidget {
-  final String userId;
 
-  Transactions({Key? key, required this.userId}) : super(key: key);
+  Transactions({Key? key}) : super(key: key);
 
   @override
   _TransactionState createState() => _TransactionState();
 }
 
 class _TransactionState extends State<Transactions> {
+  final User? user = Auth().currentUser;
+  String docID = "";
   final List<Map<String, dynamic>> _transactionsList = [];
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   double _totalBalance = 0.0;
@@ -25,11 +29,42 @@ class _TransactionState extends State<Transactions> {
   @override
   void initState() {
     super.initState();
-    _fetchTransactions();
+    _initializeData();
+    
+  }
+  Future<void> _initializeData() async {
+  await fetchDocID();  // Wait for fetchDocID to complete
+  _fetchTransactions();  // Call _fetchTransactions after fetchDocID
+}
+
+  Future<void> fetchDocID() async {
+    var user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: user.email)
+          .get()
+          .then((snapshot) {
+        if (snapshot.docs.isNotEmpty) {
+          setState(() {
+            docID = snapshot.docs[0].id;
+          });
+        } else {
+          setState(() {
+            docID = '';
+          });
+        }
+      }).catchError((error) {
+        print('Error fetching docID: $error');
+        setState(() {
+          docID = '';
+        });
+      });
+    }
   }
 
   void _fetchTransactions() {
-    _firestore.collection('users').doc(widget.userId).collection('Transactions').get().then((querySnapshot) {
+    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
       setState(() {
         _transactionsList.clear();
         _totalBalance = 0.0;
@@ -72,7 +107,7 @@ class _TransactionState extends State<Transactions> {
     if (!amount.isNaN) {
       _firestore
           .collection('users')
-          .doc(widget.userId)
+          .doc(docID)
           .collection('Transactions')
           .add({
         'amount': amount,
@@ -100,7 +135,7 @@ class _TransactionState extends State<Transactions> {
 
   void _removeTransaction(String transactionId, int index) {
     var transaction = _transactionsList[index];
-    _firestore.collection('users').doc(widget.userId).collection('Transactions').doc(transactionId).delete().then((value) {
+    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).delete().then((value) {
       setState(() {
         _transactionsList.removeAt(index);
         if (transaction['type'] == 'Income') {
@@ -245,11 +280,11 @@ class _TransactionState extends State<Transactions> {
   // Generate the PDF with the selected name
   var paragraphPdf;
   if (selectedName == 'General') {
-    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(widget.userId);
+    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
   } else if (selectedName == 'Weekly') {
-    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(widget.userId);
+    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
   } else if (selectedName == 'Monthly') {
-    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(widget.userId);
+    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
   }
   final pdfFileName = selectedName + 'Report.pdf';
   final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
@@ -370,7 +405,7 @@ class _TransactionState extends State<Transactions> {
   }
 
   void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
-    _firestore.collection('users').doc(widget.userId).collection('Transactions').doc(transactionId).update({
+    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
       'amount': amount,
       'type': type,
       'category': category,
@@ -479,37 +514,52 @@ class _TransactionState extends State<Transactions> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
         centerTitle: true,
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.black,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            stops: [0.3, 0.6, 0.9],
-            colors: [
-              Color(0xff56018D),
-              Color(0xff8B139C),
-              Colors.pink,
-            ],
-          ),
-        ),
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(15),
-              child: Text(
-                'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
-              ),
+      body: StreamBuilder<LinearGradient>(
+        stream:  docID.isNotEmpty
+              ? GradientService(userId: docID).getGradientStream() : Stream.value(LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [Colors.cyan, Colors.teal],
+                )),
+        builder: (context, snapshot) {
+          final gradient = snapshot.data ??
+              LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  Colors.cyan,
+                  Colors.teal,
+                ],
+              );
+          return Container(
+            decoration: BoxDecoration(
+              gradient: gradient
+            ),
+            child: Column(
+              children: [
+                SizedBox(height: 10,),
+                Container(
+                  padding: EdgeInsets.all(15),
+                  child: Text(
+                    'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(12.0),
+                  ),
+                  
+                ),
+                Expanded(child: _buildTransactionList()),
+              ],
               
             ),
-            Expanded(child: _buildTransactionList()),
-          ],
-          
-        ),
+          );
+        }
       ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
   floatingActionButton: Container(

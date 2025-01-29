@@ -32,9 +32,9 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
 
   static List<Widget> _pages = <Widget>[
     HomePage(),
+    Transactions(),
+    SpendingHabitPage(),
     SocialPage(),
-    ToDoList1(),
-    ScholarshipFinder(),
     SettingsPage()
   ];
 
@@ -56,4 +56,6 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
       ),
     );
   }
+
+  
 }

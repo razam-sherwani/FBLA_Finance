@@ -25,8 +25,8 @@ class GradientService {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
           colors: [
-            Color(0xff56018D),
-            Colors.pink,
+            Colors.cyan,
+            Colors.teal,
           ],
         );
       }

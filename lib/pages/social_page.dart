@@ -26,11 +26,13 @@ class SocialPage extends StatefulWidget {
 }
 
 class _SocialPageState extends State<SocialPage> {
+  double _totalBalance = 0.0;
   final User? user = Auth().currentUser;
   String docID = "";
   var now = DateTime.now();
   var formatter = DateFormat.yMMMMd('en_US');
   String? formattedDate;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -63,6 +65,39 @@ class _SocialPageState extends State<SocialPage> {
         });
       });
     }
+    calculateTotalBalance();
+  }
+
+  Future<void> calculateTotalBalance() async {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get()
+        .then((querySnapshot) {
+      setState(() {
+        _totalBalance = 0.0;
+        querySnapshot.docs.forEach((doc) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'],
+            'type': doc['type'],
+            'category': doc['category'],
+            'date': (doc['date'] as Timestamp).toDate(),
+          };
+          //_transactionsList.add(transaction);
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
+      });
+    }).catchError((error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch transactions')));
+    });
   }
 
   Future<void> sharePdfLink() async {
@@ -242,14 +277,14 @@ class _SocialPageState extends State<SocialPage> {
               : Stream.value(LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Color(0xff56018D), Colors.pink],
+                  colors: [Colors.cyan, Colors.teal],
                 )),
           builder: (context, snapshot) {
             final gradient = snapshot.data ??
                 LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Color(0xff56018D), Colors.pink],
+                  colors: [Colors.cyan, Colors.teal],
                 );
             return Container(
               decoration: BoxDecoration(
@@ -341,22 +376,17 @@ class _SocialPageState extends State<SocialPage> {
                           ),
                           // Search bar
                           Container(
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                Icon(Icons.search, color: Colors.black),
-                                SizedBox(width: 5),
-                                Text(
-                                  'Search',
-                                  style: TextStyle(color: Colors.black),
-                                ),
-                              ],
+                          padding: const EdgeInsets.only(left: 4),
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Current Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                            textAlign: TextAlign.left,
+                            style: const TextStyle(
+                              fontSize: 25,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                        ),
                           SizedBox(
                             height: 25,
                           ),
@@ -369,7 +399,7 @@ class _SocialPageState extends State<SocialPage> {
                             BorderRadius.vertical(top: Radius.circular(25)),
                         child: Container(
                           padding: EdgeInsets.all(25),
-                          color: const Color.fromARGB(255, 216, 240, 230), //changes background color
+                          color:  Colors.grey[300], //changes background color
                           child: Center(
                             child: Column(
                               children: [

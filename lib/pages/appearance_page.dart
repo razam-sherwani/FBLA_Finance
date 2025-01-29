@@ -11,9 +11,9 @@ class AppearancePage extends StatefulWidget {
 
 class _AppearancePageState extends State<AppearancePage> {
   List<List<Color>> gradients = [
-    [Color(0xff56018D), Colors.pink],
+    [Colors.cyan, Colors.teal],
     [Colors.black, Colors.orange, Colors.pink],
-    [Colors.teal, Colors.cyan],
+    [Color(0xff56018D), Colors.pink],
     [Color(0xffABF2FF), Color(0xffB8E8FF), Color(0xffBADFFF)],
     [Color(0xffFFEAB0), Color(0xffFFFDB0), Color(0xffFFF3B1)],
     [Color(0xff73F08F), Color(0xff86F0C1), Color(0xff85F0D1)],
@@ -108,7 +108,7 @@ class _AppearancePageState extends State<AppearancePage> {
                           border: Border.all(
                             color: selectedGradient == gradients[index]
                                 ? Colors.black
-                                : Color.fromARGB(255, 111, 0, 255),
+                                : Colors.teal,
                             width: selectedGradient == gradients[index] ? 6 : 3,
                           ),
                           borderRadius: BorderRadius.circular(9),

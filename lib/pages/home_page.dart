@@ -42,11 +42,9 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     formattedDate = formatter.format(now);
     fetchDocID();
-    
+
     // Fetch the total balance
   }
-
-  
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -72,11 +70,16 @@ class _HomePageState extends State<HomePage> {
         });
       });
     }
-    calculateTotalBalance(); 
+    calculateTotalBalance();
   }
 
   Future<void> calculateTotalBalance() async {
-    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get()
+        .then((querySnapshot) {
       setState(() {
         _totalBalance = 0.0;
         querySnapshot.docs.forEach((doc) {
@@ -97,7 +100,8 @@ class _HomePageState extends State<HomePage> {
       });
     }).catchError((error) {
       print("Error fetching transactions: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch transactions')));
     });
   }
 
@@ -117,15 +121,21 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<LinearGradient>(
-        stream: GradientService(userId: docID ?? '').getGradientStream(),
+        stream: docID.isNotEmpty
+              ? GradientService(userId: docID).getGradientStream()
+              : Stream.value(LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [Colors.cyan, Colors.teal],
+                )),
         builder: (context, snapshot) {
           final gradient = snapshot.data ??
               LinearGradient(
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
                 colors: [
-                  const Color(0xff56018D),
-                  Colors.pink,
+                  Colors.cyan,
+                  Colors.teal,
                 ],
               );
           return Container(
@@ -150,16 +160,19 @@ class _HomePageState extends State<HomePage> {
                                   ],
                                 ),
                                 FutureBuilder<String>(
-                                  future: GetUserName(documentId: docID).getUserName(),
+                                  future: GetUserName(documentId: docID)
+                                      .getUserName(),
                                   builder: (context, snapshot) {
                                     if (snapshot.connectionState ==
                                         ConnectionState.waiting) {
                                       return const Text('Loading...',
-                                          style: TextStyle(color: Colors.white));
+                                          style:
+                                              TextStyle(color: Colors.white));
                                     } else if (snapshot.hasError) {
                                       print(snapshot.error.toString());
                                       return const Text('Error',
-                                          style: TextStyle(color: Colors.white));
+                                          style:
+                                              TextStyle(color: Colors.white));
                                     } else if (snapshot.hasData &&
                                         snapshot.data != null) {
                                       String userName = snapshot.data!;
@@ -172,8 +185,10 @@ class _HomePageState extends State<HomePage> {
                                         ),
                                       );
                                     } else {
-                                      return const Text('Username not available',
-                                          style: TextStyle(color: Colors.white));
+                                      return const Text(
+                                          'Username not available',
+                                          style:
+                                              TextStyle(color: Colors.white));
                                     }
                                   },
                                 ),
@@ -234,7 +249,8 @@ class _HomePageState extends State<HomePage> {
                             children: [
                               // Heading
                               const Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
                                     'Your Portfolio',
@@ -251,50 +267,20 @@ class _HomePageState extends State<HomePage> {
                               Expanded(
                                 child: ListView(
                                   children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-  context,
-  MaterialPageRoute(
-    builder: (context) => Transactions(userId: docID),
-  ),
-).then((_) {
-  // Recalculate the balance when returning to the home page
-  calculateTotalBalance();
-});
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.lightbulb,
-                                        EcName: 'Transactions',
-                                        color: Colors.orange,
-                                      ),
-                                    ),
+                                    
                                     GestureDetector(
                                       onTap: () {
                                         Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    SpendingHabitPage(userId: docID)));
+                                                    FilterByAmountPage(
+                                                        userId: docID)));
                                       },
                                       child: EcTile(
-                                        icon: Icons.lightbulb,
-                                        EcName: 'Spending Habit',
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByAmountPage(userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.emoji_events,
+                                        icon: Icons.price_check,
                                         EcName: 'Filter by Amount',
-                                        color: Colors.blue,
+                                        color: Colors.green,
                                       ),
                                     ),
                                     GestureDetector(
@@ -307,9 +293,9 @@ class _HomePageState extends State<HomePage> {
                                                         userId: docID)));
                                       },
                                       child: EcTile(
-                                        icon: Icons.groups,
+                                        icon: Icons.category,
                                         EcName: 'Filter by Category',
-                                        color: Colors.pink,
+                                        color: Colors.orange,
                                       ),
                                     ),
                                     GestureDetector(
@@ -318,12 +304,13 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    FilterByTypePage(userId: docID)));
+                                                    FilterByTypePage(
+                                                        userId: docID)));
                                       },
                                       child: EcTile(
-                                        icon: Icons.assignment,
+                                        icon: Icons.filter_alt,
                                         EcName: 'Filter by Type',
-                                        color: Colors.green,
+                                        color: Colors.indigo,
                                       ),
                                     ),
                                     GestureDetector(
@@ -332,28 +319,16 @@ class _HomePageState extends State<HomePage> {
                                             context,
                                             MaterialPageRoute(
                                                 builder: (context) =>
-                                                    FilterByDatePage(userId: docID)));
+                                                    FilterByDatePage(
+                                                        userId: docID)));
                                       },
                                       child: EcTile(
-                                        icon: Icons.assignment,
+                                        icon: Icons.calendar_month,
                                         EcName: 'Filter by Date',
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    OthersPage(userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.more_horiz,
-                                        EcName: 'Other',
                                         color: Colors.purple,
                                       ),
                                     ),
+                                    
                                   ],
                                 ),
                               ),

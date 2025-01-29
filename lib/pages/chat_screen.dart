@@ -67,9 +67,15 @@ void sendMsg() async {
 Widget build(BuildContext context) {
 	return Scaffold(
 	appBar: AppBar(
-		title: const Text("Fineas", style: TextStyle(fontSize: 40,fontWeight: FontWeight.bold),),
+		title: const Text("Fineas", style: TextStyle(fontSize: 40,fontWeight: FontWeight.bold,color: Colors.white),),
     centerTitle: true,
     backgroundColor: Colors.purple,
+    leading: IconButton(
+    icon: Icon(Icons.arrow_back, color: Colors.white), // Set the color to white
+    onPressed: () {
+      Navigator.pop(context); // Pop to the previous screen
+    },
+  ),
 	),
 	body: Column(
 		children: [
