@@ -66,58 +66,93 @@ class _SocialPageState extends State<SocialPage> {
   }
 
   Future<void> sharePdfLink() async {
-    final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-    final pdfFileName = 'ScholarSpherePortfolio.pdf';
-    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
-        paragraphPdf, pdfFileName);
+  // Show dialog to select the name type
+  String selectedName = 'General'; // Default value
+  await showDialog<String>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Select PDF Type'),
+        content: DropdownButton<String>(
+          value: selectedName,
+          items: ['General', 'Weekly', 'Monthly'].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            if (newValue != null) {
+              selectedName = newValue;
+              Navigator.pop(context); // Close dialog when a selection is made
+            }
+          },
+        ),
+      );
+    },
+  );
 
-    if (downloadUrl != null) {
-      SaveAndOpenDocument.copyToClipboard(downloadUrl);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF link copied to clipboard!')),
-      );
-      print('Download URL: $downloadUrl');
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload PDF')),
-      );
-    }
+  // Generate the PDF with the selected name
+  var paragraphPdf;
+  if (selectedName == 'General') {
+    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+  } else if (selectedName == 'Weekly') {
+    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+  } else if (selectedName == 'Monthly') {
+    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
   }
+  final pdfFileName = selectedName + 'Report.pdf';
+  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+      paragraphPdf, pdfFileName);
 
-  Future<void> shareToInstagramStory() async {
-    final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-    final pdfFileName = 'ScholarSpherePortfolio.pdf';
-    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
-        paragraphPdf, pdfFileName);
-
-    if (downloadUrl != null) {
-      SaveAndOpenDocument.copyToClipboard(downloadUrl);
-      final imagePath = 'assets/Scholar_Sphere_Insta.png';
-
-      try {
-        final directory = await getApplicationDocumentsDirectory();
-        final imageFile = File('${directory.path}/Scholar_Sphere_Insta.png');
-        await imageFile.writeAsBytes(
-            (await rootBundle.load(imagePath)).buffer.asUint8List());
-
-        final xFile = XFile(imageFile.path);
-
-        await Share.shareXFiles([xFile], text: downloadUrl);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image shared to Instagram story!')),
-        );
-      } catch (e) {
-        print('Error sharing to Instagram: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to share to Instagram story')),
-        );
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload PDF')),
-      );
-    }
+  if (downloadUrl != null) {
+    SaveAndOpenDocument.copyToClipboard(downloadUrl);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('PDF link copied to clipboard!')),
+    );
+    print('Download URL: $downloadUrl');
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to upload PDF')),
+    );
   }
+}
+
+
+  // Future<void> shareToInstagramStory() async {
+  //   final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+  //   final pdfFileName = 'ScholarSpherePortfolio.pdf';
+  //   final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+  //       paragraphPdf, pdfFileName);
+
+  //   if (downloadUrl != null) {
+  //     SaveAndOpenDocument.copyToClipboard(downloadUrl);
+  //     final imagePath = 'assets/Scholar_Sphere_Insta.png';
+
+  //     try {
+  //       final directory = await getApplicationDocumentsDirectory();
+  //       final imageFile = File('${directory.path}/Scholar_Sphere_Insta.png');
+  //       await imageFile.writeAsBytes(
+  //           (await rootBundle.load(imagePath)).buffer.asUint8List());
+
+  //       final xFile = XFile(imageFile.path);
+
+  //       await Share.shareXFiles([xFile], text: downloadUrl);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Image shared to Instagram story!')),
+  //       );
+  //     } catch (e) {
+  //       print('Error sharing to Instagram: $e');
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text('Failed to share to Instagram story')),
+  //       );
+  //     }
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Failed to upload PDF')),
+  //     );
+  //   }
+  // }
 
   Future<String> fetchPortfolioData() async {
     String userId = docID;
@@ -374,7 +409,77 @@ class _SocialPageState extends State<SocialPage> {
                                                 paragraphPdf);
                                           },
                                           child: Text(
-                                            'Generate PDF',
+                                            'Generate General Report',
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 16.0,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 16.0,
+                                                vertical: 8.0),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8.0),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 10,),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: gradient,
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                        ),
+                                        child: TextButton(
+                                          onPressed: () async {
+                                            final paragraphPdf =
+                                                await ParagraphPdfApi
+                                                    .generateWeeklyPdf(
+                                                        docID);
+                                            SaveAndOpenDocument.openPdf(
+                                                paragraphPdf);
+                                          },
+                                          child: Text(
+                                            'Generate Weekly Report',
+                                            style: TextStyle(
+                                              color: Colors.black,
+                                              fontSize: 16.0,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 16.0,
+                                                vertical: 8.0),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8.0),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(height: 10,),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          gradient: gradient,
+                                          borderRadius:
+                                              BorderRadius.circular(8.0),
+                                        ),
+                                        child: TextButton(
+                                          onPressed: () async {
+                                            final paragraphPdf =
+                                                await ParagraphPdfApi
+                                                    .generateMonthlyPdf(
+                                                        docID);
+                                            SaveAndOpenDocument.openPdf(
+                                                paragraphPdf);
+                                          },
+                                          child: Text(
+                                            'Generate Monthly Report',
                                             style: TextStyle(
                                               color: Colors.black,
                                               fontSize: 16.0,
@@ -404,62 +509,6 @@ class _SocialPageState extends State<SocialPage> {
                                           ,
                                           child: Text(
                                             'Share PDF Link',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 16.0,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 16.0,
-                                                vertical: 8.0),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10,),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          gradient: gradient,
-                                          borderRadius:
-                                              BorderRadius.circular(8.0),
-                                        ),
-                                        child: TextButton(
-                                          onPressed: sharePortfolio,
-                                          child: Text(
-                                            'Share Portfolio Text',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 16.0,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 16.0,
-                                                vertical: 8.0),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10,),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          gradient: gradient,
-                                          borderRadius:
-                                              BorderRadius.circular(8.0),
-                                        ),
-                                        child: TextButton(
-                                          onPressed: shareToInstagramStory,
-                                          child: Text(
-                                            'Share to Instagram Story',
                                             style: TextStyle(
                                               color: Colors.black,
                                               fontSize: 16.0,

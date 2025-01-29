@@ -58,7 +58,7 @@ packages:
     source: hosted
     version: "1.3.0"
   chat_bubbles:
-    dependency: "direct dev"
+    dependency: "direct main"
     description:
       name: chat_bubbles
       sha256: "9ee1493b31a7f847363c5d69725ec55db94f720c7c116d403b4d322a4da0f08c"

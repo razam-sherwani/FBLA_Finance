@@ -1,3 +1,5 @@
+import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
+import 'package:fbla_finance/backend/save_and_open_pdf.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -110,6 +112,8 @@ class _TransactionState extends State<Transactions> {
     }).catchError((error) => print("Failed to delete transaction: $error"));
   }
 
+  
+
   void _promptAddTransaction() {
     showDialog(
       context: context,
@@ -210,6 +214,59 @@ class _TransactionState extends State<Transactions> {
       },
     );
   }
+
+  Future<void> sharePdfLink() async {
+  // Show dialog to select the name type
+  String selectedName = 'General'; // Default value
+  await showDialog<String>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Select PDF Type'),
+        content: DropdownButton<String>(
+          value: selectedName,
+          items: ['General', 'Weekly', 'Monthly'].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            if (newValue != null) {
+              selectedName = newValue;
+              Navigator.pop(context); // Close dialog when a selection is made
+            }
+          },
+        ),
+      );
+    },
+  );
+
+  // Generate the PDF with the selected name
+  var paragraphPdf;
+  if (selectedName == 'General') {
+    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(widget.userId);
+  } else if (selectedName == 'Weekly') {
+    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(widget.userId);
+  } else if (selectedName == 'Monthly') {
+    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(widget.userId);
+  }
+  final pdfFileName = selectedName + 'Report.pdf';
+  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+      paragraphPdf, pdfFileName);
+
+  if (downloadUrl != null) {
+    SaveAndOpenDocument.copyToClipboard(downloadUrl);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('PDF link copied to clipboard!')),
+    );
+    print('Download URL: $downloadUrl');
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to upload PDF')),
+    );
+  }
+}
 
   void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
     showDialog(
@@ -411,6 +468,7 @@ class _TransactionState extends State<Transactions> {
       ),
     ),
   );
+  
 }
 
 
@@ -453,10 +511,24 @@ class _TransactionState extends State<Transactions> {
           
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _promptAddTransaction,
-        child: Icon(Icons.add),
-      ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+  floatingActionButton: Container(
+    padding: EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: <Widget>[
+        FloatingActionButton(
+          onPressed: sharePdfLink,
+          child: Icon(Icons.share),
+        ),
+        FloatingActionButton(
+          onPressed: _promptAddTransaction,
+          child: Icon(Icons.add),
+        ),
+      ],
+    ),
+  ),
+      
     );
   }
 }
