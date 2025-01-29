@@ -392,6 +392,7 @@ void initState() {
                 Padding(
                   padding: const EdgeInsets.only(
                     right: 18.0,
+                    top: 7.0,
                   ),
                   child: LineChart(
                     LineChartData(
@@ -473,10 +474,10 @@ void initState() {
               child: Text('Current Balance Per Day',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 18),
-              child: RepaintBoundary(
-                key: _balanceGraphKey,
+            RepaintBoundary(
+              key: _balanceGraphKey,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 18,top: 7),
                 child: AspectRatio(
                   aspectRatio: 1.5,
                   child: LineChart(

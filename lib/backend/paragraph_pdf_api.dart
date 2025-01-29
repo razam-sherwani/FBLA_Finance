@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -17,7 +19,8 @@ class ParagraphPdfApi {
     _firestore = FirebaseFirestore.instance;
     await _fetchTransactions(docId);
     final pdf = pw.Document();
-
+    final String generatedTime =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
     // Load graph and pie chart images
     final Uint8List graph1 = await loadGraphImage('expense_graph.png');
     final Uint8List graph2 = await loadGraphImage('balance_graph.png');
@@ -31,24 +34,47 @@ class ParagraphPdfApi {
           customHeadline("Income:"),
           buildTable(_incomeList),
           pw.SizedBox(height: 20),
-          pw.Text("Income Graph:", style: const pw.TextStyle(fontSize: 20)),
+          pw.Text("Income Graph:",
+              style:
+                  pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 2),
           pw.Image(pw.MemoryImage(graph1)),
+          pw.SizedBox(height: 15),
           customHeadline("Expenses:"),
           buildTable(_expenseList),
           pw.SizedBox(height: 20),
-          pw.Text("Expense Graph:", style: const pw.TextStyle(fontSize: 20)),
+          pw.Text("Expense Graph:",
+              style:
+                  pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 2),
           pw.Image(pw.MemoryImage(graph2)),
           pw.SizedBox(height: 20),
           pw.Text("Expense Distribution (Pie Chart):",
-              style: const pw.TextStyle(fontSize: 20)),
+              style:
+                  pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
           pw.Image(pw.MemoryImage(pieChart)), // Include the pie chart
         ],
-        header: (context) => buildPageNumber(context),
+        header: (context) => customDocumentHeader(context, generatedTime),
         footer: (context) => buildPageNumber(context),
       ),
     );
-    return SaveAndOpenDocument.savePdf(
-        name: 'GeneralReport.pdf', pdf: pdf);
+    return SaveAndOpenDocument.savePdf(name: 'GeneralReport.pdf', pdf: pdf);
+  }
+
+  static pw.Widget customDocumentHeader(
+      pw.Context context, String generatedTime) {
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        buildPageNumber(context),
+        pw.Container(
+          padding: pw.EdgeInsets.only(top: 10),
+          child: pw.Text("Generated: $generatedTime",
+              style:
+                  pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        ),
+      ],
+    );
   }
 
   static Future<File> generateWeeklyPdf(String docId) async {
@@ -58,57 +84,57 @@ class ParagraphPdfApi {
     final pdf = pw.Document();
 
     Map<int, List<Map<String, dynamic>>> weeklyIncome = {};
-Map<int, List<Map<String, dynamic>>> weeklyExpense = {};
+    Map<int, List<Map<String, dynamic>>> weeklyExpense = {};
 
 // Populate weeklyIncome and weeklyExpense
-for (var transaction in _incomeList) {
-  int week = _getWeekOfYear(DateTime.parse(transaction['date']));
-  weeklyIncome.putIfAbsent(week, () => []).add(transaction);
-}
+    for (var transaction in _incomeList) {
+      int week = _getWeekOfYear(DateTime.parse(transaction['date']));
+      weeklyIncome.putIfAbsent(week, () => []).add(transaction);
+    }
 
-for (var transaction in _expenseList) {
-  int week = _getWeekOfYear(DateTime.parse(transaction['date']));
-  weeklyExpense.putIfAbsent(week, () => []).add(transaction);
-}
+    for (var transaction in _expenseList) {
+      int week = _getWeekOfYear(DateTime.parse(transaction['date']));
+      weeklyExpense.putIfAbsent(week, () => []).add(transaction);
+    }
 
 // Determine the range of weeks to include
-int firstWeek = weeklyIncome.keys.isEmpty
-    ? (weeklyExpense.keys.isEmpty ? 1 : weeklyExpense.keys.reduce((a, b) => a < b ? a : b))
-    : weeklyIncome.keys.reduce((a, b) => a < b ? a : b);
-int lastWeek = weeklyIncome.keys.isEmpty
-    ? (weeklyExpense.keys.isEmpty ? 1 : weeklyExpense.keys.reduce((a, b) => a > b ? a : b))
-    : weeklyIncome.keys.reduce((a, b) => a > b ? a : b);
+    int firstWeek = weeklyIncome.keys.isEmpty
+        ? (weeklyExpense.keys.isEmpty
+            ? 1
+            : weeklyExpense.keys.reduce((a, b) => a < b ? a : b))
+        : weeklyIncome.keys.reduce((a, b) => a < b ? a : b);
+    int lastWeek = weeklyIncome.keys.isEmpty
+        ? (weeklyExpense.keys.isEmpty
+            ? 1
+            : weeklyExpense.keys.reduce((a, b) => a > b ? a : b))
+        : weeklyIncome.keys.reduce((a, b) => a > b ? a : b);
 
 // Include all weeks in the range
-for (int week = firstWeek; week <= lastWeek; week++) {
-  weeklyIncome.putIfAbsent(week, () => []);
-  weeklyExpense.putIfAbsent(week, () => []);
-}
-var maxWeek = [
-  ...weeklyIncome.keys,
-  ...weeklyExpense.keys
-].reduce((a, b) => a > b ? a : b);
+    for (int week = firstWeek; week <= lastWeek; week++) {
+      weeklyIncome.putIfAbsent(week, () => []);
+      weeklyExpense.putIfAbsent(week, () => []);
+    }
+    var maxWeek = [...weeklyIncome.keys, ...weeklyExpense.keys]
+        .reduce((a, b) => a > b ? a : b);
 
     pdf.addPage(
-  pw.MultiPage(
-    pageFormat: PdfPageFormat.a4,
-    build: (context) => [
-      customHeader(),
-      for (var week = 1; week <= maxWeek; week++) ...[
-        customHeadline("Week $week Income:"),
-        buildTable(weeklyIncome[week] ?? []),
-        pw.SizedBox(height: 20),
-        customHeadline("Week $week Expense:"),
-        buildTable(weeklyExpense[week] ?? []),
-        pw.SizedBox(height: 20),
-      ],
-    ],
-  ),
-);
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (context) => [
+          customHeader(),
+          for (var week = 1; week <= maxWeek; week++) ...[
+            customHeadline("Week $week Income:"),
+            buildTable(weeklyIncome[week] ?? []),
+            pw.SizedBox(height: 20),
+            customHeadline("Week $week Expense:"),
+            buildTable(weeklyExpense[week] ?? []),
+            pw.SizedBox(height: 20),
+          ],
+        ],
+      ),
+    );
 
-
-    return SaveAndOpenDocument.savePdf(
-        name: 'WeeklyReport.pdf', pdf: pdf);
+    return SaveAndOpenDocument.savePdf(name: 'WeeklyReport.pdf', pdf: pdf);
   }
 
   static Future<File> generateMonthlyPdf(String docId) async {
@@ -147,8 +173,7 @@ var maxWeek = [
       ),
     );
 
-    return SaveAndOpenDocument.savePdf(
-        name: 'MonthlyReport.pdf', pdf: pdf);
+    return SaveAndOpenDocument.savePdf(name: 'MonthlyReport.pdf', pdf: pdf);
   }
 
 //   static Future<File> generateYearlyPdf(String docId) async {
@@ -192,18 +217,17 @@ var maxWeek = [
 //   }
 
   static int _getWeekOfYear(DateTime date) {
-  // Adjust to the start of the week (Monday)
-  DateTime adjustedDate = date.subtract(Duration(days: date.weekday - 1));
+    // Adjust to the start of the week (Monday)
+    DateTime adjustedDate = date.subtract(Duration(days: date.weekday - 1));
 
-  // First week starts on January 4th
-  DateTime firstWeekStart = DateTime(date.year, 1, 4).subtract(Duration(days: DateTime(date.year, 1, 4).weekday - 1));
+    // First week starts on January 4th
+    DateTime firstWeekStart = DateTime(date.year, 1, 4)
+        .subtract(Duration(days: DateTime(date.year, 1, 4).weekday - 1));
 
-  int weekNumber = 1 + adjustedDate.difference(firstWeekStart).inDays ~/ 7;
+    int weekNumber = 1 + adjustedDate.difference(firstWeekStart).inDays ~/ 7;
 
-  return weekNumber > 0 ? weekNumber : 1;
-}
-
-
+    return weekNumber > 0 ? weekNumber : 1;
+  }
 
 // Helper function to load images
   static Future<Uint8List> loadGraphImage(String imagePath) async {
@@ -220,62 +244,61 @@ var maxWeek = [
   }
 
   static Future<void> _fetchTransactions(String docID) async {
-  try {
-    // Await the Firestore query to ensure completion before moving forward
-    final querySnapshot = await _firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Transactions')
-        .get();
+    try {
+      // Await the Firestore query to ensure completion before moving forward
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(docID)
+          .collection('Transactions')
+          .get();
 
-    // Clear lists and reset total balance
-    _transactionsList.clear();
-    _incomeList.clear();
-    _expenseList.clear();
-    _totalBalance = 0.0;
+      // Clear lists and reset total balance
+      _transactionsList.clear();
+      _incomeList.clear();
+      _expenseList.clear();
+      _totalBalance = 0.0;
 
-    // Process documents and populate lists
-    for (var doc in querySnapshot.docs) {
-      // Extract type separately
-      String type = doc['type'];
+      // Process documents and populate lists
+      for (var doc in querySnapshot.docs) {
+        // Extract type separately
+        String type = doc['type'];
 
-      // Create a transaction map excluding the 'type'
-      var transaction = {
-        'category': doc['category'],
-        'amount': doc['amount'],
-        'date': (doc['date'] as Timestamp)
-            .toDate()
-            .toLocal()
-            .toString()
-            .split(' ')[0],
-      };
+        // Create a transaction map excluding the 'type'
+        var transaction = {
+          'category': doc['category'],
+          'amount': doc['amount'],
+          'date': (doc['date'] as Timestamp)
+              .toDate()
+              .toLocal()
+              .toString()
+              .split(' ')[0],
+        };
 
-      // Add to the main list
-      _transactionsList.add(transaction);
+        // Add to the main list
+        _transactionsList.add(transaction);
 
-      // Add to income or expense lists based on type
-      if (type == 'Income') {
-        _totalBalance += transaction['amount'];
-        _incomeList.add(transaction);
-      } else {
-        _totalBalance -= transaction['amount'];
-        _expenseList.add(transaction);
+        // Add to income or expense lists based on type
+        if (type == 'Income') {
+          _totalBalance += transaction['amount'];
+          _incomeList.add(transaction);
+        } else {
+          _totalBalance -= transaction['amount'];
+          _expenseList.add(transaction);
+        }
       }
+
+      // Sort the lists by date (oldest to newest)
+      _transactionsList.sort((a, b) =>
+          DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
+      _incomeList.sort((a, b) =>
+          DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
+      _expenseList.sort((a, b) =>
+          DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
+    } catch (error) {
+      print("Error fetching transactions: $error");
+      // Handle the error appropriately (e.g., show a snackbar)
     }
-
-    // Sort the lists by date (oldest to newest)
-    _transactionsList.sort((a, b) =>
-        DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
-    _incomeList.sort((a, b) =>
-        DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
-    _expenseList.sort((a, b) =>
-        DateTime.parse(a['date']).compareTo(DateTime.parse(b['date'])));
-  } catch (error) {
-    print("Error fetching transactions: $error");
-    // Handle the error appropriately (e.g., show a snackbar)
   }
-}
-
 
   static pw.Widget customHeader() => pw.Container(
         padding: const pw.EdgeInsets.only(bottom: 3 * PdfPageFormat.mm),
@@ -312,7 +335,7 @@ var maxWeek = [
       );
 
   static pw.Widget buildPageNumber(pw.Context context) => pw.Container(
-        alignment: pw.Alignment.center,
+        alignment: pw.Alignment.topLeft,
         margin: const pw.EdgeInsets.only(top: 10),
         child: pw.Text(
           'Page ${context.pageNumber} of ${context.pagesCount}',
