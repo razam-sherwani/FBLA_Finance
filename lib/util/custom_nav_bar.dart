@@ -34,7 +34,7 @@ class CustomNavBar extends StatelessWidget {
               text: "Transactions",
             ),
             GButton(icon:Icons.query_stats,text: "Analysis",),
-            GButton(icon: Icons.people,text: "Social",),
+            GButton(icon: Icons.summarize,text: "Reports",),
             GButton(
               icon: Icons.settings,
               text: "Settings",

@@ -12,7 +12,7 @@ import 'package:fbla_finance/pages/to_do.dart';
 import 'package:fbla_finance/pages/welcome_screen.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';
 import 'package:fbla_finance/firebase_options.dart';
-import 'package:fbla_finance/pages/social_page.dart';
+import 'package:fbla_finance/pages/reports.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:file_picker/file_picker.dart';
@@ -34,7 +34,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
     HomePage(),
     Transactions(),
     SpendingHabitPage(),
-    SocialPage(),
+    Reports(),
     SettingsPage()
   ];
 

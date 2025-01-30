@@ -18,14 +18,14 @@ import 'package:open_file/open_file.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 
-class SocialPage extends StatefulWidget {
-  const SocialPage({super.key});
+class Reports extends StatefulWidget {
+  const Reports({super.key});
 
   @override
-  State<SocialPage> createState() => _SocialPageState();
+  State<Reports> createState() => _ReportsState();
 }
 
-class _SocialPageState extends State<SocialPage> {
+class _ReportsState extends State<Reports> {
   double _totalBalance = 0.0;
   final User? user = Auth().currentUser;
   String docID = "";
@@ -409,7 +409,7 @@ class _SocialPageState extends State<SocialPage> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Social Page',
+                                      'Reports',
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 20,
