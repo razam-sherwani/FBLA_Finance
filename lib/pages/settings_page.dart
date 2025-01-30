@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fbla_finance/pages/chat_screen.dart';
+import 'package:fbla_finance/pages/help_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/auth.dart';
@@ -168,15 +169,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ChatScreen()),
+                    MaterialPageRoute(builder: (context) => HelpPage()),
                   );
                 },
               ),
+              const SizedBox(height: 20,),
               SettingItem(
-                title: "Help",
-                icon: Icons.help,
-                bgColor: Colors.red.shade100,
-                iconColor: Colors.red,
+                title: "Chatbot",
+                icon: Icons.question_answer,
+                bgColor: Colors.purple.shade100,
+                iconColor: Colors.purple,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -186,7 +188,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 20),
               SettingItem(
-                title: 'Chatbot',
+                title: 'Appearance',
                 icon: Icons.color_lens,
                 bgColor: Colors.blue.shade100,
                 iconColor: Colors.blue,
