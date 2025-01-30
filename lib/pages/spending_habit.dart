@@ -420,11 +420,6 @@ void initState() {
                           preventCurveOverShooting: true,
                         ),
                       ],
-                      gridData: FlGridData(
-                        show: true,
-                        drawHorizontalLine: true,
-                        drawVerticalLine: false,
-                      ),
                       titlesData: FlTitlesData(
                         show: true,
                         rightTitles: const AxisTitles(

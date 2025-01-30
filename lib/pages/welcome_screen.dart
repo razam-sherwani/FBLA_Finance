@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -25,34 +25,20 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
           height: double.infinity,
           width: double.infinity,
           decoration: BoxDecoration(
-              gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  stops: [
-                    0.3,
-                    0.6,
-                    0.9
-                  ],
-                  colors: [
-                Color(0xff56018D),
-                
-                Color(0xff8B139C),
-                Colors.pink,
-              ])),
+              color: const Color.fromARGB(255, 230, 230, 230),),
           child: Column(
             children: [
+              SizedBox(height: 80,),
+              Text("FinSafe", style: GoogleFonts.barlow(textStyle: TextStyle(fontSize: 75, fontWeight: FontWeight.bold, color: Colors.blue.shade900))),
               Padding(
-                  padding: const EdgeInsets.only(top: 200.0),
-                  child: Image.asset("assets/Logo.png",),
-                  
+                  padding: const EdgeInsets.only(top: 25.0),
+                  child: Image.asset("assets/Logo.png", height: 1428*0.125,),
                   ),
               SizedBox(
-                height: 50,
+                height: 40,
               ),
-              Text(
-                'Welcome Back',
-                style: TextStyle(fontSize: 30, color: Colors.white),
-              ),
+              Text("Secure. Strategic. Seamless.", style: GoogleFonts.barlow(textStyle: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.blue.shade900))),
+              SizedBox(height: 50,),
               SizedBox(
                 height: 30,
               ),
@@ -63,18 +49,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 },
                 child: Container(
                   height: 53,
-                  width: 320,
+                  width: 270,
                   decoration: BoxDecoration(
+                    color: Colors.blue.shade300,
                     borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.white),
+                    border: Border.all(color: Colors.black),
                   ),
                   child: Center(
                       child: Text(
-                    'SIGN IN',
+                    'LOG IN',
                     style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white),
+                        color: Colors.black),
                   )),
                 ),
               ),
@@ -88,11 +75,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 },
                 child: Container(
                   height: 53,
-                  width: 320,
+                  width: 270,
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.white),
+                    color: Colors.blue.shade300,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(color: Colors.black),
                   ),
                   child: Center(
                       child: Text(
@@ -104,10 +91,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   )),
                 ),
               ),
-              Spacer(),
+              SizedBox(height: 30,),
               Text(
                 'Login with Social Media',
-                style: TextStyle(fontSize: 17, color: Colors.white),
+                style: TextStyle(fontSize: 17, color: Colors.blue.shade900),
               ),
               SizedBox(
                 height: 5,

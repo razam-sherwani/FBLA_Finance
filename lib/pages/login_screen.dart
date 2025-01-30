@@ -58,27 +58,15 @@ class _LoginScreenState extends State<LoginScreen> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  stops: [
-                    0.1,
-                    0.2,
-                    0.3
-                  ],
-                  colors: [
-                Color(0xff56018D),
-                
-                Color(0xff8B139C),
-                Colors.pink,
-              ])),
+                  color: Colors.grey
+              ),
               child: Padding(
                 padding: EdgeInsets.only(top: 60.0, left: 22),
                 child: Text(
                   'Hello\nSign in!',
                   style: TextStyle(
                       fontSize: 30,
-                      color: Colors.white,
+                      color: Colors.black,
                       fontWeight: FontWeight.bold),
                 ),
               ),
@@ -87,6 +75,10 @@ class _LoginScreenState extends State<LoginScreen> {
               padding: const EdgeInsets.only(top: 200.0),
               child: Container(
                 decoration: BoxDecoration(
+                  border: Border.all(
+                    color: const Color.fromARGB(255, 146, 146, 146),
+                    width: 4
+                  ),
                   borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(40),
                       topRight: Radius.circular(40)),
@@ -153,20 +145,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: 300,
                           decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(30),
-                              gradient: LinearGradient(
-                                          begin: Alignment.topRight,
-                                          end: Alignment.bottomLeft,
-                                          stops: [
-                                            0.3,
-                                            0.6,
-                                            0.9
-                                          ],
-                                          colors: [
-                                        Color(0xff56018D),
-                                        
-                                        Color(0xff8B139C),
-                                        Colors.pink,
-                                      ])),
+                              color: Colors.blue.shade400),
                           child: Center(
                             child: Text('SIGN IN',
                                 style: TextStyle(
@@ -178,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       SizedBox(
-                        height: 150,
+                        height: 100,
                       ),
                       Align(
                         alignment: Alignment.bottomRight,
