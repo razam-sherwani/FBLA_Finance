@@ -172,10 +172,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   );
                 },
               ),
-              
+              SettingItem(
+                title: "Help",
+                icon: Icons.help,
+                bgColor: Colors.red.shade100,
+                iconColor: Colors.red,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ChatScreen()),
+                  );
+                },
+              ),
               const SizedBox(height: 20),
               SettingItem(
-                title: "Appearance",
+                title: 'Chatbot',
                 icon: Icons.color_lens,
                 bgColor: Colors.blue.shade100,
                 iconColor: Colors.blue,
