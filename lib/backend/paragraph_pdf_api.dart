@@ -21,6 +21,11 @@ class ParagraphPdfApi {
     final pdf = pw.Document();
     final String generatedTime =
         DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+     // Fetch the document from Firestore
+    var doc = await _firestore.collection('users').doc(docId).get();
+
+    // Extract the first name, defaulting to "User" if not found
+    String firstName = doc.exists ? (doc.data()?['first_name'] ?? 'User') : 'User';
     // Load graph and pie chart images
     final Uint8List graph1 = await loadGraphImage('expense_graph.png');
     final Uint8List graph2 = await loadGraphImage('balance_graph.png');
@@ -54,7 +59,7 @@ class ParagraphPdfApi {
                   pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
           pw.Image(pw.MemoryImage(pieChart)), // Include the pie chart
         ],
-        header: (context) => customDocumentHeader(context, generatedTime),
+        header: (context) => customDocumentHeader(context, generatedTime,firstName),
         footer: (context) => buildPageNumber(context),
       ),
     );
@@ -62,11 +67,11 @@ class ParagraphPdfApi {
   }
 
   static pw.Widget customDocumentHeader(
-      pw.Context context, String generatedTime) {
+      pw.Context context, String generatedTime,String userName) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        buildPageNumber(context),
+        buildUsername(context,userName),
         pw.Container(
           padding: pw.EdgeInsets.only(top: 10),
           child: pw.Text("Generated: $generatedTime",
@@ -80,7 +85,13 @@ class ParagraphPdfApi {
   static Future<File> generateWeeklyPdf(String docId) async {
     _firestore = FirebaseFirestore.instance;
     await _fetchTransactions(docId);
+    final String generatedTime =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+     // Fetch the document from Firestore
+    var doc = await _firestore.collection('users').doc(docId).get();
 
+    // Extract the first name, defaulting to "User" if not found
+    String firstName = doc.exists ? (doc.data()?['first_name'] ?? 'User') : 'User';
     final pdf = pw.Document();
 
     Map<int, List<Map<String, dynamic>>> weeklyIncome = {};
@@ -131,8 +142,12 @@ class ParagraphPdfApi {
             pw.SizedBox(height: 20),
           ],
         ],
+        header: (context) => customDocumentHeader(context, generatedTime,firstName),
+        footer: (context) => buildPageNumber(context),
       ),
+      
     );
+    
 
     return SaveAndOpenDocument.savePdf(name: 'WeeklyReport.pdf', pdf: pdf);
   }
@@ -140,7 +155,13 @@ class ParagraphPdfApi {
   static Future<File> generateMonthlyPdf(String docId) async {
     _firestore = FirebaseFirestore.instance;
     await _fetchTransactions(docId);
+    final String generatedTime =
+        DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now());
+     // Fetch the document from Firestore
+    var doc = await _firestore.collection('users').doc(docId).get();
 
+    // Extract the first name, defaulting to "User" if not found
+    String firstName = doc.exists ? (doc.data()?['first_name'] ?? 'User') : 'User';
     final pdf = pw.Document();
 
     Map<int, List<Map<String, dynamic>>> monthlyIncome = {};
@@ -170,6 +191,8 @@ class ParagraphPdfApi {
             pw.SizedBox(height: 20),
           ],
         ],
+        header: (context) => customDocumentHeader(context, generatedTime,firstName),
+        footer: (context) => buildPageNumber(context),
       ),
     );
 
@@ -342,6 +365,20 @@ class ParagraphPdfApi {
           style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
         ),
       );
+
+  static pw.Widget buildUsername(pw.Context context, String userName)  {
+ 
+
+  return pw.Container(
+    alignment: pw.Alignment.topLeft,
+    margin: const pw.EdgeInsets.only(top: 10),
+    child: pw.Text(
+      'User: $userName',
+      style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold),
+    ),
+  );
+}
+
 
   static pw.Widget buildBulletPoints(List<Map<String, dynamic>> points) {
     return pw.Column(
