@@ -103,8 +103,11 @@ class _TransactionState extends State<Transactions> {
     }
   }
 
-  void _addTransaction(double amount, String? type, String? category, DateTime date) {
+  // Method to add a transaction to Firestore and update the local transactions list
+void _addTransaction(double amount, String? type, String? category, DateTime date) {
+    // Check if the amount is a valid number
     if (!amount.isNaN) {
+      // Add transaction data to Firestore under the user's transactions collection
       _firestore
           .collection('users')
           .doc(docID)
@@ -114,8 +117,9 @@ class _TransactionState extends State<Transactions> {
         'type': type,
         'category': category,
         'date': date
-      }).then((value) {
+      }).then((value) { // Once the transaction is successfully added to Firestore
         setState(() {
+          // Add the transaction to the local transactions list with its generated ID
           _transactionsList.add({
             'transactionId': value.id,
             'amount': amount,
@@ -123,29 +127,39 @@ class _TransactionState extends State<Transactions> {
             'category': category,
             'date': date
           });
+
+          // Update the total balance based on transaction type
           if (type == 'Income') {
-            _totalBalance += amount;
+            _totalBalance += amount; // Increase balance for income
           } else {
-            _totalBalance -= amount;
+            _totalBalance -= amount; // Decrease balance for expenses
           }
         });
       });
     }
-  }
+}
 
-  void _removeTransaction(String transactionId, int index) {
+// Method to remove a transaction from Firestore and update the local transactions list
+void _removeTransaction(String transactionId, int index) {
+    // Retrieve the transaction data from the local list
     var transaction = _transactionsList[index];
+
+    // Delete the transaction document from Firestore
     _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).delete().then((value) {
       setState(() {
+        // Remove the transaction from the local transactions list
         _transactionsList.removeAt(index);
+
+        // Update the total balance based on transaction type
         if (transaction['type'] == 'Income') {
-          _totalBalance -= transaction['amount'];
+          _totalBalance -= transaction['amount']; // Deduct from balance if it was income
         } else {
-          _totalBalance += transaction['amount'];
+          _totalBalance += transaction['amount']; // Add back if it was an expense
         }
       });
-    }).catchError((error) => print("Failed to delete transaction: $error"));
-  }
+    }).catchError((error) => print("Failed to delete transaction: $error")); // Handle any errors
+}
+
 
   
 
