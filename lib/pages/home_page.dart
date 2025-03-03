@@ -28,6 +28,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final List<Map<String, dynamic>> _transactionsList = [];
   int myIndex = 0;
   final User? user = Auth().currentUser;
   var now = DateTime.now();
@@ -105,6 +106,82 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
+    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
+      'amount': amount,
+      'type': type,
+      'category': category,
+      'date': date
+    }).then((value) {
+      setState(() {
+        _transactionsList[index] = {
+          'transactionId': transactionId,
+          'amount': amount,
+          'type': type,
+          'category': category,
+          'date': date
+        };
+        _totalBalance = 0.0;
+        _transactionsList.forEach((transaction) {
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
+      });
+    }).catchError((error) {
+      print("Failed to update transaction: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update transaction')));
+    });
+  }
+
+  Widget _buildTransactionList() {
+    return ListView.builder(
+      itemCount: _transactionsList.length,
+      itemBuilder: (context, index) {
+        return _buildTransactionItem(_transactionsList[index], index);
+      },
+    );
+  }
+
+  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
+  return Card(
+    elevation: 4,
+    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+    child: ListTile(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'],
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+            style: TextStyle(fontSize: 12, color: Colors.black),
+          ),
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(transaction['amount']),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  
+
   Future<void> signOut() async {
     await Auth().signOut();
   }
@@ -180,7 +257,7 @@ class _HomePageState extends State<HomePage> {
                                         "Hi $userName!",
                                         style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: 24,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       );
@@ -197,17 +274,6 @@ class _HomePageState extends State<HomePage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.all(12),
-                                  child: const Icon(
-                                    Icons.notifications,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 45),
                                 Text(
                                   formattedDate!,
                                   style: TextStyle(
@@ -222,17 +288,29 @@ class _HomePageState extends State<HomePage> {
                         // Current balance display
                         Container(
                           padding: const EdgeInsets.only(left: 4),
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Current Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                            textAlign: TextAlign.left,
-                            style: const TextStyle(
-                              fontSize: 25,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          alignment: Alignment.center,
+                          child: Column(
+                            children: [
+                              Text(
+                                'Balance',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 50,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 25),
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
@@ -243,95 +321,45 @@ class _HomePageState extends State<HomePage> {
                           const BorderRadius.vertical(top: Radius.circular(25)),
                       child: Container(
                         padding: const EdgeInsets.all(25),
-                        color: Colors.grey[300],
+                        color: Colors.white,
                         child: Center(
                           child: Column(
                             children: [
                               // Heading
-                              const Row(
+                              Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Filters',
+                                    'Recent Transactions',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
                                     ),
                                   ),
-                                  Icon(Icons.more_horiz),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            return Transactions();
+                                            },
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      "See More",
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 20),
-                              // ListView
-                              Expanded(
-                                child: ListView(
-                                  children: [
-                                    
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByAmountPage(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.price_check,
-                                        EcName: 'Filter by Amount',
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    TransactionsByCategory(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.category,
-                                        EcName: 'Filter by Category',
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByTypePage(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.filter_alt,
-                                        EcName: 'Filter by Type',
-                                        color: Colors.indigo,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByDatePage(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.calendar_month,
-                                        EcName: 'Filter by Date',
-                                        color: Colors.purple,
-                                      ),
-                                    ),
-                                    
-                                  ],
-                                ),
-                              ),
                             ],
                           ),
                         ),
