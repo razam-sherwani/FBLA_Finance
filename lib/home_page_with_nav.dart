@@ -1,3 +1,4 @@
+import 'package:fbla_finance/pages/split_transactions.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/custom_nav_bar.dart';
 import 'package:flutter/material.dart';
