@@ -6,6 +6,7 @@ import 'package:fbla_finance/pages/filter_by_type.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/read_data/get_user_name.dart';
 import 'package:fbla_finance/pages/academics_page.dart';
@@ -141,7 +142,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionList() {
     return ListView.builder(
-      itemCount: _transactionsList.length > 6 ? 6 : _transactionsList.length,
+      itemCount: _transactionsList.length > 5 ? 5 : _transactionsList.length,
       itemBuilder: (context, index) {
         return _buildTransactionItem(_transactionsList[index], index);
       },
@@ -150,6 +151,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
   return Card(
+    color: Colors.blue[100],
     elevation: 4,
     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     child: ListTile(
@@ -158,11 +160,11 @@ class _HomePageState extends State<HomePage> {
         children: [
           Text(
             transaction['category'],
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           Text(
             "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-            style: TextStyle(fontSize: 12, color: Colors.black),
+            style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
           ),
         ],
       ),
@@ -172,7 +174,7 @@ class _HomePageState extends State<HomePage> {
           Text(
             NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
                 .format(transaction['amount']),
-            style: TextStyle(
+            style: GoogleFonts.ibmPlexSans(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
@@ -190,7 +192,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _userUID() {
-    return Text(user?.email ?? 'User email');
+    return Text(user?.email ?? 'User email', style: GoogleFonts.ibmPlexSans(),);
   }
 
   Widget _signOutButton() {
@@ -231,7 +233,7 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Stack(
@@ -256,12 +258,27 @@ class _HomePageState extends State<HomePage> {
                                     } else if (snapshot.hasData &&
                                         snapshot.data != null) {
                                       String userName = snapshot.data!;
-                                      return Text(
-                                        "Hi $userName!",
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 20.0),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              "Hi ",
+                                              style: GoogleFonts.ibmPlexSans(
+                                                color: Colors.black,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              "$userName!",
+                                              style: GoogleFonts.ibmPlexSans(
+                                                color: Colors.black,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       );
                                     } else {
@@ -279,15 +296,12 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Text(
                                   formattedDate!,
-                                  style: TextStyle(
-                                      color: Colors.black, fontSize: 20),
+                                  style: GoogleFonts.ibmPlexSans(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w500),
                                 )
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 25),
-
                         // Current balance display
                         Container(
                           padding: const EdgeInsets.only(left: 4),
@@ -297,15 +311,15 @@ class _HomePageState extends State<HomePage> {
                               Text(
                                 'Balance',
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: GoogleFonts.ibmPlexSans(
                                   fontSize: 25,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Text(
                                 NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: GoogleFonts.ibmPlexSans(
                                   fontSize: 50,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -313,35 +327,86 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
+                        SizedBox(
+                          height: 25,
+                        ),
                         Padding(
-                          padding: const EdgeInsets.only(left: 27.0),
+                          padding: const EdgeInsets.only(right: 20.0, left: 20),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              FilterTile(
-                                          icon: Icons.price_check,
-                                          FilterName: 'Amount',
-                                          color: Colors.green,
-                                        ),
-                              FilterTile(
-                                          icon: Icons.category,
-                                          FilterName: 'Category',
-                                          color: Colors.orange,
-                                        ),
-                              FilterTile(
-                                          icon: Icons.filter_alt,
-                                          FilterName: 'Type',
-                                          color: Colors.indigo,
-                                        ),
-                              FilterTile(
-                                          icon: Icons.calendar_month,
-                                          FilterName: 'Date',
-                                          color: Colors.purple,
-                                        ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return FilterByAmountPage(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.price_check,
+                                            FilterName: 'Amount',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return TransactionsByCategory(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.category,
+                                            FilterName: 'Category',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return FilterByTypePage(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.filter_alt,
+                                            FilterName: 'Type',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return FilterByDatePage(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.calendar_month,
+                                            FilterName: 'Date',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -363,7 +428,7 @@ class _HomePageState extends State<HomePage> {
                                 children: [
                                   Text(
                                     'Recent Transactions',
-                                    style: TextStyle(
+                                    style: GoogleFonts.ibmPlexSans(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
                                     ),
@@ -381,7 +446,7 @@ class _HomePageState extends State<HomePage> {
                                     },
                                     child: Text(
                                       "See More",
-                                      style: TextStyle(
+                                      style: GoogleFonts.ibmPlexSans(
                                         color: Colors.blue,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,

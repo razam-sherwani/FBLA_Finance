@@ -34,10 +34,10 @@ class _ProfilePictureState extends State<ProfilePicture> {
     return GestureDetector(
       onTap: onProfileTapped, //Calls function to change profile picture
       child: Padding(
-        padding: const EdgeInsets.all(10.0),
+        padding: const EdgeInsets.all(8.0),
         child: Container(
-          height: 80,
-          width: 80,
+          height: 50,
+          width: 50,
           decoration: BoxDecoration(//Decoration widget
             color: Colors.grey,
             shape: BoxShape.circle,
