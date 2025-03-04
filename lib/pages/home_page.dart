@@ -45,11 +45,13 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _initializeData();
     formattedDate = formatter.format(now);
-    fetchDocID();
-    _fetchTransactions();
-    // Fetch the total balance
   }
+  Future<void> _initializeData() async {
+  await fetchDocID();  // Wait for fetchDocID to complete
+  _fetchTransactions();  // Call _fetchTransactions after fetchDocID
+}
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -139,7 +141,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionList() {
     return ListView.builder(
-      itemCount: 6,
+      itemCount: _transactionsList.length > 6 ? 6 : _transactionsList.length,
       itemBuilder: (context, index) {
         return _buildTransactionItem(_transactionsList[index], index);
       },
@@ -358,9 +360,10 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                     ),
                                   ),
-                                  _buildTransactionList(),
+                                  
                                 ],
                               ),
+                              Expanded(child: _buildTransactionList(),),
                               const SizedBox(height: 20),
                             ],
                           ),
