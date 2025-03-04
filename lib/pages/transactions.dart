@@ -466,7 +466,7 @@ void _removeTransaction(String transactionId, int index) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Transaction "${transaction['category']}" deleted. Add a NEW Transaction!',
+            'Transaction deleted. Add a NEW Transaction!',
           ),
         ),
       );
@@ -478,6 +478,7 @@ void _removeTransaction(String transactionId, int index) {
       child: Icon(Icons.delete, color: Colors.white),
     ),
     child: Card(
+      color: Colors.grey[300],
       elevation: 4,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: ListTile(
@@ -537,7 +538,7 @@ void _removeTransaction(String transactionId, int index) {
               ? GradientService(userId: docID).getGradientStream() : Stream.value(LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Colors.cyan, Colors.teal],
+                  colors: [Colors.white],
                 )),
         builder: (context, snapshot) {
           final gradient = snapshot.data ??
@@ -545,29 +546,24 @@ void _removeTransaction(String transactionId, int index) {
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
                 colors: [
-                  Colors.cyan,
-                  Colors.teal,
+                  Colors.white,
                 ],
               );
           return Container(
             decoration: BoxDecoration(
-              gradient: gradient
+              color: Colors.white,
             ),
             child: Column(
               children: [
-                SizedBox(height: 10,),
+                SizedBox(height: 20,),
                 Container(
                   padding: EdgeInsets.all(15),
                   child: Text(
                     'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  
+                  ), 
                 ),
+                SizedBox(height: 15),
                 Expanded(child: _buildTransactionList()),
               ],
               
@@ -582,12 +578,14 @@ void _removeTransaction(String transactionId, int index) {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
         FloatingActionButton(
+          backgroundColor: Colors.grey[300],
           onPressed: sharePdfLink,
-          child: Icon(Icons.share),
+          child: Icon(Icons.share, color: Colors.black,),
         ),
         FloatingActionButton(
+          backgroundColor: Colors.grey[300],
           onPressed: _promptAddTransaction,
-          child: Icon(Icons.add),
+          child: Icon(Icons.add, color: Colors.black), 
         ),
       ],
     ),
