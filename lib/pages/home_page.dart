@@ -13,7 +13,7 @@ import 'package:fbla_finance/pages/awards_page.dart';
 import 'package:fbla_finance/pages/clubs_page.dart';
 import 'package:fbla_finance/pages/ec_page.dart';
 import 'package:fbla_finance/pages/other_page.dart';
-import 'package:fbla_finance/util/ec_tile.dart';
+import 'package:fbla_finance/util/filter_tile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
@@ -313,7 +313,35 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 40),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 27.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              FilterTile(
+                                          icon: Icons.price_check,
+                                          FilterName: 'Amount',
+                                          color: Colors.green,
+                                        ),
+                              FilterTile(
+                                          icon: Icons.category,
+                                          FilterName: 'Category',
+                                          color: Colors.orange,
+                                        ),
+                              FilterTile(
+                                          icon: Icons.filter_alt,
+                                          FilterName: 'Type',
+                                          color: Colors.indigo,
+                                        ),
+                              FilterTile(
+                                          icon: Icons.calendar_month,
+                                          FilterName: 'Date',
+                                          color: Colors.purple,
+                                        ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   ),
