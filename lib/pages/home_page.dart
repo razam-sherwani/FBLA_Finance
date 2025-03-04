@@ -37,13 +37,17 @@ class _HomePageState extends State<HomePage> {
   String docID = "6cHwPquSMMkpue7r6RRN";
   double _totalBalance = 0.0;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  DateTime date = DateTime.now();
+  double amt = 0;
+  String? type1;
+  String? categ;
 
   @override
   void initState() {
     super.initState();
     formattedDate = formatter.format(now);
     fetchDocID();
-
+    _fetchTransactions();
     // Fetch the total balance
   }
 
@@ -106,23 +110,20 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
-    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
-      'amount': amount,
-      'type': type,
-      'category': category,
-      'date': date
-    }).then((value) {
+  void _fetchTransactions() {
+    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
       setState(() {
-        _transactionsList[index] = {
-          'transactionId': transactionId,
-          'amount': amount,
-          'type': type,
-          'category': category,
-          'date': date
-        };
+        _transactionsList.clear();
         _totalBalance = 0.0;
-        _transactionsList.forEach((transaction) {
+        querySnapshot.docs.forEach((doc) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'],
+            'type': doc['type'],
+            'category': doc['category'],
+            'date': (doc['date'] as Timestamp).toDate(),
+          };
+          _transactionsList.add(transaction);
           if (transaction['type'] == 'Income') {
             _totalBalance += transaction['amount'];
           } else {
@@ -131,14 +132,14 @@ class _HomePageState extends State<HomePage> {
         });
       });
     }).catchError((error) {
-      print("Failed to update transaction: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update transaction')));
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
     });
   }
 
   Widget _buildTransactionList() {
     return ListView.builder(
-      itemCount: _transactionsList.length,
+      itemCount: 6,
       itemBuilder: (context, index) {
         return _buildTransactionItem(_transactionsList[index], index);
       },
@@ -357,6 +358,7 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                     ),
                                   ),
+                                  _buildTransactionList(),
                                 ],
                               ),
                               const SizedBox(height: 20),
