@@ -1,6 +1,7 @@
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
+import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,7 +9,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 
 class SplitTransactions extends StatefulWidget {
-
   SplitTransactions({Key? key}) : super(key: key);
 
   @override
@@ -32,12 +32,12 @@ class _SplitTransactionsState extends State<SplitTransactions> {
   void initState() {
     super.initState();
     _initializeData();
-    
   }
+
   Future<void> _initializeData() async {
-  await fetchDocID();  // Wait for fetchDocID to complete
-  _fetchTransactions();  // Call _fetchTransactions after fetchDocID
-}
+    await fetchDocID(); // Wait for fetchDocID to complete
+    _fetchTransactions(); // Call _fetchTransactions after fetchDocID
+  }
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -66,11 +66,16 @@ class _SplitTransactionsState extends State<SplitTransactions> {
   }
 
   void _fetchTransactions() {
-    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get()
+        .then((querySnapshot) {
       setState(() {
         transactionsByCategory.clear();
         _totalBalance = 0.0;
-        
+
         for (var doc in querySnapshot.docs) {
           var transaction = {
             'transactionId': doc.id,
@@ -79,24 +84,27 @@ class _SplitTransactionsState extends State<SplitTransactions> {
             'category': doc['category'],
             'date': (doc['date'] as Timestamp).toDate(),
           };
-          
+
           String category = transaction['category'] ?? 'Uncategorized';
           if (!transactionsByCategory.containsKey(category)) {
             transactionsByCategory[category] = [];
           }
           transactionsByCategory[category]!.add(transaction);
-          
+
           if (transaction['type'] == 'Income') {
             _totalBalance += transaction['amount'];
           } else {
             _totalBalance -= transaction['amount'];
           }
         }
-        expandedSections = {for (var category in transactionsByCategory.keys) category: false};
+        expandedSections = {
+          for (var category in transactionsByCategory.keys) category: false
+        };
       });
     }).catchError((error) {
       print("Error fetching transactions: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch transactions')));
     });
   }
 
@@ -114,14 +122,20 @@ class _SplitTransactionsState extends State<SplitTransactions> {
   }
 
   // Method to add a transaction to Firestore and update the local transactions list
-void _addTransaction(double amount, String? type, String? category, DateTime date) {
-    Map<String,dynamic> transaction = {
+  void _addTransaction(
+      double amount, String? type, String? category, DateTime date) {
+    Map<String, dynamic> transaction = {
       'amount': amount,
-            'type': type,
-            'category': category,
-            'date': date
+      'type': type,
+      'category': category,
+      'date': date
     };
-    _firestore.collection('users').doc(docID).collection('Transactions').add(transaction).then((docRef) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .add(transaction)
+        .then((docRef) {
       setState(() {
         transaction['transactionId'] = docRef.id;
         if (!transactionsByCategory.containsKey(category)) {
@@ -136,13 +150,20 @@ void _addTransaction(double amount, String? type, String? category, DateTime dat
       });
     }).catchError((error) {
       print("Error adding transaction: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to add transaction')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to add transaction')));
     });
   }
 
 // Method to remove a transaction from Firestore and update the local transactions list
-void _removeTransaction(Map<String, dynamic> transaction) {
-    _firestore.collection('users').doc(docID).collection('Transactions').doc(transaction['transactionId']).delete().then((_) {
+  void _removeTransaction(Map<String, dynamic> transaction) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .doc(transaction['transactionId'])
+        .delete()
+        .then((_) {
       setState(() {
         transactionsByCategory[transaction['category']]?.remove(transaction);
         if (transactionsByCategory[transaction['category']]?.isEmpty ?? false) {
@@ -156,12 +177,10 @@ void _removeTransaction(Map<String, dynamic> transaction) {
       });
     }).catchError((error) {
       print("Error deleting transaction: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to delete transaction')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete transaction')));
     });
   }
-
-
-  
 
   void _promptAddTransaction() {
     showDialog(
@@ -178,8 +197,10 @@ void _removeTransaction(Map<String, dynamic> transaction) {
                   children: [
                     TextField(
                       autofocus: true,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(labelText: 'Enter the amount'),
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                      decoration:
+                          InputDecoration(labelText: 'Enter the amount'),
                       onChanged: (String? val) {
                         amt = double.parse(val!);
                       },
@@ -190,7 +211,8 @@ void _removeTransaction(Map<String, dynamic> transaction) {
                         isExpanded: true,
                         value: type1,
                         hint: Text('Select type'),
-                        items: <String>['Expense', 'Income'].map((String value) {
+                        items:
+                            <String>['Expense', 'Income'].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -210,7 +232,15 @@ void _removeTransaction(Map<String, dynamic> transaction) {
                         value: categ,
                         hint: Text('Select category'),
                         menuMaxHeight: 200,
-                        items: (type1 == 'Income' ? <String>['Work', 'Stocks', 'Other'] : <String>['Food', 'Entertainment', 'Utilities', 'Other']).map((String value) {
+                        items: (type1 == 'Income'
+                                ? <String>['Work', 'Stocks', 'Other']
+                                : <String>[
+                                    'Food',
+                                    'Entertainment',
+                                    'Utilities',
+                                    'Other'
+                                  ])
+                            .map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),
@@ -265,59 +295,59 @@ void _removeTransaction(Map<String, dynamic> transaction) {
   }
 
   Future<void> sharePdfLink() async {
-  // Show dialog to select the name type
-  String selectedName = 'General'; // Default value
-  await showDialog<String>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Select PDF Type'),
-        content: DropdownButton<String>(
-          value: selectedName,
-          items: ['General', 'Weekly', 'Monthly'].map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            if (newValue != null) {
-              selectedName = newValue;
-              Navigator.pop(context); // Close dialog when a selection is made
-            }
-          },
-        ),
+    // Show dialog to select the name type
+    String selectedName = 'General'; // Default value
+    await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select PDF Type'),
+          content: DropdownButton<String>(
+            value: selectedName,
+            items: ['General', 'Weekly', 'Monthly'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (newValue) {
+              if (newValue != null) {
+                selectedName = newValue;
+                Navigator.pop(context); // Close dialog when a selection is made
+              }
+            },
+          ),
+        );
+      },
+    );
+
+    // Generate the PDF with the selected name
+    var paragraphPdf;
+    if (selectedName == 'General') {
+      paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+    } else if (selectedName == 'Weekly') {
+      paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+    } else if (selectedName == 'Monthly') {
+      paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+    }
+    final pdfFileName = selectedName + 'Report.pdf';
+    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+        paragraphPdf, pdfFileName);
+
+    if (downloadUrl != null) {
+      SaveAndOpenDocument.copyToClipboard(downloadUrl);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF link copied to clipboard!')),
       );
-    },
-  );
-
-  // Generate the PDF with the selected name
-  var paragraphPdf;
-  if (selectedName == 'General') {
-    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-  } else if (selectedName == 'Weekly') {
-    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-  } else if (selectedName == 'Monthly') {
-    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+      print('Download URL: $downloadUrl');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload PDF')),
+      );
+    }
   }
-  final pdfFileName = selectedName + 'Report.pdf';
-  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
-      paragraphPdf, pdfFileName);
 
-  if (downloadUrl != null) {
-    SaveAndOpenDocument.copyToClipboard(downloadUrl);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF link copied to clipboard!')),
-    );
-    print('Download URL: $downloadUrl');
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to upload PDF')),
-    );
-  }
-}
-
-  void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
+  void _promptEditTransaction(Map<String, dynamic> transaction) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -407,7 +437,7 @@ void _removeTransaction(Map<String, dynamic> transaction) {
                   child: Text('Update'),
                   onPressed: () {
                     Navigator.of(context).pop();
-                    _updateTransaction(transaction['transactionId'], updatedAmount, updatedType, updatedCategory, updatedDate, index);
+                    _updateTransaction(transaction['transactionId'], updatedAmount, updatedType, updatedCategory, updatedDate);
                   },
                 ),
               ],
@@ -418,43 +448,32 @@ void _removeTransaction(Map<String, dynamic> transaction) {
     );
   }
 
-  void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
-    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
-      'amount': amount,
-      'type': type,
-      'category': category,
-      'date': date
-    }).then((value) {
-      setState(() {
-        _transactionsList[index] = {
-          'transactionId': transactionId,
-          'amount': amount,
-          'type': type,
-          'category': category,
-          'date': date
-        };
-        _totalBalance = 0.0;
-        _transactionsList.forEach((transaction) {
-          if (transaction['type'] == 'Income') {
-            _totalBalance += transaction['amount'];
-          } else {
-            _totalBalance -= transaction['amount'];
-          }
-        });
-      });
-    }).catchError((error) {
-      print("Failed to update transaction: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update transaction')));
-    });
-  }
+  void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date) {
+  _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
+    'amount': amount,
+    'type': type,
+    'category': category,
+    'date': date
+  }).then((_) {
+    _fetchTransactions();  // Refresh all transactions after updating
+  }).catchError((error) {
+    print("Failed to update transaction: $error");
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update transaction')));
+  });
+}
+
+
   Widget _buildCategorySection(String category) {
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Column(
         children: [
           ListTile(
-            title: Text(category, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            trailing: Icon(expandedSections[category]! ? Icons.expand_less : Icons.expand_more),
+            title: Text(category,
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            trailing: Icon(expandedSections[category]!
+                ? Icons.expand_less
+                : Icons.expand_more),
             onTap: () {
               setState(() {
                 expandedSections[category] = !expandedSections[category]!;
@@ -463,7 +482,9 @@ void _removeTransaction(Map<String, dynamic> transaction) {
           ),
           if (expandedSections[category]!)
             Column(
-              children: transactionsByCategory[category]!.map((transaction) => _buildTransactionItem(transaction)).toList(),
+              children: transactionsByCategory[category]!
+                  .map((transaction) => _buildTransactionItem(transaction))
+                  .toList(),
             ),
         ],
       ),
@@ -474,7 +495,6 @@ void _removeTransaction(Map<String, dynamic> transaction) {
     return Dismissible(
       key: UniqueKey(),
       direction: DismissDirection.endToStart,
-      
       background: Container(
         alignment: Alignment.centerRight,
         padding: EdgeInsets.symmetric(horizontal: 20),
@@ -487,89 +507,123 @@ void _removeTransaction(Map<String, dynamic> transaction) {
         });
       },
       child: ListTile(
-        title: Text('${transaction['type']} - ${transaction['date']}'),
-        trailing: Text(
-          '\$${transaction['amount'].toStringAsFixed(2)}',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: transaction['type'] == 'Income' ? Colors.green : Colors.red,
-          ),
+        title: Text("Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}"),
+        
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '\$${transaction['amount'].toStringAsFixed(2)}',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: transaction['type'] == 'Income' ? Colors.green : Colors.red,
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.edit, color: Colors.black,size: 30,),
+              onPressed: () {
+                _promptEditTransaction(transaction);
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 
-
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
+        title: Text(
+          'Transactions',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
         backgroundColor: Colors.black,
+        actions: [
+    IconButton(
+      icon: Icon(Icons.swap_horiz, color: Colors.white), // Swap icon
+      onPressed: () {
+        Navigator.pop(context);
+      },
+    ),
+  ],
       ),
       body: StreamBuilder<LinearGradient>(
-        stream:  docID.isNotEmpty
-              ? GradientService(userId: docID).getGradientStream() : Stream.value(LinearGradient(
+          stream: docID.isNotEmpty
+              ? GradientService(userId: docID).getGradientStream()
+              : Stream.value(LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                   colors: [Colors.white],
                 )),
-        builder: (context, snapshot) {
-          final gradient = snapshot.data ??
-              LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [
-                  Colors.white,
-                ],
-              );
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-            ),
-            child: Column(
-              children: [
-                SizedBox(height: 20,),
-                Container(
-                  padding: EdgeInsets.all(15),
-                  child: Text(
-                    'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
-                  ), 
-                ),
-                SizedBox(height: 15),
-                ...transactionsByCategory.keys.map((category) => _buildCategorySection(category)).toList(),
-              ],
-              
-            ),
-          );
-        }
+          builder: (context, snapshot) {
+            final gradient = snapshot.data ??
+                LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [
+                    Colors.white,
+                  ],
+                );
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+              ),
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: 20,
+                  ),
+                  Container(
+                    padding: EdgeInsets.all(15),
+                    child: Text(
+                      'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              _totalBalance >= 0 ? Colors.green : Colors.red),
+                    ),
+                  ),
+                  SizedBox(height: 15),
+                  Expanded(
+      child: SingleChildScrollView(
+        child: Column(
+          children: transactionsByCategory.keys
+              .map((category) => _buildCategorySection(category))
+              .toList(),
+        ),
       ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-  floatingActionButton: Container(
-    padding: EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: <Widget>[
-        FloatingActionButton(
-          backgroundColor: Colors.grey[300],
-          onPressed: sharePdfLink,
-          child: Icon(Icons.share, color: Colors.black,),
-        ),
-        FloatingActionButton(
-          backgroundColor: Colors.grey[300],
-          onPressed: _promptAddTransaction,
-          child: Icon(Icons.add, color: Colors.black), 
-        ),
-      ],
     ),
-  ),
-      
+                ],
+              ),
+            );
+          }),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Container(
+        padding: EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            FloatingActionButton(
+              backgroundColor: Colors.grey[300],
+              onPressed: sharePdfLink,
+              child: Icon(
+                Icons.share,
+                color: Colors.black,
+              ),
+            ),
+            FloatingActionButton(
+              backgroundColor: Colors.grey[300],
+              onPressed: _promptAddTransaction,
+              child: Icon(Icons.add, color: Colors.black),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

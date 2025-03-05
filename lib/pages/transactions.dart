@@ -1,6 +1,7 @@
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
+import 'package:fbla_finance/pages/split_transactions.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -532,6 +533,19 @@ void _removeTransaction(String transactionId, int index) {
         title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
         centerTitle: true,
         backgroundColor: Colors.black,
+        actions: [
+    IconButton(
+      icon: Icon(Icons.swap_horiz, color: Colors.white), // Swap icon
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SplitTransactions(),
+          ),
+        );
+      },
+    ),
+  ],
       ),
       body: StreamBuilder<LinearGradient>(
         stream:  docID.isNotEmpty
