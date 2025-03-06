@@ -6,6 +6,7 @@ import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class SplitTransactions extends StatefulWidget {
@@ -465,12 +466,13 @@ class _SplitTransactionsState extends State<SplitTransactions> {
 
   Widget _buildCategorySection(String category) {
     return Card(
+      color: Colors.blue[100],
       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Column(
         children: [
           ListTile(
             title: Text(category,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                style: GoogleFonts.ibmPlexSans(fontSize: 18, fontWeight: FontWeight.bold)),
             trailing: Icon(expandedSections[category]!
                 ? Icons.expand_less
                 : Icons.expand_more),
@@ -507,14 +509,17 @@ class _SplitTransactionsState extends State<SplitTransactions> {
         });
       },
       child: ListTile(
-        title: Text("Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}"),
+        title: Text(
+          "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+          style: GoogleFonts.ibmPlexSans(fontSize: 12, color: Colors.black, fontWeight: FontWeight.w500),
+        ),
         
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               '\$${transaction['amount'].toStringAsFixed(2)}',
-              style: TextStyle(
+              style: GoogleFonts.ibmPlexSans(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: transaction['type'] == 'Income' ? Colors.green : Colors.red,
@@ -609,7 +614,7 @@ class _SplitTransactionsState extends State<SplitTransactions> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             FloatingActionButton(
-              backgroundColor: Colors.grey[300],
+              backgroundColor: Colors.blue[100],
               onPressed: sharePdfLink,
               child: Icon(
                 Icons.share,
@@ -617,7 +622,7 @@ class _SplitTransactionsState extends State<SplitTransactions> {
               ),
             ),
             FloatingActionButton(
-              backgroundColor: Colors.grey[300],
+              backgroundColor: Colors.blue[100],
               onPressed: _promptAddTransaction,
               child: Icon(Icons.add, color: Colors.black),
             ),

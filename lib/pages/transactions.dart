@@ -6,6 +6,7 @@ import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class Transactions extends StatefulWidget {
@@ -479,35 +480,35 @@ void _removeTransaction(String transactionId, int index) {
       child: Icon(Icons.delete, color: Colors.white),
     ),
     child: Card(
-      color: Colors.grey[300],
+      color: Colors.blue[100],
       elevation: 4,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: ListTile(
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              transaction['category'],
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-              style: TextStyle(fontSize: 12, color: Colors.black),
-            ),
-          ],
-        ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'],
+            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+            style: GoogleFonts.ibmPlexSans(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                  .format(transaction['amount']),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
-              ),
+            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(transaction['amount']),
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
             ),
+          ),
             IconButton(
               icon: Icon(Icons.edit, color: Colors.black,size: 30,),
               onPressed: () {
@@ -592,12 +593,12 @@ void _removeTransaction(String transactionId, int index) {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
         FloatingActionButton(
-          backgroundColor: Colors.grey[300],
+          backgroundColor: Colors.blue[100],
           onPressed: sharePdfLink,
           child: Icon(Icons.share, color: Colors.black,),
         ),
         FloatingActionButton(
-          backgroundColor: Colors.grey[300],
+          backgroundColor: Colors.blue[100],
           onPressed: _promptAddTransaction,
           child: Icon(Icons.add, color: Colors.black), 
         ),

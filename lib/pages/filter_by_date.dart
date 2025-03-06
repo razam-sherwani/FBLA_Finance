@@ -1,6 +1,7 @@
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class FilterByDatePage extends StatefulWidget {
@@ -81,35 +82,39 @@ class _FilterByDatePageState extends State<FilterByDatePage> {
       itemBuilder: (context, index) {
         final transaction = _filteredTransactions[index];
         return Card(
-          elevation: 4,
-          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: ListTile(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction['category'],
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-                  style: TextStyle(fontSize: 14, color: Colors.black),
-                ),
-              ],
-            ),
-            trailing: Text(
-              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                  .format(transaction['amount']),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: transaction['type'] == 'Expense'
-                    ? Colors.red
-                    : Colors.green,
-              ),
+    color: Colors.blue[100],
+    elevation: 4,
+    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+    child: ListTile(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'],
+            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+            style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(transaction['amount']),
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
             ),
           ),
-        );
+        ],
+      ),
+    ),
+  );
       },
     );
   }
@@ -151,14 +156,19 @@ class _FilterByDatePageState extends State<FilterByDatePage> {
                 ],
               );
           return Container(
-            decoration: BoxDecoration(gradient: gradient),
+            decoration: BoxDecoration(color: Colors.white),
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: ElevatedButton(
                     onPressed: () => _selectDateRange(context),
-                    child: Text('Select Date Range'),
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateProperty.all(Colors.blue[100]),
+                      padding: WidgetStateProperty.all(EdgeInsets.symmetric(vertical: 14, horizontal: 28)),
+                      shape: WidgetStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(20))),
+                    ),
+                    child: Text('Select Date Range', style: GoogleFonts.ibmPlexSans(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black),),
                   ),
                 ),
                 Expanded(
