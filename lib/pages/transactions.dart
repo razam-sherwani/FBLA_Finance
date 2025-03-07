@@ -1,3 +1,5 @@
+// ignore_for_file: invalid_return_type_for_catch_error, avoid_print
+
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
@@ -6,6 +8,76 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'dart:math';
+
+class BudgetProgressRing extends StatefulWidget {
+  final double currentBudget;
+  final double maxBudget;
+
+  const BudgetProgressRing({
+    Key? key,
+    required this.currentBudget,
+    required this.maxBudget,
+  }) : super(key: key);
+
+  @override
+  State<BudgetProgressRing> createState() => _BudgetProgressRingState();
+}
+
+class _BudgetProgressRingState extends State<BudgetProgressRing> {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(150, 150), // Adjusted size
+      painter: RingPainter(
+        currentBudget: widget.currentBudget,
+        maxBudget: widget.maxBudget,
+      ),
+    );
+  }
+}
+
+class RingPainter extends CustomPainter {
+  final double currentBudget;
+  final double maxBudget;
+
+  RingPainter({required this.currentBudget, required this.maxBudget});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width / 2, size.height / 2) - 10;
+    final ringWidth = 20.0;
+
+    // Background ring (grey)
+    final backgroundPaint = Paint()
+      ..color = Colors.grey
+      ..strokeWidth = ringWidth
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    // Progress ring (colored)
+    final progressPaint = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = ringWidth
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final progressAngle = (currentBudget / maxBudget) * 2 * pi;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      progressAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+}
 
 class Transactions extends StatefulWidget {
 
@@ -66,9 +138,9 @@ class _TransactionState extends State<Transactions> {
   void _fetchTransactions() {
     _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
       setState(() {
-        _transactionsList.clear();
+        _transactionsList.clear(); //_transactionsList is a List of Maps that store Clearing it is important to remove leftovers.
         _totalBalance = 0.0;
-        querySnapshot.docs.forEach((doc) {
+        querySnapshot.docs.forEach((doc) { //fetches transactions from firebase.
           var transaction = {
             'transactionId': doc.id,
             'amount': doc['amount'],
@@ -77,7 +149,7 @@ class _TransactionState extends State<Transactions> {
             'date': (doc['date'] as Timestamp).toDate(),
           };
           _transactionsList.add(transaction);
-          if (transaction['type'] == 'Income') {
+          if (transaction['type'] == 'Income') { //Based on the type of transaction, balance is added or deducted from.
             _totalBalance += transaction['amount'];
           } else {
             _totalBalance -= transaction['amount'];
@@ -104,40 +176,46 @@ class _TransactionState extends State<Transactions> {
   }
 
   void _addTransaction(double amount, String? type, String? category, DateTime date) {
+    // Ensure the amount is a valid number before proceeding
     if (!amount.isNaN) {
-      _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('Transactions')
-          .add({
-        'amount': amount,
-        'type': type,
-        'category': category,
-        'date': date
-      }).then((value) {
-        setState(() {
-          _transactionsList.add({
-            'transactionId': value.id,
-            'amount': amount,
-            'type': type,
-            'category': category,
-            'date': date
-          });
-          if (type == 'Income') {
-            _totalBalance += amount;
-          } else {
-            _totalBalance -= amount;
-          }
-        });
-      });
+        _firestore
+            .collection('users')  // Access the 'users' collection in Firestore
+            .doc(docID)  // Reference the document with the user's unique ID
+            .collection('Transactions')  // Access the 'Transactions' sub-collection
+            .add({
+                'amount': amount,  // Store transaction amount
+                'type': type,  // Store transaction type (Income or Expense)
+                'category': category,  // Store transaction category (e.g., Food, Salary)
+                'date': date  // Store transaction date
+            }).then((value) {  // Once the transaction is successfully added
+                setState(() {
+                    // Add the new transaction to the local transactions list
+                    _transactionsList.add({
+                        'transactionId': value.id,  // Store Firestore transaction ID
+                        'amount': amount,
+                        'type': type,
+                        'category': category,
+                        'date': date
+                    });
+
+                    // Update the total balance based on transaction type
+                    if (type == 'Income') {
+                        _totalBalance += amount;  // Increase balance for income
+                    } else {
+                        _totalBalance -= amount;  // Decrease balance for expense
+                    }
+                });
+            });
     }
   }
 
+  // Remove a transaction from Firestore
   void _removeTransaction(String transactionId, int index) {
     var transaction = _transactionsList[index];
     _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).delete().then((value) {
       setState(() {
         _transactionsList.removeAt(index);
+        // Update balance
         if (transaction['type'] == 'Income') {
           _totalBalance -= transaction['amount'];
         } else {
@@ -404,6 +482,7 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
+  // Update a transaction in Firestore
   void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
     _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
       'amount': amount,
@@ -419,6 +498,7 @@ class _TransactionState extends State<Transactions> {
           'category': category,
           'date': date
         };
+        // Recalculate total balance
         _totalBalance = 0.0;
         _transactionsList.forEach((transaction) {
           if (transaction['type'] == 'Income') {
@@ -554,9 +634,24 @@ class _TransactionState extends State<Transactions> {
                   ),
                   
                 ),
+
+                //MY UPDATES STUFF.
+                Container(
+                  width: 150, // Adjust size as needed
+                  height: 150,
+                  margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
+                  child: Center(
+                    child: BudgetProgressRing(
+                      currentBudget: 600,
+                      maxBudget: 1000, // Set your desired max budget
+                    ),
+                  ),
+                ),
+
+                //MY updates end
                 Expanded(child: _buildTransactionList()),
+                SizedBox(height: 75,),
               ],
-              
             ),
           );
         }

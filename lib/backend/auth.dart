@@ -9,7 +9,8 @@ class Auth{
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
-  Future<void> signInWithEmailAndPassword({
+  //Signs in the user using an email and password
+  Future<void> signInWithEmailAndPassword({//Returns a Future as it must await the firebase request
     required String email,
     required String password,
   }) async{
@@ -30,19 +31,21 @@ class Auth{
   Future<void> sendPasswordResetEmail({required String email}) async {
     await _firebaseAuth.sendPasswordResetEmail(email: email);
   }
+
+  //Signs in through using an Google access token
   Future<void> signInWithGoogle() async {
     GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-    GoogleSignInAuthentication? googleAuth = await googleUser?.authentication;
+    GoogleSignInAuthentication? googleAuth = await googleUser?.authentication; //Grabs the users authentication data
 
     AuthCredential credential = GoogleAuthProvider.credential(
       accessToken: googleAuth?.accessToken,
       idToken: googleAuth?.idToken,
     );
-    UserCredential userCredential  = await _firebaseAuth.signInWithCredential(credential);
-    FirebaseFirestore.instance.collection('users').add({
-        'first_name': userCredential.user?.displayName?.split(' ').first, // Changed to snake_case for consistency
-        'last_name': userCredential.user?.displayName?.split(' ').last,   // Changed to snake_case for consistency
+    UserCredential userCredential  = await _firebaseAuth.signInWithCredential(credential); //Attempts to sign the user in, ensuring the same gmail isn't used
+    FirebaseFirestore.instance.collection('users').add({ //Adds the user if the user does not exist
+        'first_name': userCredential.user?.displayName?.split(' ').first, 
+        'last_name': userCredential.user?.displayName?.split(' ').last,   
         'email': userCredential.user?.email,
       });
 

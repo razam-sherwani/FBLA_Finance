@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 
 class FilterByAmountPage extends StatefulWidget {
   final String userId;
-
+  // Constructor to receive the userId
   FilterByAmountPage({Key? key, required this.userId}) : super(key: key);
 
   @override
@@ -21,7 +21,7 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
   @override
   void initState() {
     super.initState();
-    _fetchTransactions();
+    _fetchTransactions(); // Fetch transactions when the page initializes
   }
 
   void _fetchTransactions() async {
@@ -42,13 +42,14 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
             'date': (doc['date'] as Timestamp).toDate(),
           };
         }).toList();
-        _filteredTransactions = [..._transactions];
+        _filteredTransactions = [..._transactions]; // Initially, show all transactions
       });
     } catch (e) {
       print('Error fetching transactions: $e');
     }
   }
 
+  // Function to filter transactions based on user input
   void _filterTransactions() {
     final double min = double.tryParse(_minController.text) ?? 0;
     final double max = double.tryParse(_maxController.text) ?? double.infinity;

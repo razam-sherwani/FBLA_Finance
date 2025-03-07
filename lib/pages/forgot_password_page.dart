@@ -50,20 +50,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  stops: [
-                    0.1,
-                    0.2,
-                    0.3
-                  ],
-                  colors: [
-                Color(0xff56018D),
-                
-                Color(0xff8B139C),
-                Colors.pink,
-              ])),
+                  color: Color.fromARGB(255, 120, 120, 120)),
               child: Padding(
                 padding: EdgeInsets.only(top: 60.0, left: 22),
                 child: Text(
@@ -79,10 +66,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               padding: const EdgeInsets.only(top: 200.0),
               child: Container(
                 decoration: BoxDecoration(
+                  border: Border.all(color: const Color.fromARGB(255, 190, 190, 190), width: 4),
                   borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(40),
                       topRight: Radius.circular(40)),
-                  color: Colors.white,
+                  color: Colors.white  ,
                 ),
                 height: double.infinity,
                 width: double.infinity,
@@ -117,20 +105,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                           width: 300,
                           decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(30),
-                              gradient: LinearGradient(
-                                          begin: Alignment.topRight,
-                                          end: Alignment.bottomLeft,
-                                          stops: [
-                                            0.3,
-                                            0.6,
-                                            0.9
-                                          ],
-                                          colors: [
-                                        Color(0xff56018D),
-                                        
-                                        Color(0xff8B139C),
-                                        Colors.pink,
-                                      ])),
+                              color: Colors.blue.shade400),
                           child: Center(
                             child: Text('SEND EMAIL',
                                 style: TextStyle(

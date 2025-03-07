@@ -1,9 +1,10 @@
-import 'dart:convert';
-import 'package:chat_bubbles/bubbles/bubble_normal.dart';
-import 'package:fbla_finance/pages/message.dart';
-import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'dart:convert'; // Used for encoding and decoding JSON data
+import 'package:chat_bubbles/bubbles/bubble_normal.dart'; // For chat bubble UI
+import 'package:fbla_finance/pages/message.dart'; // Importing message model
+import 'package:flutter/material.dart'; // Core Flutter package for UI development
+import 'package:http/http.dart' as http; // HTTP package for making API requests
 
+// ChatScreen widget representing the chat interface
 class ChatScreen extends StatefulWidget {
 const ChatScreen({super.key});
 
@@ -18,17 +19,19 @@ List<Message> msgs = [];
 bool isTyping = false;
 
 void sendMsg() async {
-	String text = controller.text;
+	String text = controller.text; // Get user input
 	String apiKey = "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";
-	controller.clear();
+	controller.clear(); // Clear the input field
 	try {
 	if (text.isNotEmpty) {
+    // Add user message to the chat list 
 		setState(() {
 		msgs.insert(0, Message(true, text));
 		isTyping = true;
 		});
 		scrollController.animateTo(0.0,
 			duration: const Duration(seconds: 1), curve: Curves.easeOut);
+    // API request to OpenAI for response
 		var response = await http.post(
 			Uri.parse("https://api.openai.com/v1/chat/completions"),
 			headers: {
@@ -36,23 +39,24 @@ void sendMsg() async {
 			"Content-Type": "application/json"
 			},
 			body: jsonEncode({
-			"model": "gpt-3.5-turbo",
+			"model": "gpt-4o",
 			"messages": [
 				{"role": "system", "content": "You are Fineas, a financial assistant. Provide financial advice, investment tips, and budgeting help. Make your responses short and concise being as helpful as possible in around 50 to 100 words."},
 				{"role": "user", "content": text}
 			]
 			}));
+    // If request is successful, add AI's response to chat
 		if (response.statusCode == 200) {
 		var json = jsonDecode(response.body);
 		setState(() {
-			isTyping = false;
+			isTyping = false; // Remove typing indicator
 			msgs.insert(
 				0,
 				Message(
 					false,
 					json["choices"][0]["message"]["content"]
 						.toString()
-						.trimLeft()));
+						.trimLeft())); // Add AI response
 		});
 		scrollController.animateTo(0.0,
 			duration: const Duration(seconds: 1), curve: Curves.easeOut);

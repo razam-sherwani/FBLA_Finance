@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  color: Colors.grey
+                  color: Color.fromARGB(255, 120, 120, 120)
               ),
               child: Padding(
                 padding: EdgeInsets.only(top: 60.0, left: 22),
@@ -66,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   'Hello\nSign in!',
                   style: TextStyle(
                       fontSize: 30,
-                      color: Colors.black,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold),
                 ),
               ),
