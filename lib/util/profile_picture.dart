@@ -33,27 +33,30 @@ class _ProfilePictureState extends State<ProfilePicture> {
   Widget build(BuildContext context) { //Returns the user selected profile
     return GestureDetector(
       onTap: onProfileTapped, //Calls function to change profile picture
-      child: Container(
-        height: 100,
-        width: 100,
-        decoration: BoxDecoration(//Decoration widget
-          color: Colors.grey,
-          shape: BoxShape.circle,
-          image: pickedImage!=null ? DecorationImage( //Display the user selected image, or a default icon
-            fit: BoxFit.cover,
-            image: Image.memory(
-              pickedImage!,
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Container(
+          height: 50,
+          width: 50,
+          decoration: BoxDecoration(//Decoration widget
+            color: Colors.grey,
+            shape: BoxShape.circle,
+            image: pickedImage!=null ? DecorationImage( //Display the user selected image, or a default icon
               fit: BoxFit.cover,
-            ).image,
-          ) : null,
-        ),
-        child: pickedImage==null ? const Center(
-          child:  Icon(
-            Icons.person_rounded,
-            color: Colors.black38,
-            size: 35,
+              image: Image.memory(
+                pickedImage!,
+                fit: BoxFit.cover,
+              ).image,
+            ) : null,
           ),
-        ): null,
+          child: pickedImage==null ? const Center(
+            child:  Icon(
+              Icons.person_rounded,
+              color: Colors.black38,
+              size: 35,
+            ),
+          ): null,
+        ),
       ),
     );
   }

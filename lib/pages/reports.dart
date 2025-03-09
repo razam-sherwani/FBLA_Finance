@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -299,96 +300,105 @@ class _ReportsState extends State<Reports> {
                       child: Column(
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Stack(
+                                  children: [
+                                    ProfilePicture(userId: docID),
+                                  ],
+                                ),
+                                FutureBuilder<String>(
+                                  future: GetUserName(documentId: docID)
+                                      .getUserName(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return const Text('Loading...',
+                                          style:
+                                              TextStyle(color: Colors.white));
+                                    } else if (snapshot.hasError) {
+                                      print(snapshot.error.toString());
+                                      return const Text('Error',
+                                          style:
+                                              TextStyle(color: Colors.white));
+                                    } else if (snapshot.hasData &&
+                                        snapshot.data != null) {
+                                      String userName = snapshot.data!;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 20.0),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              "Hi ",
+                                              style: GoogleFonts.ibmPlexSans(
+                                                color: Colors.black,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              "$userName!",
+                                              style: GoogleFonts.ibmPlexSans(
+                                                color: Colors.black,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    } else {
+                                      return const Text(
+                                          'Username not available',
+                                          style:
+                                              TextStyle(color: Colors.white));
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  formattedDate!,
+                                  style: GoogleFonts.ibmPlexSans(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w500),
+                                )
+                              ],
+                            ),
+                          ],
+                        ),
+                        // Current balance display
+                        Container(
+                          padding: const EdgeInsets.only(left: 4),
+                          alignment: Alignment.center,
+                          child: Column(
                             children: [
-                              // Hi name
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Stack(
-                                    children: [
-                                      ProfilePicture(userId: docID),
-                                    ],
-                                  ),
-                                  FutureBuilder<String>(
-                                    future: GetUserName(documentId: docID)
-                                        .getUserName(),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return Text('Loading...',
-                                            style:
-                                                TextStyle(color: Colors.white));
-                                      } else if (snapshot.hasError) {
-                                        print(snapshot.error);
-                                        return Text('Error',
-                                            style:
-                                                TextStyle(color: Colors.white));
-                                      } else if (snapshot.hasData &&
-                                          snapshot.data != null) {
-                                        String userName = snapshot.data!;
-                                        return Text(
-                                          "Hi $userName!",
-                                          style: TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        );
-                                      } else {
-                                        return Text('Username not available',
-                                            style:
-                                                TextStyle(color: Colors.white));
-                                      }
-                                    },
-                                  ),
-                                ],
+                              SizedBox(height: 40),
+                              Text(
+                                'Balance',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                              // Notifications
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                    child: const Icon(
-                                      Icons.notifications,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 45,
-                                  ),
-                                  Text(
-                                    formattedDate!,
-                                    style: TextStyle(
-                                        color: Colors.black, fontSize: 20),
-                                  )
-                                ],
+                              Text(
+                                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontSize: 50,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
-                          SizedBox(
-                            height: 25,
-                          ),
-                          // Search bar
-                          Container(
-                          padding: const EdgeInsets.only(left: 4),
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Current Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                            textAlign: TextAlign.left,
-                            style: const TextStyle(
-                              fontSize: 25,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
                         ),
                           SizedBox(
-                            height: 25,
+                            height: 60,
                           ),
                         ],
                       ),
@@ -399,7 +409,7 @@ class _ReportsState extends State<Reports> {
                             BorderRadius.vertical(top: Radius.circular(25)),
                         child: Container(
                           padding: EdgeInsets.all(25),
-                          color:  Colors.grey[300], //changes background color
+                          color:  Colors.white, //changes background color
                           child: Center(
                             child: Column(
                               children: [
@@ -442,14 +452,13 @@ class _ReportsState extends State<Reports> {
                                             'Generate General Report',
                                             style: TextStyle(
                                               color: Colors.black,
-                                              fontSize: 16.0,
+                                              fontSize: 18.0, // Increased font size
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           style: TextButton.styleFrom(
                                             padding: EdgeInsets.symmetric(
-                                                horizontal: 16.0,
-                                                vertical: 8.0),
+                                                horizontal: 20.0, vertical: 12.0), // Increased padding
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8.0),
@@ -477,14 +486,13 @@ class _ReportsState extends State<Reports> {
                                             'Generate Weekly Report',
                                             style: TextStyle(
                                               color: Colors.black,
-                                              fontSize: 16.0,
+                                              fontSize: 18.0, // Increased font size
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           style: TextButton.styleFrom(
                                             padding: EdgeInsets.symmetric(
-                                                horizontal: 16.0,
-                                                vertical: 8.0),
+                                                horizontal: 20.0, vertical: 12.0), // Increased padding
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8.0),
@@ -512,14 +520,13 @@ class _ReportsState extends State<Reports> {
                                             'Generate Monthly Report',
                                             style: TextStyle(
                                               color: Colors.black,
-                                              fontSize: 16.0,
+                                              fontSize: 18.0, // Increased font size
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           style: TextButton.styleFrom(
                                             padding: EdgeInsets.symmetric(
-                                                horizontal: 16.0,
-                                                vertical: 8.0),
+                                                horizontal: 20.0, vertical: 12.0), // Increased padding
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8.0),
@@ -541,14 +548,13 @@ class _ReportsState extends State<Reports> {
                                             'Share PDF Link',
                                             style: TextStyle(
                                               color: Colors.black,
-                                              fontSize: 16.0,
+                                              fontSize: 18.0, // Increased font size
                                               fontWeight: FontWeight.bold,
                                             ),
                                           ),
                                           style: TextButton.styleFrom(
                                             padding: EdgeInsets.symmetric(
-                                                horizontal: 16.0,
-                                                vertical: 8.0),
+                                                horizontal: 20.0, vertical: 12.0), // Increased padding
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8.0),

@@ -6,6 +6,7 @@ import 'package:fbla_finance/pages/filter_by_type.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/read_data/get_user_name.dart';
 import 'package:fbla_finance/pages/academics_page.dart';
@@ -13,7 +14,7 @@ import 'package:fbla_finance/pages/awards_page.dart';
 import 'package:fbla_finance/pages/clubs_page.dart';
 import 'package:fbla_finance/pages/ec_page.dart';
 import 'package:fbla_finance/pages/other_page.dart';
-import 'package:fbla_finance/util/ec_tile.dart';
+import 'package:fbla_finance/util/filter_tile.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
@@ -28,6 +29,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final List<Map<String, dynamic>> _transactionsList = [];
   int myIndex = 0;
   final User? user = Auth().currentUser;
   var now = DateTime.now();
@@ -36,15 +38,21 @@ class _HomePageState extends State<HomePage> {
   String docID = "6cHwPquSMMkpue7r6RRN";
   double _totalBalance = 0.0;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  DateTime date = DateTime.now();
+  double amt = 0;
+  String? type1;
+  String? categ;
 
   @override
   void initState() {
     super.initState();
+    _initializeData();
     formattedDate = formatter.format(now);
-    fetchDocID();
-
-    // Fetch the total balance
   }
+  Future<void> _initializeData() async {
+  await fetchDocID();  // Wait for fetchDocID to complete
+  _fetchTransactions();  // Call _fetchTransactions after fetchDocID
+}
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -105,12 +113,86 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  void _fetchTransactions() {
+    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
+      setState(() {
+        _transactionsList.clear();
+        _totalBalance = 0.0;
+        querySnapshot.docs.forEach((doc) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'],
+            'type': doc['type'],
+            'category': doc['category'],
+            'date': (doc['date'] as Timestamp).toDate(),
+          };
+          _transactionsList.add(transaction);
+          if (transaction['type'] == 'Income') {
+            _totalBalance += transaction['amount'];
+          } else {
+            _totalBalance -= transaction['amount'];
+          }
+        });
+      });
+    }).catchError((error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+    });
+  }
+
+  Widget _buildTransactionList() {
+    return ListView.builder(
+      itemCount: _transactionsList.length > 5 ? 5 : _transactionsList.length,
+      itemBuilder: (context, index) {
+        return _buildTransactionItem(_transactionsList[index], index);
+      },
+    );
+  }
+
+  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
+  return Card(
+    color: Colors.blue[100],
+    elevation: 4,
+    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+    child: ListTile(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'],
+            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+            style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(transaction['amount']),
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  
+
   Future<void> signOut() async {
     await Auth().signOut();
   }
 
   Widget _userUID() {
-    return Text(user?.email ?? 'User email');
+    return Text(user?.email ?? 'User email', style: GoogleFonts.ibmPlexSans(),);
   }
 
   Widget _signOutButton() {
@@ -151,7 +233,7 @@ class _HomePageState extends State<HomePage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
+                            Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Stack(
@@ -176,12 +258,27 @@ class _HomePageState extends State<HomePage> {
                                     } else if (snapshot.hasData &&
                                         snapshot.data != null) {
                                       String userName = snapshot.data!;
-                                      return Text(
-                                        "Hi $userName!",
-                                        style: TextStyle(
-                                          color: Colors.black,
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 20.0),
+                                        child: Row(
+                                          children: [
+                                            Text(
+                                              "Hi ",
+                                              style: GoogleFonts.ibmPlexSans(
+                                                color: Colors.black,
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                            Text(
+                                              "$userName!",
+                                              style: GoogleFonts.ibmPlexSans(
+                                                color: Colors.black,
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       );
                                     } else {
@@ -197,42 +294,119 @@ class _HomePageState extends State<HomePage> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                      color: Colors.grey[300],
-                                      borderRadius: BorderRadius.circular(12)),
-                                  padding: const EdgeInsets.all(12),
-                                  child: const Icon(
-                                    Icons.notifications,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(height: 45),
                                 Text(
                                   formattedDate!,
-                                  style: TextStyle(
-                                      color: Colors.black, fontSize: 20),
+                                  style: GoogleFonts.ibmPlexSans(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w500),
                                 )
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 25),
-
                         // Current balance display
                         Container(
                           padding: const EdgeInsets.only(left: 4),
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Current Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                            textAlign: TextAlign.left,
-                            style: const TextStyle(
-                              fontSize: 25,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          alignment: Alignment.center,
+                          child: Column(
+                            children: [
+                              Text(
+                                'Balance',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontSize: 50,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 25),
+                        SizedBox(
+                          height: 25,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 20.0, left: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return FilterByAmountPage(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.price_check,
+                                            FilterName: 'Amount',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return TransactionsByCategory(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.category,
+                                            FilterName: 'Category',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return FilterByTypePage(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.filter_alt,
+                                            FilterName: 'Type',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) {
+                                        return FilterByDatePage(userId: docID);
+                                      },
+                                    ),
+                                  );
+                                },
+                                child: FilterTile(
+                                            icon: Icons.calendar_month,
+                                            FilterName: 'Date',
+                                            color: Colors.blue.shade900,
+                                          ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -243,95 +417,47 @@ class _HomePageState extends State<HomePage> {
                           const BorderRadius.vertical(top: Radius.circular(25)),
                       child: Container(
                         padding: const EdgeInsets.all(25),
-                        color: Colors.grey[300],
+                        color: Colors.white,
                         child: Center(
                           child: Column(
                             children: [
                               // Heading
-                              const Row(
+                              Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Filters',
-                                    style: TextStyle(
+                                    'Recent Transactions',
+                                    style: GoogleFonts.ibmPlexSans(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
                                     ),
                                   ),
-                                  Icon(Icons.more_horiz),
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) {
+                                            return Transactions();
+                                            },
+                                        ),
+                                      );
+                                    },
+                                    child: Text(
+                                      "See More",
+                                      style: GoogleFonts.ibmPlexSans(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                  ),
+                                  
                                 ],
                               ),
+                              Expanded(child: _buildTransactionList(),),
                               const SizedBox(height: 20),
-                              // ListView
-                              Expanded(
-                                child: ListView(
-                                  children: [
-                                    
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByAmountPage(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.price_check,
-                                        EcName: 'Filter by Amount',
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    TransactionsByCategory(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.category,
-                                        EcName: 'Filter by Category',
-                                        color: Colors.orange,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByTypePage(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.filter_alt,
-                                        EcName: 'Filter by Type',
-                                        color: Colors.indigo,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    FilterByDatePage(
-                                                        userId: docID)));
-                                      },
-                                      child: EcTile(
-                                        icon: Icons.calendar_month,
-                                        EcName: 'Filter by Date',
-                                        color: Colors.purple,
-                                      ),
-                                    ),
-                                    
-                                  ],
-                                ),
-                              ),
                             ],
                           ),
                         ),

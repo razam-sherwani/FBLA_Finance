@@ -3,10 +3,12 @@
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
+import 'package:fbla_finance/pages/split_transactions.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
@@ -175,55 +177,63 @@ class _TransactionState extends State<Transactions> {
     }
   }
 
-  void _addTransaction(double amount, String? type, String? category, DateTime date) {
-    // Ensure the amount is a valid number before proceeding
+  // Method to add a transaction to Firestore and update the local transactions list
+void _addTransaction(double amount, String? type, String? category, DateTime date) {
+    // Check if the amount is a valid number
     if (!amount.isNaN) {
-        _firestore
-            .collection('users')  // Access the 'users' collection in Firestore
-            .doc(docID)  // Reference the document with the user's unique ID
-            .collection('Transactions')  // Access the 'Transactions' sub-collection
-            .add({
-                'amount': amount,  // Store transaction amount
-                'type': type,  // Store transaction type (Income or Expense)
-                'category': category,  // Store transaction category (e.g., Food, Salary)
-                'date': date  // Store transaction date
-            }).then((value) {  // Once the transaction is successfully added
-                setState(() {
-                    // Add the new transaction to the local transactions list
-                    _transactionsList.add({
-                        'transactionId': value.id,  // Store Firestore transaction ID
-                        'amount': amount,
-                        'type': type,
-                        'category': category,
-                        'date': date
-                    });
+      // Add transaction data to Firestore under the user's transactions collection
+      _firestore
+          .collection('users')
+          .doc(docID)
+          .collection('Transactions')
+          .add({
+        'amount': amount,
+        'type': type,
+        'category': category,
+        'date': date
+      }).then((value) { // Once the transaction is successfully added to Firestore
+        setState(() {
+          // Add the transaction to the local transactions list with its generated ID
+          _transactionsList.add({
+            'transactionId': value.id,
+            'amount': amount,
+            'type': type,
+            'category': category,
+            'date': date
+          });
 
-                    // Update the total balance based on transaction type
-                    if (type == 'Income') {
-                        _totalBalance += amount;  // Increase balance for income
-                    } else {
-                        _totalBalance -= amount;  // Decrease balance for expense
-                    }
-                });
-            });
+          // Update the total balance based on transaction type
+          if (type == 'Income') {
+            _totalBalance += amount; // Increase balance for income
+          } else {
+            _totalBalance -= amount; // Decrease balance for expenses
+          }
+        });
+      });
     }
-  }
+}
 
-  // Remove a transaction from Firestore
-  void _removeTransaction(String transactionId, int index) {
+// Method to remove a transaction from Firestore and update the local transactions list
+void _removeTransaction(String transactionId, int index) {
+    // Retrieve the transaction data from the local list
     var transaction = _transactionsList[index];
+
+    // Delete the transaction document from Firestore
     _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).delete().then((value) {
       setState(() {
+        // Remove the transaction from the local transactions list
         _transactionsList.removeAt(index);
-        // Update balance
+
+        // Update the total balance based on transaction type
         if (transaction['type'] == 'Income') {
-          _totalBalance -= transaction['amount'];
+          _totalBalance -= transaction['amount']; // Deduct from balance if it was income
         } else {
-          _totalBalance += transaction['amount'];
+          _totalBalance += transaction['amount']; // Add back if it was an expense
         }
       });
-    }).catchError((error) => print("Failed to delete transaction: $error"));
-  }
+    }).catchError((error) => print("Failed to delete transaction: $error")); // Handle any errors
+}
+
 
   
 
@@ -532,7 +542,7 @@ class _TransactionState extends State<Transactions> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Transaction "${transaction['category']}" deleted. Add a NEW Transaction!',
+            'Transaction deleted. Add a NEW Transaction!',
           ),
         ),
       );
@@ -544,34 +554,35 @@ class _TransactionState extends State<Transactions> {
       child: Icon(Icons.delete, color: Colors.white),
     ),
     child: Card(
+      color: Colors.blue[100],
       elevation: 4,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: ListTile(
         title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              transaction['category'],
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-              style: TextStyle(fontSize: 12, color: Colors.black),
-            ),
-          ],
-        ),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'],
+            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+            style: GoogleFonts.ibmPlexSans(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                  .format(transaction['amount']),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
-              ),
+            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(transaction['amount']),
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
             ),
+          ),
             IconButton(
               icon: Icon(Icons.edit, color: Colors.black,size: 30,),
               onPressed: () {
@@ -597,13 +608,26 @@ class _TransactionState extends State<Transactions> {
         title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
         centerTitle: true,
         backgroundColor: Colors.black,
+        actions: [
+    IconButton(
+      icon: Icon(Icons.swap_horiz, color: Colors.white), // Swap icon
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SplitTransactions(),
+          ),
+        );
+      },
+    ),
+  ],
       ),
       body: StreamBuilder<LinearGradient>(
         stream:  docID.isNotEmpty
               ? GradientService(userId: docID).getGradientStream() : Stream.value(LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Colors.cyan, Colors.teal],
+                  colors: [Colors.white],
                 )),
         builder: (context, snapshot) {
           final gradient = snapshot.data ??
@@ -611,28 +635,22 @@ class _TransactionState extends State<Transactions> {
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
                 colors: [
-                  Colors.cyan,
-                  Colors.teal,
+                  Colors.white,
                 ],
               );
           return Container(
             decoration: BoxDecoration(
-              gradient: gradient
+              color: Colors.white,
             ),
             child: Column(
               children: [
-                SizedBox(height: 10,),
+                SizedBox(height: 20,),
                 Container(
                   padding: EdgeInsets.all(15),
                   child: Text(
                     'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(12.0),
-                  ),
-                  
+                  ), 
                 ),
 
                 //MY UPDATES STUFF.
@@ -649,6 +667,7 @@ class _TransactionState extends State<Transactions> {
                 ),
 
                 //MY updates end
+                SizedBox(height: 15),
                 Expanded(child: _buildTransactionList()),
                 SizedBox(height: 75,),
               ],
@@ -663,12 +682,14 @@ class _TransactionState extends State<Transactions> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
         FloatingActionButton(
+          backgroundColor: Colors.blue[100],
           onPressed: sharePdfLink,
-          child: Icon(Icons.share),
+          child: Icon(Icons.share, color: Colors.black,),
         ),
         FloatingActionButton(
+          backgroundColor: Colors.blue[100],
           onPressed: _promptAddTransaction,
-          child: Icon(Icons.add),
+          child: Icon(Icons.add, color: Colors.black), 
         ),
       ],
     ),

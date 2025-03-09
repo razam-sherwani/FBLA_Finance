@@ -1,6 +1,9 @@
+import 'dart:math';
+
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class FilterByAmountPage extends StatefulWidget {
@@ -13,8 +16,9 @@ class FilterByAmountPage extends StatefulWidget {
 }
 
 class _FilterByAmountPageState extends State<FilterByAmountPage> {
-  final TextEditingController _minController = TextEditingController();
-  final TextEditingController _maxController = TextEditingController();
+  double _currentMin = 0;
+  double _currentMax = 0;
+  double _sliderMax = 0;
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _filteredTransactions = [];
 
@@ -42,7 +46,10 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
             'date': (doc['date'] as Timestamp).toDate(),
           };
         }).toList();
-        _filteredTransactions = [..._transactions]; // Initially, show all transactions
+        _filteredTransactions = [..._transactions];
+        _sliderMax = _transactions.map((transaction) => transaction['amount'] as double)
+                          .reduce((value, element) => value > element ? value : element);
+        _currentMax = _sliderMax;
       });
     } catch (e) {
       print('Error fetching transactions: $e');
@@ -51,13 +58,10 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
 
   // Function to filter transactions based on user input
   void _filterTransactions() {
-    final double min = double.tryParse(_minController.text) ?? 0;
-    final double max = double.tryParse(_maxController.text) ?? double.infinity;
-
     setState(() {
       _filteredTransactions = _transactions.where((transaction) {
         final double amount = transaction['amount'];
-        return amount >= min && amount <= max;
+        return amount >= _currentMin && amount <= _currentMax;
       }).toList();
     });
   }
@@ -68,35 +72,39 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
       itemBuilder: (context, index) {
         final transaction = _filteredTransactions[index];
         return Card(
-          elevation: 4,
-          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: ListTile(
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction['category'],
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-                  style: TextStyle(fontSize: 14, color: Colors.black),
-                ),
-              ],
-            ),
-            trailing: Text(
-              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                  .format(transaction['amount']),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: transaction['type'] == 'Expense'
-                    ? Colors.red
-                    : Colors.green,
-              ),
+    color: Colors.blue[100],
+    elevation: 4,
+    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+    child: ListTile(
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'],
+            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          Text(
+            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+            style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(transaction['amount']),
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
             ),
           ),
-        );
+        ],
+      ),
+    ),
+  );
       },
     );
   }
@@ -112,10 +120,9 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
           centerTitle: true,
           backgroundColor: Colors.black,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back,
-                color: Colors.white), // Set the color to white
+            icon: Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              Navigator.pop(context); // Pop to the previous screen
+              Navigator.pop(context);
             },
           ),
         ),
@@ -125,61 +132,64 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
                 : Stream.value(LinearGradient(
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
-                    colors: [Colors.cyan, Colors.teal],
+                    colors: [Colors.white],
                   )),
             builder: (context, snapshot) {
               final gradient = snapshot.data ??
                   LinearGradient(
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
-                    colors: [
-                      Colors.cyan,
-                      Colors.teal,
-                    ],
+                    colors: [Colors.white],
                   );
               return Container(
-                decoration: BoxDecoration(gradient: gradient),
+                decoration: BoxDecoration(color: Colors.white),
                 child: Column(
                   children: [
                     Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: Container(
-                        padding: EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _minController,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                    labelText: 'Min Amount',
-                                    border: OutlineInputBorder(),
-                                    fillColor: Colors.white,
-                                    filled: true),
-                              ),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Amount Range: \$${_currentMin.toStringAsFixed(2)} - \$${_currentMax.toStringAsFixed(2)}",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[300],
                             ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: TextField(
-                                controller: _maxController,
-                                keyboardType: TextInputType.number,
-                                decoration: InputDecoration(
-                                    labelText: 'Max Amount',
-                                    border: OutlineInputBorder(),
-                                    fillColor: Colors.white,
-                                    filled: true),
-                              ),
+                          ),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: Colors.white,
+                              inactiveTrackColor: Colors.grey,
+                              thumbColor: Colors.blue,
+                              overlayColor: Colors.cyan.withAlpha(32),
+                              valueIndicatorColor: Colors.black,
                             ),
-                          ],
-                        ),
+                            child: RangeSlider(
+                              inactiveColor: Colors.grey,
+                              activeColor: Colors.blue[300],
+                              min: 0,
+                              max: _sliderMax,
+                              divisions: 100,
+                              labels: RangeLabels(
+                                "\$${_currentMin.toStringAsFixed(2)}",
+                                "\$${_currentMax.toStringAsFixed(2)}",
+                              ),
+                              values: RangeValues(_currentMin, _currentMax),
+                              onChanged: (RangeValues values) {
+                                setState(() {
+                                  _currentMin = values.start;
+                                  _currentMax = values.end;
+                                });
+                              },
+                              onChangeEnd: (RangeValues values) {
+                                _filterTransactions();
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    ElevatedButton(
-                        onPressed: _filterTransactions, child: Text('Filter')),
                     Expanded(
                       child: _filteredTransactions.isEmpty
                           ? Center(child: Text('No transactions found'))
