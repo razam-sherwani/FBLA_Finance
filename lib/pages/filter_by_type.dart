@@ -61,13 +61,19 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
     });
   }
 
+  void _fetchColors() {
+    setState(() {
+      ;
+    });
+  }
+
   Widget _buildTransactionList() {
     return ListView.builder(
       itemCount: _filteredTransactions.length,
       itemBuilder: (context, index) {
         final transaction = _filteredTransactions[index];
         return Card(
-    color: Colors.blue[100],
+    color: Colors.white,
     elevation: 4,
     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     child: ListTile(
@@ -141,14 +147,20 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
                 ],
               );
           return Container(
-            decoration: BoxDecoration(color: Colors.white),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [gradient.colors[0], gradient.colors[0]],
+              ),
+            ),
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Container(
                     decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: gradient.colors[0],
                         borderRadius: BorderRadius.circular(12.0)),
                     child: DropdownButton<String>(
                       borderRadius: BorderRadius.circular(20),
