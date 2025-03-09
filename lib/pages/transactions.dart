@@ -533,6 +533,7 @@ void _removeTransaction(String transactionId, int index) {
     );
   }
 
+  //here
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
   return Dismissible(
     key: Key(transaction['transactionId']),
