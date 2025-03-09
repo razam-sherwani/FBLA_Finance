@@ -12,75 +12,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
-class BudgetProgressRing extends StatefulWidget {
-  final double currentBudget;
-  final double maxBudget;
-
-  const BudgetProgressRing({
-    Key? key,
-    required this.currentBudget,
-    required this.maxBudget,
-  }) : super(key: key);
-
-  @override
-  State<BudgetProgressRing> createState() => _BudgetProgressRingState();
-}
-
-class _BudgetProgressRingState extends State<BudgetProgressRing> {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(150, 150), // Adjusted size
-      painter: RingPainter(
-        currentBudget: widget.currentBudget,
-        maxBudget: widget.maxBudget,
-      ),
-    );
-  }
-}
-
-class RingPainter extends CustomPainter {
-  final double currentBudget;
-  final double maxBudget;
-
-  RingPainter({required this.currentBudget, required this.maxBudget});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width / 2, size.height / 2) - 10;
-    final ringWidth = 20.0;
-
-    // Background ring (grey)
-    final backgroundPaint = Paint()
-      ..color = Colors.grey
-      ..strokeWidth = ringWidth
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, radius, backgroundPaint);
-
-    // Progress ring (colored)
-    final progressPaint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = ringWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final progressAngle = (currentBudget / maxBudget) * 2 * pi;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,
-      progressAngle,
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
-  }
-}
-
 class Transactions extends StatefulWidget {
 
   Transactions({Key? key}) : super(key: key);
@@ -653,21 +584,6 @@ void _removeTransaction(String transactionId, int index) {
                     style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
                   ), 
                 ),
-
-                //MY UPDATES STUFF.
-                Container(
-                  width: 150, // Adjust size as needed
-                  height: 150,
-                  margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
-                  child: Center(
-                    child: BudgetProgressRing(
-                      currentBudget: 600,
-                      maxBudget: 1000, // Set your desired max budget
-                    ),
-                  ),
-                ),
-
-                //MY updates end
                 SizedBox(height: 15),
                 Expanded(child: _buildTransactionList()),
                 SizedBox(height: 75,),

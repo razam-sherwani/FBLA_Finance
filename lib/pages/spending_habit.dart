@@ -77,22 +77,6 @@ class RingPainter extends CustomPainter {
       false,
       progressPaint,
     );
-    //adding marchsum
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: '\$${marchSum.toStringAsFixed(2)}', // Format marchSum
-        style: TextStyle(
-          color: Colors.black, // Adjust text color
-          fontSize: 20, // Adjust font size
-          fontWeight: FontWeight.bold,
-        ),
-      )
-    );
-    textPainter.layout();
-    textPainter.paint(
-      canvas,
-      center - Offset(textPainter.width / 2, textPainter.height / 2),
-    );
   }
 
   @override
@@ -432,27 +416,8 @@ void initState() {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(
-              height: 35,
-            ),
-
-        //MY UPDATES STUFF.
-        Container(
-                  width: 150, // Adjust size as needed
-                  height: 150,
-                  margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
-                  child: Center(
-                    child: BudgetProgressRing(
-                      currentBudget: 600,
-                      maxBudget: 1000, // Set your desired max budget
-                    ),
-                  ),
-                ),
-
-         
-                //MY updates end    
         Padding(
-          padding: const EdgeInsets.only(top: 25),
+          padding: const EdgeInsets.only(top: 35),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -550,7 +515,7 @@ void initState() {
           
                         bottomTitles: AxisTitles(
                           axisNameWidget: Container(
-                            margin: const EdgeInsets.only(bottom: 20),
+                            margin: const EdgeInsets.only(left: 25, bottom: 20),
                             child: const Text(
                               'Day of month',
                               style: TextStyle(
@@ -582,7 +547,7 @@ void initState() {
             ),
           ),
         ),
-
+        
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text('Current Balance Per Day',
@@ -647,6 +612,17 @@ void initState() {
               ),
             ),
             SizedBox(height: 50),
+            Container(
+                  width: 150, // Adjust size as needed
+                  height: 150,
+                  margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
+                  child: Center(
+                    child: BudgetProgressRing(
+                      currentBudget: 600,
+                      maxBudget: 1000, // Set your desired max budget
+                    ),
+                  ),
+                ),
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text('Expenses By Category',
