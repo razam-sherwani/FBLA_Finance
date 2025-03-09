@@ -149,10 +149,11 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
                       padding: const EdgeInsets.all(8.0),
                       child: Column(
                         children: [
+                          SizedBox(height: 16),
                           Text(
                             "Amount Range: \$${_currentMin.toStringAsFixed(2)} - \$${_currentMax.toStringAsFixed(2)}",
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Colors.blue[300],
                             ),
@@ -171,10 +172,6 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
                               min: 0,
                               max: _sliderMax,
                               divisions: 100,
-                              labels: RangeLabels(
-                                "\$${_currentMin.toStringAsFixed(2)}",
-                                "\$${_currentMax.toStringAsFixed(2)}",
-                              ),
                               values: RangeValues(_currentMin, _currentMax),
                               onChanged: (RangeValues values) {
                                 setState(() {

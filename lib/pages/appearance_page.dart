@@ -11,21 +11,15 @@ class AppearancePage extends StatefulWidget {
 
 class _AppearancePageState extends State<AppearancePage> {
   List<List<Color>> gradients = [
-    [Colors.cyan, Colors.teal],
-    [Colors.black, Colors.orange, Colors.pink],
-    [Color(0xff56018D), Colors.pink],
-    [Color(0xffABF2FF), Color(0xffB8E8FF), Color(0xffBADFFF)],
-    [Color(0xffFFEAB0), Color(0xffFFFDB0), Color(0xffFFF3B1)],
-    [Color(0xff73F08F), Color(0xff86F0C1), Color(0xff85F0D1)],
-    [Color(0xfffaf3dd), Color(0xffc8d5b9), Color(0xff8fc0a9)],
-    [Color(0xff6b9080), Color(0xffa4c3b2), Color(0xffcce3de)],
-    [Color(0xffC999DE), Color(0xffDF9ADB), Color(0xffDE99B1)],
-    [Color(0xffE0B26E), Color(0xffE1C06F), Color(0xffE0CE6E)],
-    [Color(0xff90E082), Color(0xff82E096), Color(0xff82E0B7)],
-    [Color(0xffD7A7E0), Color(0xffE0A1C0)]
+    [Color(0xffC6D8AF), Color(0xffDBD8B3)],
+    [Color(0xffB8D5B8), Color(0xff05A8AA)],
+    [Color(0xff27FB6B), Color(0xff0A2E36)],
+    [Color(0xffF4FDD9), Color(0xffD0E1D4)],
+    [Color(0xffE4C3C8), Color(0xffDF8A7B)],
+    [Color(0xffB8E8FF), Colors.blue.shade900]
   ];
 
-  List<Color> selectedGradient = [Color(0xff56018D), Colors.pink];
+  List<Color> selectedGradient = [Color(0xffB8E8FF), Colors.blue.shade900];
 
   @override
   void initState() {
