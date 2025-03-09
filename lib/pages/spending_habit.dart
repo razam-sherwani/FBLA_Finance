@@ -12,6 +12,94 @@ import 'package:fbla_finance/backend/indicator.dart';
 import 'package:fbla_finance/backend/app_colors.dart';
 import 'package:fbla_finance/backend/app_utils.dart';
 import 'package:path_provider/path_provider.dart';
+import 'dart:math';
+
+
+double marchSum = 0;
+class BudgetProgressRing extends StatefulWidget {
+  final double currentBudget;
+  final double maxBudget;
+
+  const BudgetProgressRing({
+    Key? key,
+    required this.currentBudget,
+    required this.maxBudget,
+  }) : super(key: key);
+
+  @override
+  State<BudgetProgressRing> createState() => _BudgetProgressRingState();
+}
+
+class _BudgetProgressRingState extends State<BudgetProgressRing> {
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(150, 150), // Adjusted size
+      painter: RingPainter(
+        currentBudget: widget.currentBudget,
+        maxBudget: widget.maxBudget,
+      ),
+    );
+  }
+}
+
+class RingPainter extends CustomPainter {
+  final double currentBudget;
+  final double maxBudget;
+
+  RingPainter({required this.currentBudget, required this.maxBudget});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = min(size.width / 2, size.height / 2) - 10;
+    final ringWidth = 20.0;
+
+    // Background ring (grey)
+    final backgroundPaint = Paint()
+      ..color = Colors.grey
+      ..strokeWidth = ringWidth
+      ..style = PaintingStyle.stroke;
+    canvas.drawCircle(center, radius, backgroundPaint);
+
+    // Progress ring (colored)
+    final progressPaint = Paint()
+      ..color = Colors.blue
+      ..strokeWidth = ringWidth
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final progressAngle = (currentBudget / maxBudget) * 2 * pi;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -pi / 2,
+      progressAngle,
+      false,
+      progressPaint,
+    );
+    //adding marchsum
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: '\$${marchSum.toStringAsFixed(2)}', // Format marchSum
+        style: TextStyle(
+          color: Colors.black, // Adjust text color
+          fontSize: 20, // Adjust font size
+          fontWeight: FontWeight.bold,
+        ),
+      )
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      center - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return true;
+  }
+}
 
 class SpendingHabitPage extends StatefulWidget {
 
@@ -47,6 +135,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     (_) => List.generate(31, (_) => 0.0),
   );
 
+  
   final int minDays = 1;
   final int maxDays = 31;
 
@@ -56,6 +145,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
 
   // Add this map to store category-wise totals
   final Map<String, double> _categoryTotals = {};
+  final Map<String, double> _marchTotals = {};
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -102,6 +192,8 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
           final type = doc['type'];
           final category = doc['category'] ?? 'Other'; // Default to 'Other'
 
+          //herehere
+
           _rawData.add({
             'amount': amount,
             'date': date,
@@ -114,6 +206,11 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
             _categoryTotals[category] =
                 (_categoryTotals[category] ?? 0) + amount;
           }
+          //helper for calculating march totals
+          if (type == 'Expense' && date.month - 1 == 2) {
+            _marchTotals[category] =
+                (_marchTotals[category] ?? 0) + amount;
+          }
         }
       });
     } catch (error) {
@@ -124,6 +221,13 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
+  void _findSum() {
+    //hereagain
+    // ignore: unused_local_variable
+    for(var entry in _marchTotals.entries) {
+      marchSum += entry.value;
+    }
+  }
   void _createCleanData() {
     for (var transaction in _rawData) {
       DateTime date = transaction['date'];
@@ -331,7 +435,22 @@ void initState() {
             SizedBox(
               height: 35,
             ),
-            
+
+        //MY UPDATES STUFF.
+        Container(
+                  width: 150, // Adjust size as needed
+                  height: 150,
+                  margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
+                  child: Center(
+                    child: BudgetProgressRing(
+                      currentBudget: 600,
+                      maxBudget: 1000, // Set your desired max budget
+                    ),
+                  ),
+                ),
+
+         
+                //MY updates end    
         Padding(
           padding: const EdgeInsets.only(top: 25),
           child: Row(
