@@ -556,23 +556,13 @@ class _SplitTransactionsState extends State<SplitTransactions> {
     ),
   ],
       ),
-      body: StreamBuilder<LinearGradient>(
-          stream: docID.isNotEmpty
-              ? GradientService(userId: docID).getGradientStream()
-              : Stream.value(LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Colors.white],
-                )),
-          builder: (context, snapshot) {
-            final gradient = snapshot.data ??
-                LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [
-                    Colors.white,
-                  ],
-                );
+      body: StreamBuilder<List<Color>>(
+            stream: docID.isNotEmpty
+                ? GradientService(userId: docID).getGradientStream()
+                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+            builder: (context, snapshot) {
+              final colors = snapshot.data ??
+                  [Color(0xffB8E8FF), Colors.blue.shade900];
             return Container(
               decoration: BoxDecoration(
                 color: Colors.white,

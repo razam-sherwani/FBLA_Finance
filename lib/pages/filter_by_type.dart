@@ -128,39 +128,20 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
           },
         ),
       ),
-      body: StreamBuilder<LinearGradient>(
-        stream: widget.userId.isNotEmpty
-            ? GradientService(userId: widget.userId).getGradientStream()
-            : Stream.value(LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [Colors.cyan, Colors.teal],
-              )),
-        builder: (context, snapshot) {
-          final gradient = snapshot.data ??
-              LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [
-                  Colors.cyan,
-                  Colors.teal,
-                ],
-              );
+      body: StreamBuilder<List<Color>>(
+            stream: widget.userId.isNotEmpty
+                ? GradientService(userId: widget.userId).getGradientStream()
+                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+            builder: (context, snapshot) {
+              final colors = snapshot.data ??
+                  [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [gradient.colors[0], gradient.colors[0]],
-              ),
-            ),
             child: Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Container(
                     decoration: BoxDecoration(
-                        color: gradient.colors[0],
                         borderRadius: BorderRadius.circular(12.0)),
                     child: DropdownButton<String>(
                       borderRadius: BorderRadius.circular(20),

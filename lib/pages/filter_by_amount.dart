@@ -21,6 +21,7 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
   double _sliderMax = 0;
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _filteredTransactions = [];
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
 
   @override
   void initState() {
@@ -72,7 +73,7 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
       itemBuilder: (context, index) {
         final transaction = _filteredTransactions[index];
         return Card(
-    color: Colors.blue[100],
+    color: colors[0],
     elevation: 4,
     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     child: ListTile(
@@ -126,21 +127,12 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
             },
           ),
         ),
-        body: StreamBuilder<LinearGradient>(
+        body: StreamBuilder<List<Color>>(
             stream: widget.userId.isNotEmpty
                 ? GradientService(userId: widget.userId).getGradientStream()
-                : Stream.value(LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [Colors.white],
-                  )),
+                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
             builder: (context, snapshot) {
-              final gradient = snapshot.data ??
-                  LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [Colors.white],
-                  );
+              colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
               return Container(
                 decoration: BoxDecoration(color: Colors.white),
                 child: Column(
@@ -155,7 +147,7 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
                             style: TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
-                              color: Colors.blue[300],
+                              color: colors[1],
                             ),
                           ),
                           SliderTheme(
@@ -168,7 +160,7 @@ class _FilterByAmountPageState extends State<FilterByAmountPage> {
                             ),
                             child: RangeSlider(
                               inactiveColor: Colors.grey,
-                              activeColor: Colors.blue[300],
+                              activeColor: colors[1],
                               min: 0,
                               max: _sliderMax,
                               divisions: 100,

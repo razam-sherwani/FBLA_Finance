@@ -272,25 +272,15 @@ class _ReportsState extends State<Reports> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<LinearGradient>(
-          stream: docID.isNotEmpty
-              ? GradientService(userId: docID).getGradientStream()
-              : Stream.value(LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Colors.cyan, Colors.teal],
-                )),
-          builder: (context, snapshot) {
-            final gradient = snapshot.data ??
-                LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Colors.cyan, Colors.teal],
-                );
+      body: StreamBuilder<List<Color>>(
+            stream: docID.isNotEmpty
+                ? GradientService(userId: docID).getGradientStream()
+                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+            builder: (context, snapshot) {
+              final colors = snapshot.data ??
+                  [Color(0xffB8E8FF), Colors.blue.shade900];
             return Container(
-              decoration: BoxDecoration(
-                gradient: gradient,
-              ),
+              
               child: SafeArea(
                 child: Column(
                   children: [
@@ -435,7 +425,6 @@ class _ReportsState extends State<Reports> {
                                     children: [
                                       Container(
                                         decoration: BoxDecoration(
-                                          gradient: gradient,
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -469,7 +458,6 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
-                                          gradient: gradient,
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -503,7 +491,6 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
-                                          gradient: gradient,
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -537,7 +524,6 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
-                                          gradient: gradient,
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
