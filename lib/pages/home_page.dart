@@ -32,6 +32,7 @@ class _HomePageState extends State<HomePage> {
   final List<Map<String, dynamic>> _transactionsList = [];
   int myIndex = 0;
   final User? user = Auth().currentUser;
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
   var now = DateTime.now();
   var formatter = DateFormat.yMMMMd('en_US');
   String? formattedDate;
@@ -151,7 +152,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
   return Card(
-    color: Colors.blue[100],
+    color: colors[0],
     elevation: 4,
     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     child: ListTile(
@@ -202,26 +203,15 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<LinearGradient>(
-        stream: docID.isNotEmpty
-              ? GradientService(userId: docID).getGradientStream()
-              : Stream.value(LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [Colors.cyan, Colors.teal],
-                )),
-        builder: (context, snapshot) {
-          final gradient = snapshot.data ??
-              LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [
-                  Colors.cyan,
-                  Colors.teal,
-                ],
-              );
+      body: StreamBuilder<List<Color>>(
+            stream: docID.isNotEmpty
+                ? GradientService(userId: docID).getGradientStream()
+                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+            builder: (context, snapshot) {
+              colors = snapshot.data ??
+                  [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
-            decoration: BoxDecoration(gradient: gradient),
+            color: colors[0],
             child: SafeArea(
               child: Column(
                 children: [
@@ -349,7 +339,7 @@ class _HomePageState extends State<HomePage> {
                                 child: FilterTile(
                                             icon: Icons.price_check,
                                             FilterName: 'Amount',
-                                            color: Colors.blue.shade900,
+                                            color: colors[1],
                                           ),
                               ),
                               GestureDetector(
@@ -366,7 +356,7 @@ class _HomePageState extends State<HomePage> {
                                 child: FilterTile(
                                             icon: Icons.category,
                                             FilterName: 'Category',
-                                            color: Colors.blue.shade900,
+                                            color: colors[1],
                                           ),
                               ),
                               GestureDetector(
@@ -383,7 +373,7 @@ class _HomePageState extends State<HomePage> {
                                 child: FilterTile(
                                             icon: Icons.filter_alt,
                                             FilterName: 'Type',
-                                            color: Colors.blue.shade900,
+                                            color: colors[1],
                                           ),
                               ),
                               GestureDetector(
@@ -400,7 +390,7 @@ class _HomePageState extends State<HomePage> {
                                 child: FilterTile(
                                             icon: Icons.calendar_month,
                                             FilterName: 'Date',
-                                            color: Colors.blue.shade900,
+                                            color: colors[1],
                                           ),
                               ),
                             ],

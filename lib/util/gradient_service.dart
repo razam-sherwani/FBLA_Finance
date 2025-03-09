@@ -5,7 +5,7 @@ class GradientService {
   final String userId;
   GradientService({required this.userId});
 
-  Stream<LinearGradient> getGradientStream() {
+  Stream<List<Color>> getGradientStream() {
     return FirebaseFirestore.instance
         .collection('users')
         .doc(userId)
@@ -15,20 +15,9 @@ class GradientService {
       if (data != null && data.containsKey('appearance')) {
         final colors = List<Color>.from((data['appearance'] as List<dynamic>)
             .map((color) => Color(color)));
-        return LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: colors,
-        );
+        return colors;
       } else {
-        return LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            Colors.cyan,
-            Colors.teal,
-          ],
-        );
+        return [Color(0xffB8E8FF), Colors.blue.shade900];
       }
     });
   }
