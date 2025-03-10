@@ -548,6 +548,12 @@ class _SplitTransactionsState extends State<SplitTransactions> {
         ),
         centerTitle: true,
         backgroundColor: Colors.black,
+        leading: IconButton(
+    icon: Icon(Icons.arrow_back, color: Colors.white), // Set the color to white
+    onPressed: () {
+      Navigator.pop(context); // Pop to the previous screen
+    },
+        ),
         actions: [
     IconButton(
       icon: Icon(Icons.swap_horiz, color: Colors.white), // Swap icon
