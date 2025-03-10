@@ -16,6 +16,7 @@ import 'package:fbla_finance/pages/clubs_page.dart';
 import 'package:fbla_finance/pages/ec_page.dart';
 import 'package:fbla_finance/pages/other_page.dart';
 import 'package:fbla_finance/util/filter_tile.dart';
+import 'package:fbla_finance/home_page_with_nav.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
@@ -426,14 +427,8 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   GestureDetector(
                                     onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) {
-                                            return Transactions();
-                                            },
-                                        ),
-                                      );
+                                      final homePageState = context.findAncestorStateOfType<HomePageWithNavState>();
+                                      homePageState?.onItemTapped(1); // 1 is the index for Transactions page
                                     },
                                     child: Text(
                                       "See More",

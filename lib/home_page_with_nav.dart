@@ -23,12 +23,12 @@ import 'package:fbla_finance/pages/spending_habit.dart';
 
 class HomePageWithNav extends StatefulWidget {
   @override
-  _HomePageWithNavState createState() => _HomePageWithNavState();
+  HomePageWithNavState createState() => HomePageWithNavState();
 }
 
 // HomePageWithNav
 
-class _HomePageWithNavState extends State<HomePageWithNav> {
+class HomePageWithNavState extends State<HomePageWithNav> {
   int _selectedIndex = 0;
 
   static List<Widget> _pages = <Widget>[
@@ -39,7 +39,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
     SettingsPage()
   ];
 
-  void _onItemTapped(int index) {
+  void onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -52,7 +52,7 @@ class _HomePageWithNavState extends State<HomePageWithNav> {
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
         onTabChange: (index) {
-          _onItemTapped(index);
+          onItemTapped(index);
         },
       ),
     );
