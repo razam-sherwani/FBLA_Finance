@@ -122,6 +122,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   
   final int minDays = 1;
   final int maxDays = 31;
+  double budget = 0;
 
   int _currentMonthIndex = 0;
   late final List<String> monthsNames;
@@ -129,7 +130,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
 
   // Add this map to store category-wise totals
   final Map<String, double> _categoryTotals = {};
-  final Map<String, double> _marchTotals = {};
+  
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -192,8 +193,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
           }
           //helper for calculating march totals
           if (type == 'Expense' && date.month - 1 == 2) {
-            _marchTotals[category] =
-                (_marchTotals[category] ?? 0) + amount;
+            marchSum += amount;
           }
         }
       });
@@ -205,13 +205,13 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
-  void _findSum() {
-    //hereagain
-    // ignore: unused_local_variable
-    for(var entry in _marchTotals.entries) {
-      marchSum += entry.value;
-    }
-  }
+  // void _findSum() {
+  //   //hereagain
+  //   // ignore: unused_local_variable
+  //   for(var entry in _marchTotals.entries) {
+  //     marchSum += entry.value;
+  //   }
+  // }
   void _createCleanData() {
     for (var transaction in _rawData) {
       DateTime date = transaction['date'];
@@ -278,7 +278,60 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
+  void _promptUpdateBudget() {
+  double tempBudget = 0;
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text('Update Budget'),
+            content: Container(
+              height: 230,
+              width: 250,
+              child: Column(
+                children: [
+                  TextField(
+                    autofocus: true,
+                    keyboardType: TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(labelText: 'Enter the amount'),
+                    onChanged: (String? val) {
+                      tempBudget = double.parse(val!);
+                    },
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        child: Text('Cancel'),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      TextButton(
+                        child: Text('Enter'),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _updateBudget(tempBudget);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
+    
+  void _updateBudget(double num) {
+
+    budget = num;
+
+  }
 
   void _fetchRawDataCurrentBalance() async {
     try {
@@ -612,15 +665,48 @@ void initState() {
               ),
             ),
             SizedBox(height: 50),
+           Row(
+            children: <Widget>[
+              
+              Text(
+                "Budget Tracker",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              FloatingActionButton(
+                backgroundColor: Colors.blue[100],
+                onPressed: _promptUpdateBudget, // Assuming you have a method called _previousMonth
+                child: Icon(Icons.add, color: Colors.black),
+              ), // <-- Comma added here
+            ],
+          ),
+
             Container(
                   width: 150, // Adjust size as needed
                   height: 150,
                   margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
                   child: Center(
-                    child: BudgetProgressRing(
-                      currentBudget: 600,
-                      maxBudget: 1000, // Set your desired max budget
+                    child: 
+                      Stack(alignment: Alignment.center,
+                      children: [
+                        BudgetProgressRing(
+                      currentBudget: marchSum,
+                      maxBudget: budget, // Set your desired max budget
                     ),
+                    
+                    Text(marchSum.toString(),
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      
+                    ))
+
+                      ])
+                    
                   ),
                 ),
             Padding(
