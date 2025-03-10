@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/pages/chat_screen.dart';
 import 'package:fbla_finance/pages/filter_by_amount.dart';
 import 'package:fbla_finance/pages/filter_by_category.dart';
 import 'package:fbla_finance/pages/filter_by_date.dart';
