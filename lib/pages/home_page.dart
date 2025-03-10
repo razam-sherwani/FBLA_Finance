@@ -437,7 +437,7 @@ class _HomePageState extends State<HomePage> {
                                     child: Text(
                                       "See More",
                                       style: GoogleFonts.ibmPlexSans(
-                                        color: Colors.blue,
+                                        color: colors[1],
                                         fontWeight: FontWeight.bold,
                                         fontSize: 16,
                                       ),

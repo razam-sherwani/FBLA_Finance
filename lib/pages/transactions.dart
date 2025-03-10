@@ -23,6 +23,7 @@ class Transactions extends StatefulWidget {
 class _TransactionState extends State<Transactions> {
   final User? user = Auth().currentUser;
   String docID = "";
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
   final List<Map<String, dynamic>> _transactionsList = [];
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   double _totalBalance = 0.0;
@@ -486,7 +487,7 @@ void _removeTransaction(String transactionId, int index) {
       child: Icon(Icons.delete, color: Colors.white),
     ),
     child: Card(
-      color: Colors.blue[100],
+      color: colors[0],
       elevation: 4,
       margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: ListTile(
@@ -559,7 +560,7 @@ void _removeTransaction(String transactionId, int index) {
                 ? GradientService(userId: docID).getGradientStream()
                 : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
             builder: (context, snapshot) {
-              final colors = snapshot.data ??
+              colors = snapshot.data ??
                   [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
             decoration: BoxDecoration(
@@ -590,12 +591,12 @@ void _removeTransaction(String transactionId, int index) {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
         FloatingActionButton(
-          backgroundColor: Colors.blue[100],
+          backgroundColor: colors[0],
           onPressed: sharePdfLink,
           child: Icon(Icons.share, color: Colors.black,),
         ),
         FloatingActionButton(
-          backgroundColor: Colors.blue[100],
+          backgroundColor: colors[0],
           onPressed: _promptAddTransaction,
           child: Icon(Icons.add, color: Colors.black), 
         ),

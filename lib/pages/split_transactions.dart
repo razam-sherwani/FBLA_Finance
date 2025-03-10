@@ -19,6 +19,7 @@ class SplitTransactions extends StatefulWidget {
 class _SplitTransactionsState extends State<SplitTransactions> {
   final User? user = Auth().currentUser;
   String docID = "";
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
   final List<Map<String, dynamic>> _transactionsList = [];
   Map<String, List<Map<String, dynamic>>> transactionsByCategory = {};
   Map<String, bool> expandedSections = {};
@@ -466,7 +467,7 @@ class _SplitTransactionsState extends State<SplitTransactions> {
 
   Widget _buildCategorySection(String category) {
     return Card(
-      color: Colors.blue[100],
+      color: colors[0],
       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Column(
         children: [
@@ -561,7 +562,7 @@ class _SplitTransactionsState extends State<SplitTransactions> {
                 ? GradientService(userId: docID).getGradientStream()
                 : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
             builder: (context, snapshot) {
-              final colors = snapshot.data ??
+              colors = snapshot.data ??
                   [Color(0xffB8E8FF), Colors.blue.shade900];
             return Container(
               decoration: BoxDecoration(
@@ -604,7 +605,7 @@ class _SplitTransactionsState extends State<SplitTransactions> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             FloatingActionButton(
-              backgroundColor: Colors.blue[100],
+              backgroundColor: colors[0],
               onPressed: sharePdfLink,
               child: Icon(
                 Icons.share,
@@ -612,7 +613,7 @@ class _SplitTransactionsState extends State<SplitTransactions> {
               ),
             ),
             FloatingActionButton(
-              backgroundColor: Colors.blue[100],
+              backgroundColor: colors[0],
               onPressed: _promptAddTransaction,
               child: Icon(Icons.add, color: Colors.black),
             ),

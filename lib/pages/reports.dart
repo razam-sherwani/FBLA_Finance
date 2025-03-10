@@ -31,6 +31,7 @@ class _ReportsState extends State<Reports> {
   final User? user = Auth().currentUser;
   String docID = "";
   var now = DateTime.now();
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
   var formatter = DateFormat.yMMMMd('en_US');
   String? formattedDate;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -277,10 +278,10 @@ class _ReportsState extends State<Reports> {
                 ? GradientService(userId: docID).getGradientStream()
                 : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
             builder: (context, snapshot) {
-              final colors = snapshot.data ??
+              colors = snapshot.data ??
                   [Color(0xffB8E8FF), Colors.blue.shade900];
             return Container(
-              
+              color: colors[0],
               child: SafeArea(
                 child: Column(
                   children: [
@@ -425,6 +426,7 @@ class _ReportsState extends State<Reports> {
                                     children: [
                                       Container(
                                         decoration: BoxDecoration(
+                                          color: colors[1],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -458,6 +460,7 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
+                                          color: colors[1],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -491,6 +494,7 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
+                                          color: colors[1],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -524,6 +528,7 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
+                                          color: colors[1],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
