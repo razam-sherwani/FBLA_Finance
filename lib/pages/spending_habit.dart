@@ -2,6 +2,8 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:fbla_finance/backend/auth.dart';
+import 'package:fbla_finance/pages/chat_screen.dart';
+import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -48,7 +50,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     (_) => List.generate(31, (_) => 0.0),
   );
 
-  
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
   final int minDays = 1;
   final int maxDays = 31;
   double budget = 0;
@@ -383,6 +385,21 @@ void initState() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                return ChatScreen();
+              },
+            ),
+          );
+        },
+        child: const Icon(Icons.chat),
+        backgroundColor: colors[1],
+      ),
       appBar: AppBar(
         title: Text(
           'Transaction Analysis',
@@ -391,7 +408,14 @@ void initState() {
         centerTitle: true,
         backgroundColor: Colors.black,
       ),
-      body: SingleChildScrollView(
+      body: StreamBuilder<List<Color>>(
+            stream: docID.isNotEmpty
+                ? GradientService(userId: docID).getGradientStream()
+                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+            builder: (context, snapshot) {
+              colors = snapshot.data ??
+                  [Color(0xffB8E8FF), Colors.blue.shade900];
+                  return SingleChildScrollView(
         child: Column(
           children: [
         Padding(
@@ -682,7 +706,8 @@ void initState() {
             SizedBox(height: 75)
           ],
         ),
-      ),
+      );
+  }),
     );
   }
 
