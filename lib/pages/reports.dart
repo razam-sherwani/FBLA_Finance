@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/pages/chat_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -273,6 +274,21 @@ class _ReportsState extends State<Reports> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                return ChatScreen();
+              },
+            ),
+          );
+        },
+        child: const Icon(Icons.chat),
+        backgroundColor: colors[1],
+      ),
       body: StreamBuilder<List<Color>>(
             stream: docID.isNotEmpty
                 ? GradientService(userId: docID).getGradientStream()
