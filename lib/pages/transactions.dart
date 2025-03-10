@@ -373,7 +373,7 @@ void _removeTransaction(String transactionId, int index) {
                         value: categ,
                         hint: Text('Select category'),
                         menuMaxHeight: 200,
-                        items: <String>['Work', 'Food', 'Entertainment','Other'].map((String value) {
+                        items: <String>['Work', 'Food', 'Entertainment', 'Other'].map((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
                             child: Text(value),

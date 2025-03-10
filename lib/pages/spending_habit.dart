@@ -14,77 +14,6 @@ import 'package:fbla_finance/backend/app_utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math';
 
-
-double marchSum = 0;
-class BudgetProgressRing extends StatefulWidget {
-  final double currentBudget;
-  final double maxBudget;
-
-  const BudgetProgressRing({
-    Key? key,
-    required this.currentBudget,
-    required this.maxBudget,
-  }) : super(key: key);
-
-  @override
-  State<BudgetProgressRing> createState() => _BudgetProgressRingState();
-}
-
-class _BudgetProgressRingState extends State<BudgetProgressRing> {
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(150, 150), // Adjusted size
-      painter: RingPainter(
-        currentBudget: widget.currentBudget,
-        maxBudget: widget.maxBudget,
-      ),
-    );
-  }
-}
-
-class RingPainter extends CustomPainter {
-  final double currentBudget;
-  final double maxBudget;
-
-  RingPainter({required this.currentBudget, required this.maxBudget});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = min(size.width / 2, size.height / 2) - 10;
-    final ringWidth = 20.0;
-
-    // Background ring (grey)
-    final backgroundPaint = Paint()
-      ..color = Colors.grey
-      ..strokeWidth = ringWidth
-      ..style = PaintingStyle.stroke;
-    canvas.drawCircle(center, radius, backgroundPaint);
-
-    // Progress ring (colored)
-    final progressPaint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = ringWidth
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-
-    final progressAngle = (currentBudget / maxBudget) * 2 * pi;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,
-      progressAngle,
-      false,
-      progressPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return true;
-  }
-}
-
 class SpendingHabitPage extends StatefulWidget {
 
   SpendingHabitPage({Key? key}) : super(key: key);
@@ -190,10 +119,6 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
           if (type == 'Expense' && date.month - 1 == _currentMonthIndex) {
             _categoryTotals[category] =
                 (_categoryTotals[category] ?? 0) + amount;
-          }
-          //helper for calculating march totals
-          if (type == 'Expense' && date.month - 1 == 2) {
-            marchSum += amount;
           }
         }
       });
@@ -683,33 +608,7 @@ void initState() {
               ), // <-- Comma added here
             ],
           ),
-
-            Container(
-                  width: 150, // Adjust size as needed
-                  height: 150,
-                  margin: EdgeInsets.only(top: 20, bottom: 20), // Adjust size as needed
-                  child: Center(
-                    child: 
-                      Stack(alignment: Alignment.center,
-                      children: [
-                        BudgetProgressRing(
-                      currentBudget: marchSum,
-                      maxBudget: budget, // Set your desired max budget
-                    ),
-                    
-                    Text(marchSum.toString(),
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                      
-                    ))
-
-                      ])
-                    
-                  ),
-                ),
-            Padding(
+          Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text('Expenses By Category',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),

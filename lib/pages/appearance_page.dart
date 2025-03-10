@@ -11,11 +11,9 @@ class AppearancePage extends StatefulWidget {
 
 class _AppearancePageState extends State<AppearancePage> {
   List<List<Color>> gradients = [
-    [Color(0xffC6D8AF), Color(0xffDBD8B3)],
-    [Color(0xffB8D5B8), Color(0xff05A8AA)],
-    [Color(0xff27FB6B), Color(0xff0A2E36)],
-    [Color(0xffF4FDD9), Color(0xffD0E1D4)],
-    [Color(0xffE4C3C8), Color(0xffDF8A7B)],
+    [Color.fromARGB(255, 174, 240, 233), Color.fromARGB(255, 127, 196, 135)],
+    [Color(0xffF4FDD9), Color.fromARGB(255, 145, 206, 160)],
+    [Color(0xffE4C3C8), Color.fromARGB(255, 216, 158, 148)],
     [Color(0xffB8E8FF), Colors.blue.shade900]
   ];
 
