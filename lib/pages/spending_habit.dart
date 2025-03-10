@@ -398,7 +398,8 @@ void initState() {
           );
         },
         child: const Icon(Icons.chat),
-        backgroundColor: colors[1],
+        foregroundColor: colors[1],
+        backgroundColor: colors[0],
       ),
       appBar: AppBar(
         title: Text(

@@ -205,21 +205,6 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                return ChatScreen();
-              },
-            ),
-          );
-        },
-        child: const Icon(Icons.chat),
-        backgroundColor: colors[1],
-      ),
       body: StreamBuilder<List<Color>>(
             stream: docID.isNotEmpty
                 ? GradientService(userId: docID).getGradientStream()
@@ -470,6 +455,22 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         },
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                return ChatScreen();
+              },
+            ),
+          );
+        },
+        foregroundColor: colors[1],
+        backgroundColor: colors[0],
+        child: const Icon(Icons.chat),
       ),
     );
   }

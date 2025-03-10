@@ -274,21 +274,6 @@ class _ReportsState extends State<Reports> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                return ChatScreen();
-              },
-            ),
-          );
-        },
-        child: const Icon(Icons.chat),
-        backgroundColor: colors[1],
-      ),
       body: StreamBuilder<List<Color>>(
             stream: docID.isNotEmpty
                 ? GradientService(userId: docID).getGradientStream()
@@ -583,6 +568,22 @@ class _ReportsState extends State<Reports> {
               ),
             );
           }),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) {
+                return ChatScreen();
+              },
+            ),
+          );
+        },
+        child: const Icon(Icons.chat),
+        foregroundColor: colors[1],
+        backgroundColor: colors[0],
+      ),
     );
   }
 }
