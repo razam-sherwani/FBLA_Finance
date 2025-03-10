@@ -590,24 +590,6 @@ void initState() {
               ),
             ),
             SizedBox(height: 50),
-           Row(
-            children: <Widget>[
-              
-              Text(
-                "Budget Tracker",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              FloatingActionButton(
-                backgroundColor: Colors.blue[100],
-                onPressed: _promptUpdateBudget, // Assuming you have a method called _previousMonth
-                child: Icon(Icons.add, color: Colors.black),
-              ), // <-- Comma added here
-            ],
-          ),
           Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: Text('Expenses By Category',
