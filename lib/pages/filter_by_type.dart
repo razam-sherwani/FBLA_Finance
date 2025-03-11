@@ -17,6 +17,7 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
   String? _selectedType;
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _filteredTransactions = [];
+  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
 
   @override
   void initState() {
@@ -73,7 +74,7 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
       itemBuilder: (context, index) {
         final transaction = _filteredTransactions[index];
         return Card(
-    color: Colors.white,
+    color: colors[0],
     elevation: 4,
     margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
     child: ListTile(
@@ -133,7 +134,7 @@ class _FilterByTypePageState extends State<FilterByTypePage> {
                 ? GradientService(userId: widget.userId).getGradientStream()
                 : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
             builder: (context, snapshot) {
-              final colors = snapshot.data ??
+              colors = snapshot.data ??
                   [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
             child: Column(

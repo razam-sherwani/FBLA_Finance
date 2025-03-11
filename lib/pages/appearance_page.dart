@@ -14,7 +14,7 @@ class _AppearancePageState extends State<AppearancePage> {
     [Color.fromARGB(255, 174, 240, 233), Color.fromARGB(255, 127, 196, 135)],
     [Color(0xffF4FDD9), Color.fromARGB(255, 145, 206, 160)],
     [Color(0xffE4C3C8), Color.fromARGB(255, 216, 158, 148)],
-    [Color(0xffB8E8FF), Colors.blue.shade900]
+    [Color(0xffB8E8FF), const Color.fromARGB(255, 44, 85, 146)]
   ];
 
   List<Color> selectedGradient = [Color(0xffB8E8FF), Colors.blue.shade900];
