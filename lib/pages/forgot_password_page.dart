@@ -50,7 +50,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 120, 120, 120)),
+                  color: Color.fromARGB(255, 14, 78, 174)),
               child: Padding(
                 padding: EdgeInsets.only(top: 60.0, left: 22),
                 child: Text(
