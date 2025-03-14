@@ -35,6 +35,8 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   final GlobalKey _expenseGraphKey = GlobalKey();
   final GlobalKey _balanceGraphKey = GlobalKey();
   final GlobalKey _pieChartKey = GlobalKey();
+  late AnimationController _controller;
+  double targetProgress = 0;
 
   final List<Map<String, dynamic>> _rawData = [];
   final List<List<double>> _income = List.generate(
@@ -353,6 +355,7 @@ Future<void> _initializeData() async {
 void initState() {
   super.initState();
   
+  
   monthsNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December',
@@ -380,6 +383,27 @@ void initState() {
   overallMin = minExpense < minIncome ? minExpense : minIncome;
   overallMax = maxExpense > maxIncome ? maxExpense : maxIncome;
 }
+
+void _fetchBudget() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(docID)
+          .get();
+
+      setState(() {        
+        if (querySnapshot.exists) {
+          Map<String, dynamic>? data = querySnapshot.data();
+          targetProgress = data?["budget"];
+        }
+      });
+    } catch (error) {
+      print("Error fetching bidget: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to fetch budget')),
+      );
+    }
+  }
 
 
   @override
@@ -419,6 +443,17 @@ void initState() {
                   return SingleChildScrollView(
         child: Column(
           children: [
+        // SizedBox(
+        //   width: 100,
+        //   height: 100,
+        //   child:
+        //   CircularProgressIndicator(
+        //   backgroundColor: Colors.green,
+        //   valueColor: AlwaysStoppedAnimation(Colors.red),
+        //   strokeWidth: 10,
+        //   value: 0.8
+        // )
+        // ),
         Padding(
           padding: const EdgeInsets.only(top: 35),
           child: Row(

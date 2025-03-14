@@ -71,6 +71,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'first_name': firstName, // Changed to snake_case for consistency
         'last_name': lastName,   // Changed to snake_case for consistency
         'email': email,
+        'budget': 1000,
       });
     } catch (e) {
       showErrorMessage('Failed to add user details: $e');

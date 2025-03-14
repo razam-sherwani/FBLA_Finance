@@ -23,6 +23,7 @@ import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:fbla_finance/util/profile_picture.dart';
 import 'package:fbla_finance/pages/spending_habit.dart';
 
+double public_bal = 0;
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -108,12 +109,14 @@ class _HomePageState extends State<HomePage> {
             _totalBalance -= transaction['amount'];
           }
         });
+        public_bal = _totalBalance;
       });
     }).catchError((error) {
       print("Error fetching transactions: $error");
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to fetch transactions')));
     });
+    
   }
 
   void _fetchTransactions() {
