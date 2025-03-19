@@ -427,7 +427,7 @@ class _ReportsState extends State<Reports> {
                                     children: [
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: colors[1],
+                                          color: colors[0],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -461,7 +461,7 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: colors[1],
+                                          color: colors[0],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -495,7 +495,7 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: colors[1],
+                                          color: colors[0],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
@@ -529,7 +529,7 @@ class _ReportsState extends State<Reports> {
                                       SizedBox(height: 10,),
                                       Container(
                                         decoration: BoxDecoration(
-                                          color: colors[1],
+                                          color: colors[0],
                                           borderRadius:
                                               BorderRadius.circular(8.0),
                                         ),
