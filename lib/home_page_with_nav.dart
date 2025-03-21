@@ -1,3 +1,4 @@
+import 'package:fbla_finance/pages/plaid_page.dart';
 import 'package:fbla_finance/pages/split_transactions.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/custom_nav_bar.dart';
@@ -35,7 +36,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
     HomePage(),
     Transactions(),
     SpendingHabitPage(),
-    Reports(),
+    PlaidPage(),
     SettingsPage()
   ];
 

@@ -31,6 +31,7 @@ exports.createLinkToken = functions.https.onCall(async (data, context) => {
     products: ['auth', 'transactions'],
     country_codes: ['US'],
     language: 'en',
+    android_package_name: 'com.example.fbla_finance',
   };
 
   try {
