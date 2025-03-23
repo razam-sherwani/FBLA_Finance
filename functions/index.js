@@ -1,68 +1,59 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
-
-const {onRequest} = require("firebase-functions/v2/https");
+const { onRequest } = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
+const { initializeApp } = require("firebase-admin/app");
 const functions = require('firebase-functions');
-const { PlaidApi, Configuration, PlaidEnvironments } = require('plaid');
 
-const config = new Configuration({
-  basePath: PlaidEnvironments.sandbox, // or 'development' / 'production'
+const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
+
+// Initialize Firebase Admin SDK
+initializeApp();
+
+// Initialize Plaid client
+const configuration = new Configuration({
+  basePath: PlaidEnvironments.sandbox, // Change to 'development' or 'production' as needed
   baseOptions: {
     headers: {
-      'PLAID-CLIENT-ID': '67d8d31e4ec72d00221c7015',
-      'PLAID-SECRET': '9069aaf27c70989df0368ab48df0b2',
+      'PLAID-CLIENT-ID': "67d8d31e4ec72d00221c7015",
+      'PLAID-SECRET': "9069aaf27c70989df0368ab48df0b2",
     },
   },
 });
 
-const plaidClient = new PlaidApi(config);
+const plaidClient = new PlaidApi(configuration);
 
+// Create Firebase Function
 exports.createLinkToken = functions.https.onCall(async (data, context) => {
   const request = {
-    user: { client_user_id: context.auth.uid },
-    client_name: "Finsafe",
-    products: ['auth', 'transactions'],
+    user: {
+      client_user_id: 'user-id',
+      phone_number: '+1 415 5550123',
+    },
+    client_name: 'Personal Finance App',
+    products: ['transactions'],
+    transactions: {
+      days_requested: 730,
+    },
     country_codes: ['US'],
     language: 'en',
-    android_package_name: 'com.example.fbla_finance',
+    webhook: 'https://sample-web-hook.com',
+    //redirect_uri: 'https://domainname.com/oauth-page.html',
+    account_filters: {
+      depository: {
+        account_subtypes: ['checking', 'savings'],
+      },
+      credit: {
+        account_subtypes: ['credit card'],
+      },
+    },
   };
 
   try {
     const response = await plaidClient.linkTokenCreate(request);
-    return { link_token: response.data.link_token };
+    const linkToken = response.data.link_token;
+    //res.status(200).send({ linkToken });
+    return linkToken;
   } catch (error) {
-    console.error(error);
-    throw new functions.https.HttpsError('internal', error.message);
+    logger.error('Error creating Plaid link token:', error);
+    //res.status(500).send({ error: error.message });
   }
 });
-
-exports.exchangePublicToken = functions.https.onCall(async (data, context) => {
-  const publicToken = data.public_token;
-
-  try {
-    const response = await plaidClient.itemPublicTokenExchange({ public_token: publicToken });
-    return {
-      access_token: response.data.access_token,
-      item_id: response.data.item_id,
-    };
-  } catch (error) {
-    console.error(error);
-    throw new functions.https.HttpsError('internal', error.message);
-  }
-});
-
-
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
-
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
