@@ -23,7 +23,7 @@ class _PlaidPage extends State<PlaidPage> {
 
   Future<String?> getPlaidLinkToken() async {
   HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('createLinkToken');
-  final results = await callable();
+  final results = await callable.call();
   return results.data;
 }
 
