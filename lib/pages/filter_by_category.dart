@@ -18,6 +18,13 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final List<Map<String, dynamic>> _filteredTransactions = [];
   String? _selectedCategory;
+  Set<String> _categories = {'All'}; // Add 'All' as default option
+  Map<String, String> _categoryCaseMap = {}; // Map to store original case of categories
+
+  String _standardizeCategory(String category) {
+    if (category.isEmpty) return 'Uncategorized';
+    return category[0].toUpperCase() + category.substring(1).toLowerCase();
+  }
 
   @override
   void initState() {
@@ -35,20 +42,29 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
       setState(() {
         _transactionsList.clear();
         _filteredTransactions.clear();
+        _categories = {'All'}; // Reset categories with 'All' option
+        _categoryCaseMap.clear(); // Reset the case mapping
+        
         querySnapshot.docs.forEach((doc) {
-          // Add null checks for all fields
           var data = doc.data();
+          String standardizedCategory = _standardizeCategory(data['category'] ?? 'Uncategorized');
           var transaction = {
             'transactionId': doc.id,
-            'amount': data['amount'] ?? 0.0, // Default to 0 if missing
-            'type':
-                data['type'] ?? 'Unknown', // Default to 'Unknown' if missing
-            'category': data['category'] ?? 'Uncategorized', // Default category
+            'amount': data['amount'] ?? 0.0,
+            'type': data['type'] ?? 'Unknown',
+            'category': standardizedCategory,
             'date': (data['date'] != null)
                 ? (data['date'] as Timestamp).toDate()
-                : DateTime.now(), // Default to current date
+                : DateTime.now(),
           };
           _transactionsList.add(transaction);
+          // Add category to the set if it's not empty, preserving original case
+          if (transaction['category'] != null && transaction['category'].toString().isNotEmpty) {
+            String category = transaction['category'];
+            String lowerCategory = category.toLowerCase();
+            _categoryCaseMap[lowerCategory] = category; // Store original case
+            _categories.add(category); // Add with original case for display
+          }
         });
         // Initially, show all transactions
         _filteredTransactions.addAll(_transactionsList);
@@ -63,14 +79,16 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
 
   void _filterTransactionsByCategory(String? category) {
     setState(() {
-      if (category == null || category.isEmpty) {
+      if (category == null || category.isEmpty || category == 'All') {
         _filteredTransactions.clear();
         _filteredTransactions.addAll(_transactionsList);
       } else {
+        String standardizedCategory = _standardizeCategory(category);
         _filteredTransactions.clear();
         _filteredTransactions.addAll(
-          _transactionsList
-              .where((transaction) => transaction['category'] == category),
+          _transactionsList.where((transaction) => 
+            transaction['category'] == standardizedCategory
+          ),
         );
       }
     });
@@ -133,20 +151,18 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
         centerTitle: true,
         backgroundColor: Colors.black,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back,
-              color: Colors.white), // Set the color to white
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pop(context); // Pop to the previous screen
+            Navigator.pop(context);
           },
         ),
       ),
       body: StreamBuilder<List<Color>>(
-            stream: widget.userId.isNotEmpty
-                ? GradientService(userId: widget.userId).getGradientStream()
-                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
-            builder: (context, snapshot) {
-              final colors = snapshot.data ??
-                  [Color(0xffB8E8FF), Colors.blue.shade900];
+        stream: widget.userId.isNotEmpty
+            ? GradientService(userId: widget.userId).getGradientStream()
+            : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+        builder: (context, snapshot) {
+          final colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
             decoration: BoxDecoration(color: Colors.white),
             child: Column(
@@ -155,8 +171,9 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
                   padding: const EdgeInsets.all(8.0),
                   child: Container(
                     decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20.0)),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20.0)
+                    ),
                     child: DropdownButton<String>(
                       borderRadius: BorderRadius.circular(20),
                       iconEnabledColor: Colors.black,
@@ -173,15 +190,7 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                           )),
-                      items: <String>[
-                        'All',
-                        'Work',
-                        'Stocks',
-                        'Food',
-                        'Entertainment',
-                        'Utilities',
-                        'Other'
-                      ].map((String category) {
+                      items: _categories.map((String category) {
                         return DropdownMenuItem<String>(
                           value: category,
                           child: Text(category),
@@ -189,8 +198,7 @@ class _TransactionsByCategoryState extends State<TransactionsByCategory> {
                       }).toList(),
                       onChanged: (String? newCategory) {
                         setState(() {
-                          _selectedCategory =
-                              newCategory == 'All' ? null : newCategory;
+                          _selectedCategory = newCategory == 'All' ? null : newCategory;
                           _filterTransactionsByCategory(_selectedCategory);
                         });
                       },

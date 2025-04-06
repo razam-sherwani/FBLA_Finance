@@ -1,3 +1,5 @@
+import 'package:fbla_finance/pages/plaid_page.dart';
+import 'package:fbla_finance/pages/receipt_scanner_page.dart';
 import 'package:fbla_finance/pages/split_transactions.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/custom_nav_bar.dart';
@@ -34,8 +36,8 @@ class HomePageWithNavState extends State<HomePageWithNav> {
   static List<Widget> _pages = <Widget>[
     HomePage(),
     Transactions(),
-    SpendingHabitPage(),
-    Reports(),
+    ReceiptScanner(),
+    PlaidPage(),
     SettingsPage()
   ];
 

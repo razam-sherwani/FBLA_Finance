@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'dart:math';
+import 'package:google_ml_kit/google_ml_kit.dart';
 
 class Transactions extends StatefulWidget {
 
@@ -31,17 +31,37 @@ class _TransactionState extends State<Transactions> {
   double amt = 0;
   String? type1;
   String? categ;
+  final SearchController _searchController = SearchController();
+  List<Map<String, dynamic>> _filteredTransactions = [];
 
   @override
   void initState() {
     super.initState();
     _initializeData();
-    
+    _searchController.addListener(_filterTransactions);
   }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterTransactions() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredTransactions = _transactionsList.where((transaction) {
+        return transaction['category'].toString().toLowerCase().contains(query) ||
+               transaction['type'].toString().toLowerCase().contains(query) ||
+               transaction['amount'].toString().contains(query);
+      }).toList();
+    });
+  }
+
   Future<void> _initializeData() async {
-  await fetchDocID();  // Wait for fetchDocID to complete
-  _fetchTransactions();  // Call _fetchTransactions after fetchDocID
-}
+    await fetchDocID();  // Wait for fetchDocID to complete
+    _fetchTransactions();  // Call _fetchTransactions after fetchDocID
+  }
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -72,23 +92,24 @@ class _TransactionState extends State<Transactions> {
   void _fetchTransactions() {
     _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
       setState(() {
-        _transactionsList.clear(); //_transactionsList is a List of Maps that store Clearing it is important to remove leftovers.
+        _transactionsList.clear();
         _totalBalance = 0.0;
-        querySnapshot.docs.forEach((doc) { //fetches transactions from firebase.
+        querySnapshot.docs.forEach((doc) {
           var transaction = {
             'transactionId': doc.id,
-            'amount': doc['amount'],
-            'type': doc['type'],
-            'category': doc['category'],
-            'date': (doc['date'] as Timestamp).toDate(),
+            'amount': doc['amount'] ?? 0.0,
+            'type': doc['type'] ?? 'Unknown',
+            'category': doc['category'] ?? 'Uncategorized',
+            'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
           };
           _transactionsList.add(transaction);
-          if (transaction['type'] == 'Income') { //Based on the type of transaction, balance is added or deducted from.
+          if (transaction['type'] == 'Income') {
             _totalBalance += transaction['amount'];
           } else {
             _totalBalance -= transaction['amount'];
           }
         });
+        _filterTransactions(); // Apply initial filter
       });
     }).catchError((error) {
       print("Error fetching transactions: $error");
@@ -110,7 +131,7 @@ class _TransactionState extends State<Transactions> {
   }
 
   // Method to add a transaction to Firestore and update the local transactions list
-void _addTransaction(double amount, String? type, String? category, DateTime date) {
+  void _addTransaction(double amount, String? type, String? category, DateTime date) {
     // Check if the amount is a valid number
     if (!amount.isNaN) {
       // Add transaction data to Firestore under the user's transactions collection
@@ -120,8 +141,8 @@ void _addTransaction(double amount, String? type, String? category, DateTime dat
           .collection('Transactions')
           .add({
         'amount': amount,
-        'type': type,
-        'category': category,
+        'type': type ?? 'Unknown',
+        'category': category ?? 'Uncategorized',
         'date': date
       }).then((value) { // Once the transaction is successfully added to Firestore
         setState(() {
@@ -129,8 +150,8 @@ void _addTransaction(double amount, String? type, String? category, DateTime dat
           _transactionsList.add({
             'transactionId': value.id,
             'amount': amount,
-            'type': type,
-            'category': category,
+            'type': type ?? 'Unknown',
+            'category': category ?? 'Uncategorized',
             'date': date
           });
 
@@ -143,10 +164,10 @@ void _addTransaction(double amount, String? type, String? category, DateTime dat
         });
       });
     }
-}
+  }
 
-// Method to remove a transaction from Firestore and update the local transactions list
-void _removeTransaction(String transactionId, int index) {
+  // Method to remove a transaction from Firestore and update the local transactions list
+  void _removeTransaction(String transactionId, int index) {
     // Retrieve the transaction data from the local list
     var transaction = _transactionsList[index];
 
@@ -164,10 +185,7 @@ void _removeTransaction(String transactionId, int index) {
         }
       });
     }).catchError((error) => print("Failed to delete transaction: $error")); // Handle any errors
-}
-
-
-  
+  }
 
   void _promptAddTransaction() {
     showDialog(
@@ -182,65 +200,75 @@ void _removeTransaction(String transactionId, int index) {
                 width: 250,
                 child: Column(
                   children: [
-                    TextField(
-                      autofocus: true,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(labelText: 'Enter the amount'),
-                      onChanged: (String? val) {
-                        amt = double.parse(val!);
-                      },
-                    ),
-                    Container(
-                      width: 200,
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: type1,
-                        hint: Text('Select type'),
-                        items: <String>['Expense', 'Income'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        onChanged: (newValue) {
-                          setState(() {
-                            type1 = newValue!;
-                          });
-                        },
-                      ),
-                    ),
-                    Container(
-                      width: 200,
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: categ,
-                        hint: Text('Select category'),
-                        menuMaxHeight: 200,
-                        items: (type1 == 'Income' ? <String>['Work', 'Stocks', 'Other'] : <String>['Food', 'Entertainment', 'Utilities', 'Other']).map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        onChanged: (newCateg) {
-                          setState(() {
-                            categ = newCateg!;
-                          });
-                        },
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.max,
-                      children: <Widget>[
-                        const SizedBox(height: 20.0),
-                        ElevatedButton(
-                          onPressed: () async {
-                            await _selectDate(context);
-                            setState(() {});
+                    SizedBox(
+                      child: Center(
+                        child: ToggleButtons(
+                          selectedBorderColor: colors[0],
+                          borderRadius: BorderRadius.circular(5),
+                          fillColor: colors[0],
+                          isSelected: [type1 == 'Expense', type1 == 'Income'],
+                          onPressed: (int index) {
+                            setState(() {
+                              type1 = index == 0 ? 'Expense' : 'Income';
+                            });
                           },
-                          child: Text("${date.toLocal()}".split(' ')[0]),
+                          children: <Widget>[
+                            Container(
+                              width: 110, // Adjust width as needed
+                              child: Center(child: Text('Expense', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                            ),
+                            Container(
+                              width: 110, // Adjust width as needed
+                              child: Center(child: Text('Income', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
+                    ),
+                    Container(
+                      width: 200,
+                      child: TextField(
+                        autofocus: true,
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(labelText: 'Enter the amount'),
+                        onChanged: (String? val) {
+                          if (val != null && val.isNotEmpty) {
+                            try {
+                              amt = double.parse(val);
+                            } catch (e) {
+                              amt = 0;
+                            }
+                          } else {
+                            amt = 0;
+                          }
+                        },
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Container(
+                      width: 200,
+                      child: TextField(
+                        decoration: InputDecoration(labelText: 'Enter the category'),
+                        onChanged: (String? val) {
+                          categ = val;
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 200,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.max,
+                        children: <Widget>[
+                          const SizedBox(height: 30.0),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await _selectDate(context);
+                              setState(() {});
+                            },
+                            child: Text("${date.toLocal()}".split(' ')[0]),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -271,57 +299,59 @@ void _removeTransaction(String transactionId, int index) {
   }
 
   Future<void> sharePdfLink() async {
-  // Show dialog to select the name type
-  String selectedName = 'General'; // Default value
-  await showDialog<String>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Select PDF Type'),
-        content: DropdownButton<String>(
-          value: selectedName,
-          items: ['General', 'Weekly', 'Monthly'].map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            if (newValue != null) {
-              selectedName = newValue;
-              Navigator.pop(context); // Close dialog when a selection is made
-            }
-          },
-        ),
+    // Show dialog to select the name type
+    String? selectedName = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select PDF Type'),
+          content: DropdownButton<String>(
+            value: 'General',
+            items: ['General', 'Weekly', 'Monthly'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (newValue) {
+              if (newValue != null) {
+                Navigator.pop(context, newValue);
+              }
+            },
+          ),
+        );
+      },
+    );
+
+    if (selectedName == null) {
+      selectedName = 'General'; // Default value if dialog is dismissed
+    }
+
+    // Generate the PDF with the selected name
+    var paragraphPdf;
+    if (selectedName == 'General') {
+      paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+    } else if (selectedName == 'Weekly') {
+      paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+    } else if (selectedName == 'Monthly') {
+      paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+    }
+    final pdfFileName = selectedName + 'Report.pdf';
+    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+        paragraphPdf, pdfFileName);
+
+    if (downloadUrl != null) {
+      SaveAndOpenDocument.copyToClipboard(downloadUrl);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF link copied to clipboard!')),
       );
-    },
-  );
-
-  // Generate the PDF with the selected name
-  var paragraphPdf;
-  if (selectedName == 'General') {
-    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-  } else if (selectedName == 'Weekly') {
-    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-  } else if (selectedName == 'Monthly') {
-    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+      print('Download URL: $downloadUrl');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload PDF')),
+      );
+    }
   }
-  final pdfFileName = selectedName + 'Report.pdf';
-  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
-      paragraphPdf, pdfFileName);
-
-  if (downloadUrl != null) {
-    SaveAndOpenDocument.copyToClipboard(downloadUrl);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF link copied to clipboard!')),
-    );
-    print('Download URL: $downloadUrl');
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to upload PDF')),
-    );
-  }
-}
 
   void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
     showDialog(
@@ -341,80 +371,107 @@ void _removeTransaction(String transactionId, int index) {
                 width: 250,
                 child: Column(
                   children: [
-                    TextField(
-                      autofocus: true,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(labelText: 'Enter the amount'),
-                      controller: TextEditingController(text: updatedAmount.toString()),
-                      onChanged: (String? val) {
-                        updatedAmount = double.parse(val!);
-                      },
-                    ),
-                    DropdownButton<String>(
-                      isExpanded: true,
-                      value: updatedType,
-                      hint: Text('Select type'),
-                      items: <String>['Expense', 'Income'].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (newValue) {
-                        setState(() {
-                          updatedType = newValue!;
-                        });
-                      },
+                    SizedBox(
+                      child: Center(
+                        child: ToggleButtons(
+                          selectedBorderColor: colors[0],
+                          borderRadius: BorderRadius.circular(5),
+                          fillColor: colors[0],
+                          isSelected: [updatedType == 'Expense', updatedType == 'Income'],
+                          onPressed: (int index) {
+                            setState(() {
+                              updatedType = index == 0 ? 'Expense' : 'Income';
+                            });
+                          },
+                          children: <Widget>[
+                            Container(
+                              width: 110, // Adjust width as needed
+                              child: Center(child: Text('Expense', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                            ),
+                            Container(
+                              width: 110, // Adjust width as needed
+                              child: Center(child: Text('Income', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                     Container(
                       width: 200,
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: categ,
-                        hint: Text('Select category'),
-                        menuMaxHeight: 200,
-                        items: <String>['Work', 'Food', 'Entertainment', 'Other'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        onChanged: (updatedCateg) {
-                          setState(() {
-                            updatedCategory = updatedCateg!;
-                          });
+                      child: TextField(
+                        autofocus: true,
+                        keyboardType: TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(labelText: 'Enter the amount'),
+                        controller: TextEditingController(text: updatedAmount.toString()),
+                        onChanged: (String? val) {
+                          if (val != null && val.isNotEmpty) {
+                            try {
+                              updatedAmount = double.parse(val);
+                            } catch (e) {
+                              updatedAmount = 0;
+                            }
+                          } else {
+                            updatedAmount = 0;
+                          }
                         },
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: () async {
-                        final DateTime? picked = await showDatePicker(
-                            context: context,
-                            initialDate: updatedDate,
-                            firstDate: DateTime(2015, 8),
-                            lastDate: DateTime(2101));
-                        if (picked != null && picked != updatedDate) {
-                          setState(() {
-                            updatedDate = picked;
-                          });
-                        }
-                      },
-                      child: Text("${updatedDate.toLocal()}".split(' ')[0]),
+                    SizedBox(height: 10),
+                    Container(
+                      width: 200,
+                      child: TextField(
+                        decoration: InputDecoration(labelText: 'Enter the category'),
+                        controller: TextEditingController(text: updatedCategory),
+                        onChanged: (String? val) {
+                          if (val != null) {
+                            updatedCategory = val;
+                          }
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 200,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.max,
+                        children: <Widget>[
+                          const SizedBox(height: 30.0),
+                          ElevatedButton(
+                            onPressed: () async {
+                              final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: updatedDate,
+                                  firstDate: DateTime(2015, 8),
+                                  lastDate: DateTime(2101));
+                              if (picked != null && picked != updatedDate) {
+                                setState(() {
+                                  updatedDate = picked;
+                                });
+                              }
+                            },
+                            child: Text("${updatedDate.toLocal()}".split(' ')[0]),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
               actions: <Widget>[
-                TextButton(
-                  child: Text('Cancel'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                TextButton(
-                  child: Text('Update'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _updateTransaction(transaction['transactionId'], updatedAmount, updatedType, updatedCategory, updatedDate, index);
-                  },
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      child: Text('Cancel'),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    TextButton(
+                      child: Text('Update'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _updateTransaction(transaction['transactionId'], updatedAmount, updatedType, updatedCategory, updatedDate, index);
+                      },
+                    ),
+                  ],
                 ),
               ],
             );
@@ -457,82 +514,78 @@ void _removeTransaction(String transactionId, int index) {
   }
 
   Widget _buildTransactionList() {
+    final transactionsToShow = _searchController.text.isEmpty ? _transactionsList : _filteredTransactions;
     return ListView.builder(
-      itemCount: _transactionsList.length,
+      itemCount: transactionsToShow.length,
       itemBuilder: (context, index) {
-        return _buildTransactionItem(_transactionsList[index], index);
+        return _buildTransactionItem(transactionsToShow[index], index);
       },
     );
   }
 
   //here
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-  return Dismissible(
-    key: Key(transaction['transactionId']),
-    direction: DismissDirection.endToStart,
-    onDismissed: (direction) {
-      _removeTransaction(transaction['transactionId'], index);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Transaction deleted. Add a NEW Transaction!',
-          ),
-        ),
-      );
-    },
-    background: Container(
-      color: Colors.red,
-      alignment: Alignment.centerRight,
-      padding: EdgeInsets.symmetric(horizontal: 20),
-      child: Icon(Icons.delete, color: Colors.white),
-    ),
-    child: Card(
-      color: colors[0],
-      elevation: 4,
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: ListTile(
-        title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            transaction['category'],
-            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-            style: GoogleFonts.ibmPlexSans(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                .format(transaction['amount']),
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+    return Dismissible(
+      key: Key(transaction['transactionId']),
+      direction: DismissDirection.endToStart,
+      onDismissed: (direction) {
+        _removeTransaction(transaction['transactionId'], index);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Transaction deleted. Add a NEW Transaction!',
             ),
           ),
-            IconButton(
-              icon: Icon(Icons.edit, color: Colors.black,size: 30,),
-              onPressed: () {
-                _promptEditTransaction(transaction, index);
-              },
-            ),
-          ],
+        );
+      },
+      background: Container(
+        color: Colors.red,
+        alignment: Alignment.centerRight,
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: Icon(Icons.delete, color: Colors.white),
+      ),
+      child: Card(
+        color: colors[0],
+        elevation: 4,
+        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: ListTile(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                transaction['category'],
+                style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
+                style: GoogleFonts.ibmPlexSans(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                    .format(transaction['amount']),
+                style: GoogleFonts.ibmPlexSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit, color: Colors.black,size: 30,),
+                onPressed: () {
+                  _promptEditTransaction(transaction, index);
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
-  
-}
-
-
-
-
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -542,33 +595,40 @@ void _removeTransaction(String transactionId, int index) {
         centerTitle: true,
         backgroundColor: Colors.black,
         actions: [
-    IconButton(
-      icon: Icon(Icons.swap_horiz, color: Colors.white), // Swap icon
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SplitTransactions(),
+          IconButton(
+            icon: Icon(Icons.swap_horiz, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => SplitTransactions(),
+                ),
+              );
+            },
           ),
-        );
-      },
-    ),
-  ],
+        ],
       ),
       body: StreamBuilder<List<Color>>(
-            stream: docID.isNotEmpty
-                ? GradientService(userId: docID).getGradientStream()
-                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
-            builder: (context, snapshot) {
-              colors = snapshot.data ??
-                  [Color(0xffB8E8FF), Colors.blue.shade900];
+        stream: docID.isNotEmpty
+            ? GradientService(userId: docID).getGradientStream()
+            : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+        builder: (context, snapshot) {
+          colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
             decoration: BoxDecoration(
               color: Colors.white,
             ),
             child: Column(
               children: [
-                SizedBox(height: 20,),
+                SearchBar(
+                  controller: _searchController,
+                  hintText: 'Search transactions...',
+                  leading: const Icon(Icons.search),
+                  padding: const MaterialStatePropertyAll<EdgeInsets>(
+                    EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  ),
+                ),
+                SizedBox(height: 20),
                 Container(
                   padding: EdgeInsets.all(15),
                   child: Text(
@@ -584,26 +644,25 @@ void _removeTransaction(String transactionId, int index) {
           );
         }
       ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-  floatingActionButton: Container(
-    padding: EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: <Widget>[
-        FloatingActionButton(
-          backgroundColor: colors[0],
-          onPressed: sharePdfLink,
-          child: Icon(Icons.share, color: Colors.black,),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: Container(
+        padding: EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            FloatingActionButton(
+              backgroundColor: colors[0],
+              onPressed: sharePdfLink,
+              child: Icon(Icons.share, color: Colors.black,),
+            ),
+            FloatingActionButton(
+              backgroundColor: colors[0],
+              onPressed: _promptAddTransaction,
+              child: Icon(Icons.add, color: Colors.black), 
+            ),
+          ],
         ),
-        FloatingActionButton(
-          backgroundColor: colors[0],
-          onPressed: _promptAddTransaction,
-          child: Icon(Icons.add, color: Colors.black), 
-        ),
-      ],
-    ),
-  ),
-      
+      ),
     );
   }
 }

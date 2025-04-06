@@ -127,10 +127,10 @@ class _HomePageState extends State<HomePage> {
         querySnapshot.docs.forEach((doc) {
           var transaction = {
             'transactionId': doc.id,
-            'amount': doc['amount'],
-            'type': doc['type'],
-            'category': doc['category'],
-            'date': (doc['date'] as Timestamp).toDate(),
+            'amount': doc['amount'] ?? 0.0,
+            'type': doc['type'] ?? 'Unknown',
+            'category': doc['category'] ?? 'Uncategorized',
+            'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
           };
           _transactionsList.add(transaction);
           if (transaction['type'] == 'Income') {
@@ -148,7 +148,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildTransactionList() {
     return ListView.builder(
-      itemCount: _transactionsList.length > 5 ? 5 : _transactionsList.length,
+      itemCount: _transactionsList.length > 6 ? 6 : _transactionsList.length,
       itemBuilder: (context, index) {
         return _buildTransactionItem(_transactionsList[index], index);
       },
@@ -156,41 +156,41 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-  return Card(
-    color: colors[0],
-    elevation: 4,
-    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-    child: ListTile(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            transaction['category'],
-            style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-            style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
-          ),
-        ],
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                .format(transaction['amount']),
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+    return Card(
+      color: colors[0],
+      elevation: 4,
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListTile(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              transaction['category'] ?? 'Uncategorized',
+              style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
+            Text(
+              "Type: ${transaction['type'] ?? 'Unknown'} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
+              style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                  .format(transaction['amount'] ?? 0.0),
+              style: GoogleFonts.ibmPlexSans(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: (transaction['type'] ?? 'Unknown') == 'Expense' ? Colors.red : Colors.green,
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
   
 
   Future<void> signOut() async {
@@ -252,7 +252,7 @@ class _HomePageState extends State<HomePage> {
                                               TextStyle(color: Colors.white));
                                     } else if (snapshot.hasData &&
                                         snapshot.data != null) {
-                                      String userName = snapshot.data!;
+                                      String userName = snapshot.data ?? 'User';
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 20.0),
                                         child: Row(
@@ -290,7 +290,7 @@ class _HomePageState extends State<HomePage> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  formattedDate!,
+                                  formattedDate ?? formatter.format(now),
                                   style: GoogleFonts.ibmPlexSans(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w500),
                                 )
                               ],
