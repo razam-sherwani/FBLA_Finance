@@ -105,7 +105,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
         _rawData.clear();
         _categoryTotals.clear(); // Reset category totals
         for (var doc in querySnapshot.docs) {
-          final amount = doc['amount'] as double;
+          final amount = (doc['amount'] as num).toDouble();
           final date = (doc['date'] as Timestamp).toDate();
           final type = doc['type'];
           final category = doc['category'] ?? 'Other'; // Default to 'Other'
@@ -129,7 +129,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     } catch (error) {
       print("Error fetching transactions: $error");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to fetch transactions')),
+        const SnackBar(content: Text('Failed to fetch transactions RAW DATA')),
       );
     }
   }
@@ -177,7 +177,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
         _rawData.clear();
         for (var doc in querySnapshot.docs) {
           _rawData.add({
-            'amount': doc['amount'] as double, // Ensuring double type
+            'amount': (doc['amount'] as num).toDouble(), // Ensuring double type
             'date': (doc['date'] as Timestamp).toDate(),
             'type': doc['type']
           });
@@ -187,7 +187,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     } catch (error) {
       print("Error fetching transactions: $error");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to fetch transactions')),
+        const SnackBar(content: Text('Failed to fetch transactions DATALINE')),
       );
     }
   }
@@ -274,7 +274,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
         _rawData.clear();
         for (var doc in querySnapshot.docs) {
           _rawData.add({
-            'amount': doc['amount'] as double, // Ensuring double type
+            'amount': (doc['amount'] as num).toDouble(), // Ensuring double type
             'date': (doc['date'] as Timestamp).toDate(),
             'type': doc['type']
           });
@@ -284,7 +284,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     } catch (error) {
       print("Error fetching transactions: $error");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to fetch transactions')),
+        const SnackBar(content: Text('Failed to fetch transactions CURRENT BAL')),
       );
     }
   }
@@ -372,7 +372,7 @@ void initState() {
     // Save the graphs as images after rendering
     await saveGraphAsImage(_expenseGraphKey, 'expense_graph.png');
     await saveGraphAsImage(_balanceGraphKey, 'balance_graph.png');
-    await saveGraphAsImage(_pieChartKey, 'pie_chart.png');
+    //await saveGraphAsImage(_pieChartKey, 'pie_chart.png');
   });
 
   // Initialize min/max values
