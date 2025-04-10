@@ -36,8 +36,8 @@ class HomePageWithNavState extends State<HomePageWithNav> {
   static List<Widget> _pages = <Widget>[
     HomePage(),
     Transactions(),
+    SpendingHabitPage(),
     ReceiptScanner(),
-    PlaidPage(),
     SettingsPage()
   ];
 
