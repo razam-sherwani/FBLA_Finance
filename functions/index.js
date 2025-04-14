@@ -21,14 +21,15 @@ const configuration = new Configuration({
 
 const plaidClient = new PlaidApi(configuration);
 
+
 // Create Firebase Function
 exports.createLinkToken = functions.https.onCall(async (data, context) => {
   const request = {
     user: {
-      client_user_id: 'user-id',
+      client_user_id: context.auth?.uid || 'user-id',
       phone_number: '+1 415 5550123',
     },
-    client_name: 'Personal Finance App',
+    client_name: 'Finsafe',
     products: ['transactions'],
     transactions: {
       days_requested: 730,
@@ -36,7 +37,7 @@ exports.createLinkToken = functions.https.onCall(async (data, context) => {
     country_codes: ['US'],
     language: 'en',
     webhook: 'https://sample-web-hook.com',
-    //redirect_uri: 'https://domainname.com/oauth-page.html',
+    android_package_name: 'com.example.fbla_finance',
     account_filters: {
       depository: {
         account_subtypes: ['checking', 'savings'],
@@ -49,11 +50,10 @@ exports.createLinkToken = functions.https.onCall(async (data, context) => {
 
   try {
     const response = await plaidClient.linkTokenCreate(request);
-    const linkToken = response.data.link_token;
-    //res.status(200).send({ linkToken });
-    return linkToken;
+    return response.data.link_token;
   } catch (error) {
     logger.error('Error creating Plaid link token:', error);
-    //res.status(500).send({ error: error.message });
+    throw new functions.https.HttpsError('internal', error.message);
   }
 });
+

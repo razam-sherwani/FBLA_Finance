@@ -61,6 +61,7 @@ dependencies:
   receipt_reader: ^0.0.7
   google_mlkit_document_scanner: ^0.4.0
   google_mlkit_text_recognition: ^0.14.0
+  image_cropper: ^9.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

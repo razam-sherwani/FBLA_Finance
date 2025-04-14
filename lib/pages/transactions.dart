@@ -3,7 +3,9 @@
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
+import 'package:fbla_finance/pages/plaid_page.dart';
 import 'package:fbla_finance/pages/split_transactions.dart';
+import 'package:fbla_finance/pages/receipt_scanner_page.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -196,8 +198,8 @@ class _TransactionState extends State<Transactions> {
             return AlertDialog(
               title: Text('New Transaction'),
               content: Container(
-                height: 230,
-                width: 250,
+                height: 250,
+                width: 230,
                 child: Column(
                   children: [
                     SizedBox(
@@ -587,6 +589,57 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
+  void _showAddOptions() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Add Transaction'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            Card(
+              child: ListTile(
+                leading: Icon(Icons.add_circle_outline),
+                title: Text('Manual Entry'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _promptAddTransaction();
+                },
+              )),
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.camera_alt),
+                  title: Text('Scan Receipt'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ReceiptScanner()),
+                  );
+                },
+              ),
+              ),
+              Card(
+                child: ListTile(
+                  leading: Icon(Icons.attach_money),
+                  title: Text('Get From Bank'),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => PlaidPage()),
+                  );
+                },
+              ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -657,7 +710,7 @@ class _TransactionState extends State<Transactions> {
             ),
             FloatingActionButton(
               backgroundColor: colors[0],
-              onPressed: _promptAddTransaction,
+              onPressed: _showAddOptions,
               child: Icon(Icons.add, color: Colors.black), 
             ),
           ],
