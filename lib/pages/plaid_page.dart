@@ -14,33 +14,52 @@ class PlaidPage extends StatefulWidget {
 
 class _PlaidPage extends State<PlaidPage> {
   String? _linkToken;
+  LinkTokenConfiguration? _configuration;
 
   @override
   void initState() {
     super.initState();
+    _streamEvent = PlaidLink.onEvent.listen(_onEvent);
+    _streamExit = PlaidLink.onExit.listen(_onExit);
+    _streamSuccess = PlaidLink.onSuccess.listen(_onSuccess);
+  }
+
+  void _onSuccess(LinkSuccess event) {
+    final token = event.publicToken;
+    final metadata = event.metadata.description();
+    print("onSuccess: $token, metadata: $metadata");
+    setState(() => _successObject = event);
+  }
+
+  void _onExit(LinkExit event) {
+    final metadata = event.metadata.description();
+    final error = event.error?.description();
+    print("onExit metadata: $metadata, error: $error");
+  }
+
+  void _createLinkTokenConfiguration() {
+    setState(() {
+      _configuration = LinkTokenConfiguration(
+        token: _linkToken!,
+      );
+      PlaidLink.create(configuration: _configuration!);
+    });
   }
 
   // Function to call Firebase Cloud Functions and fetch the Plaid link token
   Future<String?> getPlaidLinkToken() async {
     try {
-      HttpsCallable callable = FirebaseFunctions.instance.httpsCallable('createLinkToken');
+      HttpsCallable callable =
+          FirebaseFunctions.instance.httpsCallable('createLinkToken');
       final results = await callable.call();
       if (results.data != null) {
-        return results.data; // Assuming 'createLinkToken' returns the link token
+        return results
+            .data; // Assuming 'createLinkToken' returns the link token
       }
     } catch (e) {
       print("Error fetching link token: $e");
     }
     return null;
-  }
-
-  // Method to handle Plaid link after the token is retrieved
-  void openPlaidLink(String linkToken) {
-    // Create the Plaid link configuration
-    PlaidLink.create(configuration: LinkTokenConfiguration(token: linkToken));
-
-    // Open the Plaid link interface
-    PlaidLink.open();
   }
 
   @override
@@ -51,22 +70,31 @@ class _PlaidPage extends State<PlaidPage> {
           title: const Text('Plaid Link Example'),
         ),
         body: Center(
-          child: ElevatedButton(
-            onPressed: () async {
-              print("Fetching Plaid link token...");
+          child: Column(
+            children: [
+              ElevatedButton(
+                onPressed: () async {
+                  print("Fetching Plaid link token...");
 
-              // Get the link token
-              String? linkToken = await getPlaidLinkToken();
+                  // Get the link token
+                  String? linkToken = await getPlaidLinkToken();
 
-              if (linkToken != null) {
-                print("Link token fetched: $linkToken");
-                // Open Plaid Link using the fetched token
-                openPlaidLink(linkToken);
-              } else {
-                print('No link token available');
-              }
-            },
-            child: const Text('Open Plaid Link'),
+                  if (linkToken != null) {
+                    print("Link token fetched: $linkToken");
+                    // Open Plaid Link using the fetched token
+                    _createLinkTokenConfiguration();
+                  } else {
+                    print('No link token available');
+                  }
+                },
+                child: const Text('Fetch Token'),
+              ),
+              ElevatedButton(
+                onPressed:
+                    _configuration != null ? () => PlaidLink.open() : null,
+                child: const Text("Open"),
+              ),
+            ],
           ),
         ),
       ),
