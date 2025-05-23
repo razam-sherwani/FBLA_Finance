@@ -19,16 +19,16 @@ class _PlaidPage extends State<PlaidPage> {
   @override
   void initState() {
     super.initState();
-    _streamEvent = PlaidLink.onEvent.listen(_onEvent);
-    _streamExit = PlaidLink.onExit.listen(_onExit);
-    _streamSuccess = PlaidLink.onSuccess.listen(_onSuccess);
+    //_streamEvent = PlaidLink.onEvent.listen(_onEvent);
+    //_streamExit = PlaidLink.onExit.listen(_onExit);
+    //_streamSuccess = PlaidLink.onSuccess.listen(_onSuccess);
   }
 
   void _onSuccess(LinkSuccess event) {
     final token = event.publicToken;
     final metadata = event.metadata.description();
     print("onSuccess: $token, metadata: $metadata");
-    setState(() => _successObject = event);
+    //setState(() => _successObject = event);
   }
 
   void _onExit(LinkExit event) {
@@ -75,24 +75,26 @@ class _PlaidPage extends State<PlaidPage> {
               ElevatedButton(
                 onPressed: () async {
                   print("Fetching Plaid link token...");
-
-                  // Get the link token
                   String? linkToken = await getPlaidLinkToken();
-
                   if (linkToken != null) {
                     print("Link token fetched: $linkToken");
-                    // Open Plaid Link using the fetched token
-                    _createLinkTokenConfiguration();
+                    setState(() {
+                      _linkToken = linkToken;
+                      _configuration =
+                          LinkTokenConfiguration(token: _linkToken!);
+                      PlaidLink.create(configuration: _configuration!);
+                    });
                   } else {
                     print('No link token available');
                   }
                 },
-                child: const Text('Fetch Token'),
+                child: const Text('Fetch & Initialize Plaid'),
               ),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed:
                     _configuration != null ? () => PlaidLink.open() : null,
-                child: const Text("Open"),
+                child: const Text("Open Plaid Link"),
               ),
             ],
           ),
