@@ -37,7 +37,6 @@ exports.createLinkToken = functions.https.onCall(async (data, context) => {
     country_codes: ['US'],
     language: 'en',
     webhook: 'https://sample-web-hook.com',
-    redirect_uri: '',
     android_package_name: 'com.example.fbla_finance',
     account_filters: {
       depository: {
