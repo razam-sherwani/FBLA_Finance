@@ -15,26 +15,55 @@ class PlaidPage extends StatefulWidget {
 class _PlaidPage extends State<PlaidPage> {
   String? _linkToken;
   LinkTokenConfiguration? _configuration;
+  String? publicToken;
 
   @override
   void initState() {
     super.initState();
-    //_streamEvent = PlaidLink.onEvent.listen(_onEvent);
-    //_streamExit = PlaidLink.onExit.listen(_onExit);
-    //_streamSuccess = PlaidLink.onSuccess.listen(_onSuccess);
+    PlaidLink.onSuccess.listen((LinkSuccess success) {
+      publicToken = success.publicToken;
+      LinkSuccessMetadata metadata = success.metadata;
+
+      print('✅ Public Token: $publicToken');
+      print('Institution: ${metadata.institution?.name}');
+      print('Accounts: ${metadata.accounts.length}');
+
+      // Now you can send publicToken to your backend
+      exchangePublicToken(publicToken!);
+    });
   }
 
-  void _onSuccess(LinkSuccess event) {
-    final token = event.publicToken;
-    final metadata = event.metadata.description();
-    print("onSuccess: $token, metadata: $metadata");
-    //setState(() => _successObject = event);
+  Future<void> exchangePublicToken(String publicToken) async {
+    try {
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('exchangePublicToken');
+      final result = await callable.call({'public_token': publicToken});
+
+      final accessToken = result.data['access_token'];
+      print('Access token: $accessToken');
+
+      // Optionally: Store or use it to fetch transactions
+      await fetchTransactions(accessToken);
+    } catch (e) {
+      print('Failed to exchange token: $e');
+    }
   }
 
-  void _onExit(LinkExit event) {
-    final metadata = event.metadata.description();
-    final error = event.error?.description();
-    print("onExit metadata: $metadata, error: $error");
+  Future<void> fetchTransactions(String accessToken) async {
+    try {
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('getTransactions');
+      final result = await callable.call({'access_token': accessToken});
+
+      List<dynamic> transactions = result.data;
+      for (var txn in transactions) {
+        print('${txn['date']}: ${txn['name']} - \$${txn['amount']}');
+      }
+
+      // You can now display this in your Flutter UI
+    } catch (e) {
+      print('Failed to fetch transactions: $e');
+    }
   }
 
   void _createLinkTokenConfiguration() {
