@@ -33,15 +33,13 @@ exports.exchangePublicToken = functions.https.onCall(async (data, context) => {
 });
 
 exports.getTransactions = functions.https.onCall(async (data, context) => {
-  const { access_token } = data;
-
   const today = new Date();
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(today.getDate() - 30);
 
   try {
     const response = await plaidClient.transactionsGet({
-      data.access_token,
+      access_token: data.data.access_token,
       start_date: thirtyDaysAgo.toISOString().split('T')[0],
       end_date: today.toISOString().split('T')[0],
     });
