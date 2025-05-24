@@ -22,14 +22,10 @@ const configuration = new Configuration({
 const plaidClient = new PlaidApi(configuration);
 
 exports.exchangePublicToken = functions.https.onCall(async (data, context) => {
-  const { public_token } = data;
-
   try {
-    const response = await plaidClient.itemPublicTokenExchange({ public_token });
-    const access_token = response.data.access_token;
+    const response = await plaidClient.itemPublicTokenExchange({ 'public_token': data.data.public_token });
+    return response.data.access_token;
 
-    // Store this securely associated with the user (in Firestore or Firebase Auth)
-    return { access_token };
   } catch (error) {
     logger.error('Error exchanging public token:', error);
     throw new functions.https.HttpsError('internal', error.message);
@@ -45,7 +41,7 @@ exports.getTransactions = functions.https.onCall(async (data, context) => {
 
   try {
     const response = await plaidClient.transactionsGet({
-      access_token,
+      data.access_token,
       start_date: thirtyDaysAgo.toISOString().split('T')[0],
       end_date: today.toISOString().split('T')[0],
     });

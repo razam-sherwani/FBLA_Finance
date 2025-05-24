@@ -37,9 +37,10 @@ class _PlaidPage extends State<PlaidPage> {
     try {
       final callable =
           FirebaseFunctions.instance.httpsCallable('exchangePublicToken');
+      print('Sending public token: $publicToken');
       final result = await callable.call({'public_token': publicToken});
 
-      final accessToken = result.data['access_token'];
+      final accessToken = result.data;
       print('Access token: $accessToken');
 
       // Optionally: Store or use it to fetch transactions
