@@ -1,4 +1,5 @@
 // ignore_for_file: invalid_return_type_for_catch_error, avoid_print
+import 'dart:io';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:fbla_finance/backend/auth.dart';
@@ -12,6 +13,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
 import 'package:plaid_flutter/plaid_flutter.dart';
@@ -579,7 +581,7 @@ class _TransactionState extends State<Transactions> {
             return AlertDialog(
               title: Text('Edit Transaction'),
               content: Container(
-                height: 230,
+                height: 250,
                 width: 250,
                 child: Column(
                   children: [
@@ -767,7 +769,122 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
-  //here
+  void _scanReceipt() async {
+  final source = await showDialog<ImageSource>(
+    context: context,
+    builder: (context) => AlertDialog(
+      alignment: Alignment.center,
+      title: Text('Select Image Source'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, ImageSource.camera),
+              child: Text('Take Photo'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, ImageSource.gallery),
+              child: Text('Choose from Gallery'),
+            ),
+          ],
+        ),
+    ),
+  );
+
+  if (source == null) return;
+
+  final picked = await ImagePicker().pickImage(source: source);
+  if (picked == null) return;
+
+  final file = File(picked.path);
+  final inputImage = InputImage.fromFile(file);
+  final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+  final recognizedText = await textRecognizer.processImage(inputImage);
+  await textRecognizer.close();
+
+  if (recognizedText.blocks.isNotEmpty) {
+    List<TextLine> allLines = recognizedText.blocks.expand((b) => b.lines).toList();
+    allLines.sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+
+    String? foundMerchant;
+    String? foundTotal;
+    DateTime foundDate = DateTime.now();
+
+    final keywordTotalRegex = RegExp(r'(total|amount due|subtotal)[^\d]*([\$€₺]?\s*\d+[.,]?\d*)', caseSensitive: false);
+    final looseMoneyRegex = RegExp(r'[\$€₺]?\s*\d{1,5}[.,]\d{2}');
+    final dateRegex = RegExp(
+      r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'
+      r'|\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b'
+      r'|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+\d{4}\b',
+      caseSensitive: false,
+    );
+    final merchantRegex = RegExp(r'[A-Za-z]{2,}');
+
+    for (int i = 0; i < allLines.length; i++) {
+      final line = allLines[i].text.trim();
+
+      if (foundMerchant == null && i < 6 && merchantRegex.hasMatch(line) && !RegExp(r'^\d+$').hasMatch(line)) {
+        foundMerchant = line;
+      }
+
+      if (foundTotal == null && keywordTotalRegex.hasMatch(line)) {
+        foundTotal = keywordTotalRegex.firstMatch(line)?.group(2)?.trim();
+      }
+
+      if (dateRegex.hasMatch(line)) {
+  final rawDate = dateRegex.firstMatch(line)?.group(0)?.trim();
+  try {
+    if (rawDate != null) {
+      // Try month name style
+      if (RegExp(r'[A-Za-z]', caseSensitive: false).hasMatch(rawDate)) {
+        foundDate = DateFormat('MMMM d, yyyy').parseStrict(rawDate);
+      } else {
+        // Try numeric formats
+        foundDate = DateFormat.yMd().parseStrict(rawDate);
+      }
+    }
+  } catch (e) {
+    print("Date parse failed for: $rawDate");
+    foundDate = DateTime.now();
+  }
+}
+
+      print(foundDate);
+    }
+
+    if (foundTotal == null) {
+      double maxValue = 0.0;
+      for (var line in allLines) {
+        final matches = looseMoneyRegex.allMatches(line.text);
+        for (final match in matches) {
+          final raw = match.group(0)?.replaceAll(RegExp(r'[^\d.,]'), '') ?? '';
+          final cleaned = raw.replaceAll(',', '.');
+          final value = double.tryParse(cleaned);
+          if (value != null && value > maxValue) {
+            maxValue = value;
+            foundTotal = match.group(0)?.trim();
+          }
+        }
+      }
+    }
+
+    final scannedAmount = double.tryParse(foundTotal?.replaceAll(RegExp(r'[^\d.]'), '') ?? '');
+    final scannedCategory = foundMerchant ?? 'Scanned';
+
+    setState(() {
+      amt = scannedAmount ?? 0;
+      date = foundDate;
+      categ = scannedCategory;
+      type1 = 'Expense';
+    });
+
+    _addTransaction(amt, type1, categ, date);
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not read receipt')));
+  }
+}
+
+
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Dismissible(
       key: Key(transaction['transactionId']),
@@ -863,14 +980,11 @@ class _TransactionState extends State<Transactions> {
                 child: ListTile(
                   leading: Icon(Icons.camera_alt),
                   title: Text('Scan Receipt'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => ReceiptScanner()),
-                    );
-                  },
-                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _scanReceipt();
+                },
+              ),
               ),
               Card(
                 child: ListTile(

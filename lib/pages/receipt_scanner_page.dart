@@ -14,8 +14,10 @@ class ReceiptScanner extends StatefulWidget {
 class _ReceiptScannerPage extends State<ReceiptScanner> {
   String? total;
   String? merchant;
+  String? date;
   bool loading = false;
-  final textRecognizer = TextRecognizer();
+
+  final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
   @override
   void dispose() {
@@ -33,31 +35,79 @@ class _ReceiptScannerPage extends State<ReceiptScanner> {
     final inputImage = InputImage.fromFile(file);
     final recognizedText = await textRecognizer.processImage(inputImage);
 
-    if (recognizedText.text.isNotEmpty) {
-      // Simple parsing logic - you might need to adjust this based on your receipt format
-      final lines = recognizedText.text.split('\n');
-      String? foundTotal;
-      String? foundMerchant;
+    if (recognizedText.blocks.isNotEmpty) {
+      List<TextLine> allLines = recognizedText.blocks.expand((b) => b.lines).toList();
 
-      for (var line in lines) {
-        // Look for total amount (usually contains currency symbol)
-        if (line.contains('\$') || line.contains('€') || line.contains('₺')) {
-          foundTotal = line;
-        }
-        // Look for merchant name (usually at the top)
-        if (foundMerchant == null && line.isNotEmpty) {
+      // Sort lines top-to-bottom
+      allLines.sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+
+      String? foundMerchant;
+      String? foundTotal;
+      String? foundDate;
+
+      // === Patterns ===
+      final keywordTotalRegex = RegExp(
+        r'(total|amount due|subtotal)[^\d]*([\$€₺]?\s*\d+[.,]?\d*)',
+        caseSensitive: false,
+      );
+      final looseMoneyRegex = RegExp(r'[\$€₺]?\s*\d{1,5}[.,]\d{2}'); // e.g., $12.50 or 12.50
+      final dateRegex = RegExp(
+        r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b' // e.g. 04/05/2024
+        r'|\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b'   // e.g. 2024-04-05
+        r'|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+\d{4}\b',
+        caseSensitive: false,
+      );
+      final merchantRegex = RegExp(r'[A-Za-z]{2,}');
+
+      for (int i = 0; i < allLines.length; i++) {
+        final line = allLines[i].text.trim();
+
+        // Merchant - first valid alphabetic line
+        if (foundMerchant == null &&
+            i < 6 &&
+            merchantRegex.hasMatch(line) &&
+            !RegExp(r'^\d+$').hasMatch(line)) {
           foundMerchant = line;
+        }
+
+        // Total - keyword-based match
+        if (foundTotal == null && keywordTotalRegex.hasMatch(line)) {
+          foundTotal = keywordTotalRegex.firstMatch(line)?.group(2)?.trim();
+        }
+
+        // Date - standard or word-based formats
+        if (foundDate == null && dateRegex.hasMatch(line)) {
+          foundDate = dateRegex.firstMatch(line)?.group(0)?.trim();
+        }
+      }
+
+      // Fallback total detection – pick the largest dollar value
+      if (foundTotal == null) {
+        double maxValue = 0.0;
+        for (var line in allLines) {
+          final matches = looseMoneyRegex.allMatches(line.text);
+          for (final match in matches) {
+            final raw = match.group(0)?.replaceAll(RegExp(r'[^\d.,]'), '') ?? '';
+            final cleaned = raw.replaceAll(',', '.');
+            final value = double.tryParse(cleaned);
+            if (value != null && value > maxValue) {
+              maxValue = value;
+              foundTotal = match.group(0)?.trim();
+            }
+          }
         }
       }
 
       setState(() {
         total = foundTotal;
         merchant = foundMerchant;
+        date = foundDate;
       });
 
       await FirebaseFirestore.instance.collection('receipts').add({
         'total': total,
         'merchant': merchant,
+        'date': date,
         'timestamp': FieldValue.serverTimestamp(),
         'rawText': recognizedText.text,
       });
@@ -107,6 +157,11 @@ class _ReceiptScannerPage extends State<ReceiptScanner> {
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
                       child: Text('Total: $total'),
+                    ),
+                  if (date != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text('Date: $date'),
                     ),
                 ],
               ),
