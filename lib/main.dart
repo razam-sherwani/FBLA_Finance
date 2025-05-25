@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:fbla_finance/pages/transactions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';
 import 'package:fbla_finance/pages/awards_page.dart';
@@ -19,8 +21,9 @@ import 'dart:io';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  
+  final app = await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  FirebaseAuth.instanceFor(app: app);
+  FirebaseFunctions.instanceFor(app: app);
   runApp(const MyApp());
 }
 

@@ -21,14 +21,24 @@ const configuration = new Configuration({
 
 const plaidClient = new PlaidApi(configuration);
 
+const { getFirestore } = require("firebase-admin/firestore");
+
 exports.exchangePublicToken = functions.https.onCall(async (data, context) => {
+
   try {
     const response = await plaidClient.itemPublicTokenExchange({ 'public_token': data.data.public_token });
-    return response.data.access_token;
+    const access_token = response.data.access_token;
 
+    // Save to Firestore under the user's document
+    const db = getFirestore();
+    await db.collection('users').doc(data.data.uid).set({
+      plaidAccessToken: access_token
+    }, { merge: true });
+
+    return access_token;
   } catch (error) {
-    logger.error('Error exchanging public token:', error);
-    throw new functions.https.HttpsError('internal', error.message);
+    logger.error('Plaid token exchange error:', error.response?.data || error.message);
+    throw new functions.https.HttpsError('internal', 'Plaid token exchange failed');
   }
 });
 
