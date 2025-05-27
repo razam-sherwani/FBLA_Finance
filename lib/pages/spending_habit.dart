@@ -204,59 +204,11 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
-  void _promptUpdateBudget() {
-    double tempBudget = 0;
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Update Budget'),
-              content: Container(
-                height: 230,
-                width: 250,
-                child: Column(
-                  children: [
-                    TextField(
-                      autofocus: true,
-                      keyboardType:
-                          TextInputType.numberWithOptions(decimal: true),
-                      decoration:
-                          InputDecoration(labelText: 'Enter the amount'),
-                      onChanged: (String? val) {
-                        tempBudget = double.parse(val!);
-                      },
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton(
-                          child: Text('Cancel'),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        TextButton(
-                          child: Text('Enter'),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            _updateBudget(tempBudget);
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
+  
 
-  void _updateBudget(double num) {
-    budget = num;
-  }
+  
+
+ 
 
   void _fetchRawDataCurrentBalance() async {
     try {
@@ -401,11 +353,103 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
         }
       });
     } catch (error) {
-      print("Error fetching bidget: $error");
+      print("Error fetching budget: $error");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to fetch budget')),
       );
     }
+  }
+
+  Future<double> getCurrentMonthExpenseTotal() async {
+  try {
+    final now = DateTime.now();
+    final currentMonth = now.month;
+    final currentYear = now.year;
+
+    // Fetch all transactions
+    final querySnapshot = await _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get();
+
+    double totalExpenses = 0;
+
+    for (var doc in querySnapshot.docs) {
+      final data = doc.data();
+
+      if (data['type'] == 'Expense') {
+        final date = (data['date'] as Timestamp).toDate();
+        final amount = (data['amount'] as num).toDouble();
+
+        if (date.month == currentMonth && date.year == currentYear) {
+          totalExpenses += amount;
+        }
+      }
+    }
+
+    return totalExpenses;
+  } catch (e) {
+    print("Error calculating current month expenses: $e");
+    return 0.0;
+  }
+}
+
+
+
+
+ void _updateBudget(double num) {
+    budget = num;
+  }
+
+void _promptUpdateBudget() {
+    double tempBudget = 0;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Update Budget'),
+              content: Container(
+                height: 230,
+                width: 250,
+                child: Column(
+                  children: [
+                    TextField(
+                      autofocus: true,
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                      decoration:
+                          InputDecoration(labelText: 'Enter the amount'),
+                      onChanged: (String? val) {
+                        tempBudget = double.parse(val!);
+                      },
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          child: Text('Cancel'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                        TextButton(
+                          child: Text('Enter'),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _updateBudget(tempBudget);
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
