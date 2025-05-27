@@ -1,5 +1,7 @@
 // ignore_for_file: invalid_return_type_for_catch_error, avoid_print
+import 'dart:io';
 
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
@@ -11,11 +13,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:google_ml_kit/google_ml_kit.dart';
+import 'package:plaid_flutter/plaid_flutter.dart';
 
 class Transactions extends StatefulWidget {
-
   Transactions({Key? key}) : super(key: key);
 
   @override
@@ -35,6 +38,16 @@ class _TransactionState extends State<Transactions> {
   String? categ;
   final SearchController _searchController = SearchController();
   List<Map<String, dynamic>> _filteredTransactions = [];
+  String? _linkToken;
+  LinkTokenConfiguration? _configuration;
+  List<Map<String, dynamic>> _plaidTransactions = [];
+  bool _isDuplicateTransaction(Map<String, dynamic> txn) {
+    return _transactionsList.any((existing) =>
+        existing['amount'] == txn['amount'] &&
+        existing['category'] == txn['name'] &&
+        DateFormat('yyyy-MM-dd').format(existing['date']) ==
+            DateFormat('yyyy-MM-dd').format(txn['date']));
+  }
 
   @override
   void initState() {
@@ -53,46 +66,226 @@ class _TransactionState extends State<Transactions> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredTransactions = _transactionsList.where((transaction) {
-        return transaction['category'].toString().toLowerCase().contains(query) ||
-               transaction['type'].toString().toLowerCase().contains(query) ||
-               transaction['amount'].toString().contains(query);
+        return transaction['category']
+                .toString()
+                .toLowerCase()
+                .contains(query) ||
+            transaction['type'].toString().toLowerCase().contains(query) ||
+            transaction['amount'].toString().contains(query);
       }).toList();
     });
   }
 
+  void _showPlaidTransactionPicker() {
+    final Set<int> selectedIndexes = {};
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(builder: (context, setState) {
+          return AlertDialog(
+            title: Text('Select Transactions to Import'),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 400,
+              child: ListView.builder(
+                itemCount: _plaidTransactions.length,
+                itemBuilder: (context, index) {
+                  final txn = _plaidTransactions[index];
+                  final selected = selectedIndexes.contains(index);
+                  return ListTile(
+                    tileColor: selected ? Colors.blue[50] : null,
+                    title: Text(txn['name']),
+                    subtitle: Text(
+                        "Amount: \$${txn['amount']} | Date: ${DateFormat('yyyy-MM-dd').format(txn['date'])}"),
+                    trailing: Checkbox(
+                      value: selected,
+                      onChanged: (val) {
+                        setState(() {
+                          if (val == true) {
+                            selectedIndexes.add(index);
+                          } else {
+                            selectedIndexes.remove(index);
+                          }
+                        });
+                      },
+                    ),
+                    onTap: () {
+                      setState(() {
+                        if (selected) {
+                          selectedIndexes.remove(index);
+                        } else {
+                          selectedIndexes.add(index);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () => Navigator.pop(context),
+              ),
+              ElevatedButton(
+                child: Text('Import Selected'),
+                onPressed: () {
+                  final selectedTxns = selectedIndexes
+                      .map((i) => _plaidTransactions[i])
+                      .toList();
+
+                  for (var txn in selectedTxns) {
+                    if (!_isDuplicateTransaction(txn)) {
+                      _addTransaction(
+                        (txn['amount'] as num).toDouble(),
+                        'Expense',
+                        txn['name'],
+                        txn['date'],
+                      );
+                    } else {
+                      print(
+                          "🔁 Skipping duplicate: ${txn['name']} on ${txn['date']}");
+                    }
+                  }
+
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          );
+        });
+      },
+    );
+  }
+
+  Future<void> fetchTransactions(String accessToken) async {
+    try {
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('getTransactions');
+      final result = await callable.call({'access_token': accessToken});
+
+      final transactions = result.data as List<dynamic>;
+      _plaidTransactions.clear();
+
+      for (var txn in transactions) {
+        final rawAmount = txn['amount'].abs();
+
+        _plaidTransactions.add({
+          'amount': rawAmount is int
+              ? rawAmount.toDouble()
+              : rawAmount as double, // or (rawAmount as num).toDouble()
+          'name': txn['name'] ?? 'Unnamed',
+          'date': DateTime.tryParse(txn['date']) ?? DateTime.now(),
+        });
+      }
+
+      _showPlaidTransactionPicker();
+    } catch (e) {
+      print('Failed to fetch transactions: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to load Plaid transactions")));
+    }
+  }
+
+  Future<void> _launchPlaidFlow() async {
+    // Show a loading dialog while getting link token
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(child: CircularProgressIndicator()),
+    );
+    print("Current Firebase UID: ${FirebaseAuth.instance.currentUser?.uid}");
+    try {
+      final callable =
+          FirebaseFunctions.instance.httpsCallable('createLinkToken');
+      final result = await callable.call();
+      Navigator.pop(context); // close loading dialog
+
+      _linkToken = result.data;
+      if (_linkToken == null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text("No link token received")));
+        return;
+      }
+
+      _configuration = LinkTokenConfiguration(token: _linkToken!);
+      PlaidLink.create(configuration: _configuration!);
+
+      // Listen to success
+      PlaidLink.onSuccess.listen((LinkSuccess success) async {
+        final publicToken = success.publicToken;
+        print("✅ Public token: $publicToken");
+
+        try {
+          final callable =
+              FirebaseFunctions.instance.httpsCallable('exchangePublicToken');
+          final response = await callable.call({
+            'public_token': publicToken,
+            'uid': docID,
+          });
+          final accessToken = response.data;
+
+          print("✅ Access token stored: $accessToken");
+
+          // Optionally call fetchTransactions(accessToken);
+          await fetchTransactions(accessToken);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Bank linked successfully!")));
+        } catch (e) {
+          print("❌ Error exchanging token: $e");
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text("Failed to link bank")));
+        }
+      });
+
+      PlaidLink.open();
+    } catch (e) {
+      Navigator.pop(context); // close dialog
+      print("❌ Error fetching link token: $e");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Plaid init failed")));
+    }
+  }
+
   Future<void> _initializeData() async {
-    await fetchDocID();  // Wait for fetchDocID to complete
-    _fetchTransactions();  // Call _fetchTransactions after fetchDocID
+    await fetchDocID(); // Wait for fetchDocID to complete
+    _fetchTransactions(); // Call _fetchTransactions after fetchDocID
   }
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await FirebaseFirestore.instance
+      final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: user.email)
-          .get()
-          .then((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          setState(() {
-            docID = snapshot.docs[0].id;
-          });
-        } else {
-          setState(() {
-            docID = '';
-          });
-        }
-      }).catchError((error) {
-        print('Error fetching docID: $error');
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final doc = snapshot.docs.first;
         setState(() {
-          docID = '';
+          docID = doc.id;
         });
-      });
+
+        final accessToken = doc.data()['plaidAccessToken'];
+        if (accessToken != null) {
+          print("✅ Found saved access token.");
+          await fetchTransactions(accessToken); // Auto-fetch transactions
+        } else {
+          print("ℹ️ No access token on file. Will need to launch Plaid.");
+        }
+      }
     }
   }
 
   void _fetchTransactions() {
-    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get()
+        .then((querySnapshot) {
       setState(() {
         _transactionsList.clear();
         _totalBalance = 0.0;
@@ -115,7 +308,8 @@ class _TransactionState extends State<Transactions> {
       });
     }).catchError((error) {
       print("Error fetching transactions: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch transactions')));
     });
   }
 
@@ -133,20 +327,18 @@ class _TransactionState extends State<Transactions> {
   }
 
   // Method to add a transaction to Firestore and update the local transactions list
-  void _addTransaction(double amount, String? type, String? category, DateTime date) {
+  void _addTransaction(
+      double amount, String? type, String? category, DateTime date) {
     // Check if the amount is a valid number
     if (!amount.isNaN) {
       // Add transaction data to Firestore under the user's transactions collection
-      _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('Transactions')
-          .add({
+      _firestore.collection('users').doc(docID).collection('Transactions').add({
         'amount': amount,
         'type': type ?? 'Unknown',
         'category': category ?? 'Uncategorized',
         'date': date
-      }).then((value) { // Once the transaction is successfully added to Firestore
+      }).then((value) {
+        // Once the transaction is successfully added to Firestore
         setState(() {
           // Add the transaction to the local transactions list with its generated ID
           _transactionsList.add({
@@ -174,19 +366,28 @@ class _TransactionState extends State<Transactions> {
     var transaction = _transactionsList[index];
 
     // Delete the transaction document from Firestore
-    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).delete().then((value) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .doc(transactionId)
+        .delete()
+        .then((value) {
       setState(() {
         // Remove the transaction from the local transactions list
         _transactionsList.removeAt(index);
 
         // Update the total balance based on transaction type
         if (transaction['type'] == 'Income') {
-          _totalBalance -= transaction['amount']; // Deduct from balance if it was income
+          _totalBalance -=
+              transaction['amount']; // Deduct from balance if it was income
         } else {
-          _totalBalance += transaction['amount']; // Add back if it was an expense
+          _totalBalance +=
+              transaction['amount']; // Add back if it was an expense
         }
       });
-    }).catchError((error) => print("Failed to delete transaction: $error")); // Handle any errors
+    }).catchError((error) =>
+            print("Failed to delete transaction: $error")); // Handle any errors
   }
 
   void _promptAddTransaction() {
@@ -217,11 +418,19 @@ class _TransactionState extends State<Transactions> {
                           children: <Widget>[
                             Container(
                               width: 110, // Adjust width as needed
-                              child: Center(child: Text('Expense', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                              child: Center(
+                                  child: Text('Expense',
+                                      style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500))),
                             ),
                             Container(
                               width: 110, // Adjust width as needed
-                              child: Center(child: Text('Income', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                              child: Center(
+                                  child: Text('Income',
+                                      style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500))),
                             ),
                           ],
                         ),
@@ -231,8 +440,10 @@ class _TransactionState extends State<Transactions> {
                       width: 200,
                       child: TextField(
                         autofocus: true,
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: 'Enter the amount'),
+                        keyboardType:
+                            TextInputType.numberWithOptions(decimal: true),
+                        decoration:
+                            InputDecoration(labelText: 'Enter the amount'),
                         onChanged: (String? val) {
                           if (val != null && val.isNotEmpty) {
                             try {
@@ -250,7 +461,8 @@ class _TransactionState extends State<Transactions> {
                     Container(
                       width: 200,
                       child: TextField(
-                        decoration: InputDecoration(labelText: 'Enter the category'),
+                        decoration:
+                            InputDecoration(labelText: 'Enter the category'),
                         onChanged: (String? val) {
                           categ = val;
                         },
@@ -369,7 +581,7 @@ class _TransactionState extends State<Transactions> {
             return AlertDialog(
               title: Text('Edit Transaction'),
               content: Container(
-                height: 230,
+                height: 250,
                 width: 250,
                 child: Column(
                   children: [
@@ -379,7 +591,10 @@ class _TransactionState extends State<Transactions> {
                           selectedBorderColor: colors[0],
                           borderRadius: BorderRadius.circular(5),
                           fillColor: colors[0],
-                          isSelected: [updatedType == 'Expense', updatedType == 'Income'],
+                          isSelected: [
+                            updatedType == 'Expense',
+                            updatedType == 'Income'
+                          ],
                           onPressed: (int index) {
                             setState(() {
                               updatedType = index == 0 ? 'Expense' : 'Income';
@@ -388,11 +603,19 @@ class _TransactionState extends State<Transactions> {
                           children: <Widget>[
                             Container(
                               width: 110, // Adjust width as needed
-                              child: Center(child: Text('Expense', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                              child: Center(
+                                  child: Text('Expense',
+                                      style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500))),
                             ),
                             Container(
                               width: 110, // Adjust width as needed
-                              child: Center(child: Text('Income', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w500))),
+                              child: Center(
+                                  child: Text('Income',
+                                      style: TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.w500))),
                             ),
                           ],
                         ),
@@ -402,9 +625,12 @@ class _TransactionState extends State<Transactions> {
                       width: 200,
                       child: TextField(
                         autofocus: true,
-                        keyboardType: TextInputType.numberWithOptions(decimal: true),
-                        decoration: InputDecoration(labelText: 'Enter the amount'),
-                        controller: TextEditingController(text: updatedAmount.toString()),
+                        keyboardType:
+                            TextInputType.numberWithOptions(decimal: true),
+                        decoration:
+                            InputDecoration(labelText: 'Enter the amount'),
+                        controller: TextEditingController(
+                            text: updatedAmount.toString()),
                         onChanged: (String? val) {
                           if (val != null && val.isNotEmpty) {
                             try {
@@ -422,8 +648,10 @@ class _TransactionState extends State<Transactions> {
                     Container(
                       width: 200,
                       child: TextField(
-                        decoration: InputDecoration(labelText: 'Enter the category'),
-                        controller: TextEditingController(text: updatedCategory),
+                        decoration:
+                            InputDecoration(labelText: 'Enter the category'),
+                        controller:
+                            TextEditingController(text: updatedCategory),
                         onChanged: (String? val) {
                           if (val != null) {
                             updatedCategory = val;
@@ -450,7 +678,8 @@ class _TransactionState extends State<Transactions> {
                                 });
                               }
                             },
-                            child: Text("${updatedDate.toLocal()}".split(' ')[0]),
+                            child:
+                                Text("${updatedDate.toLocal()}".split(' ')[0]),
                           ),
                         ],
                       ),
@@ -470,7 +699,13 @@ class _TransactionState extends State<Transactions> {
                       child: Text('Update'),
                       onPressed: () {
                         Navigator.of(context).pop();
-                        _updateTransaction(transaction['transactionId'], updatedAmount, updatedType, updatedCategory, updatedDate, index);
+                        _updateTransaction(
+                            transaction['transactionId'],
+                            updatedAmount,
+                            updatedType,
+                            updatedCategory,
+                            updatedDate,
+                            index);
                       },
                     ),
                   ],
@@ -484,8 +719,14 @@ class _TransactionState extends State<Transactions> {
   }
 
   // Update a transaction in Firestore
-  void _updateTransaction(String transactionId, double amount, String type, String category, DateTime date, int index) {
-    _firestore.collection('users').doc(docID).collection('Transactions').doc(transactionId).update({
+  void _updateTransaction(String transactionId, double amount, String type,
+      String category, DateTime date, int index) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .doc(transactionId)
+        .update({
       'amount': amount,
       'type': type,
       'category': category,
@@ -511,12 +752,15 @@ class _TransactionState extends State<Transactions> {
       });
     }).catchError((error) {
       print("Failed to update transaction: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update transaction')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update transaction')));
     });
   }
 
   Widget _buildTransactionList() {
-    final transactionsToShow = _searchController.text.isEmpty ? _transactionsList : _filteredTransactions;
+    final transactionsToShow = _searchController.text.isEmpty
+        ? _transactionsList
+        : _filteredTransactions;
     return ListView.builder(
       itemCount: transactionsToShow.length,
       itemBuilder: (context, index) {
@@ -525,7 +769,122 @@ class _TransactionState extends State<Transactions> {
     );
   }
 
-  //here
+  void _scanReceipt() async {
+  final source = await showDialog<ImageSource>(
+    context: context,
+    builder: (context) => AlertDialog(
+      alignment: Alignment.center,
+      title: Text('Select Image Source'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, ImageSource.camera),
+              child: Text('Take Photo'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, ImageSource.gallery),
+              child: Text('Choose from Gallery'),
+            ),
+          ],
+        ),
+    ),
+  );
+
+  if (source == null) return;
+
+  final picked = await ImagePicker().pickImage(source: source);
+  if (picked == null) return;
+
+  final file = File(picked.path);
+  final inputImage = InputImage.fromFile(file);
+  final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+  final recognizedText = await textRecognizer.processImage(inputImage);
+  await textRecognizer.close();
+
+  if (recognizedText.blocks.isNotEmpty) {
+    List<TextLine> allLines = recognizedText.blocks.expand((b) => b.lines).toList();
+    allLines.sort((a, b) => a.boundingBox.top.compareTo(b.boundingBox.top));
+
+    String? foundMerchant;
+    String? foundTotal;
+    DateTime foundDate = DateTime.now();
+
+    final keywordTotalRegex = RegExp(r'(total|amount due|subtotal)[^\d]*([\$€₺]?\s*\d+[.,]?\d*)', caseSensitive: false);
+    final looseMoneyRegex = RegExp(r'[\$€₺]?\s*\d{1,5}[.,]\d{2}');
+    final dateRegex = RegExp(
+      r'\b\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}\b'
+      r'|\b\d{4}[\/\-\.]\d{1,2}[\/\-\.]\d{1,2}\b'
+      r'|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+\d{4}\b',
+      caseSensitive: false,
+    );
+    final merchantRegex = RegExp(r'[A-Za-z]{2,}');
+
+    for (int i = 0; i < allLines.length; i++) {
+      final line = allLines[i].text.trim();
+
+      if (foundMerchant == null && i < 6 && merchantRegex.hasMatch(line) && !RegExp(r'^\d+$').hasMatch(line)) {
+        foundMerchant = line;
+      }
+
+      if (foundTotal == null && keywordTotalRegex.hasMatch(line)) {
+        foundTotal = keywordTotalRegex.firstMatch(line)?.group(2)?.trim();
+      }
+
+      if (dateRegex.hasMatch(line)) {
+  final rawDate = dateRegex.firstMatch(line)?.group(0)?.trim();
+  try {
+    if (rawDate != null) {
+      // Try month name style
+      if (RegExp(r'[A-Za-z]', caseSensitive: false).hasMatch(rawDate)) {
+        foundDate = DateFormat('MMMM d, yyyy').parseStrict(rawDate);
+      } else {
+        // Try numeric formats
+        foundDate = DateFormat.yMd().parseStrict(rawDate);
+      }
+    }
+  } catch (e) {
+    print("Date parse failed for: $rawDate");
+    foundDate = DateTime.now();
+  }
+}
+
+      print(foundDate);
+    }
+
+    if (foundTotal == null) {
+      double maxValue = 0.0;
+      for (var line in allLines) {
+        final matches = looseMoneyRegex.allMatches(line.text);
+        for (final match in matches) {
+          final raw = match.group(0)?.replaceAll(RegExp(r'[^\d.,]'), '') ?? '';
+          final cleaned = raw.replaceAll(',', '.');
+          final value = double.tryParse(cleaned);
+          if (value != null && value > maxValue) {
+            maxValue = value;
+            foundTotal = match.group(0)?.trim();
+          }
+        }
+      }
+    }
+
+    final scannedAmount = double.tryParse(foundTotal?.replaceAll(RegExp(r'[^\d.]'), '') ?? '');
+    final scannedCategory = foundMerchant ?? 'Scanned';
+
+    setState(() {
+      amt = scannedAmount ?? 0;
+      date = foundDate;
+      categ = scannedCategory;
+      type1 = 'Expense';
+    });
+
+    _addTransaction(amt, type1, categ, date);
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not read receipt')));
+  }
+}
+
+
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Dismissible(
       key: Key(transaction['transactionId']),
@@ -556,11 +915,15 @@ class _TransactionState extends State<Transactions> {
             children: [
               Text(
                 transaction['category'],
-                style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.ibmPlexSans(
+                    fontSize: 16, fontWeight: FontWeight.bold),
               ),
               Text(
                 "Type: ${transaction['type']} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'])}",
-                style: GoogleFonts.ibmPlexSans(fontSize: 11, color: Colors.black, fontWeight: FontWeight.w500),
+                style: GoogleFonts.ibmPlexSans(
+                    fontSize: 11,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -573,11 +936,17 @@ class _TransactionState extends State<Transactions> {
                 style: GoogleFonts.ibmPlexSans(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: transaction['type'] == 'Expense' ? Colors.red : Colors.green,
+                  color: transaction['type'] == 'Expense'
+                      ? Colors.red
+                      : Colors.green,
                 ),
               ),
               IconButton(
-                icon: Icon(Icons.edit, color: Colors.black,size: 30,),
+                icon: Icon(
+                  Icons.edit,
+                  color: Colors.black,
+                  size: 30,
+                ),
                 onPressed: () {
                   _promptEditTransaction(transaction, index);
                 },
@@ -598,8 +967,8 @@ class _TransactionState extends State<Transactions> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-            Card(
-              child: ListTile(
+              Card(
+                  child: ListTile(
                 leading: Icon(Icons.add_circle_outline),
                 title: Text('Manual Entry'),
                 onTap: () {
@@ -613,10 +982,7 @@ class _TransactionState extends State<Transactions> {
                   title: Text('Scan Receipt'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ReceiptScanner()),
-                  );
+                  _scanReceipt();
                 },
               ),
               ),
@@ -624,14 +990,27 @@ class _TransactionState extends State<Transactions> {
                 child: ListTile(
                   leading: Icon(Icons.attach_money),
                   title: Text('Get From Bank'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => PlaidPage()),
-                  );
-                },
-              ),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    // Fetch latest user data in case access token was saved previously
+                    final doc = await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(docID)
+                        .get();
+                    final accessToken = doc.data()?['plaidAccessToken'];
+
+                    if (accessToken != null) {
+                      print("🔁 Already linked. Fetching transactions...");
+                      await fetchTransactions(accessToken);
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content:
+                              Text("Fetched transactions from saved account")));
+                    } else {
+                      print("➡️ Launching Plaid...");
+                      await _launchPlaidFlow();
+                    }
+                  },
+                ),
               ),
             ],
           ),
@@ -644,7 +1023,10 @@ class _TransactionState extends State<Transactions> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Transactions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
+        title: Text(
+          'Transactions',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
         centerTitle: true,
         backgroundColor: Colors.black,
         actions: [
@@ -662,41 +1044,46 @@ class _TransactionState extends State<Transactions> {
         ],
       ),
       body: StreamBuilder<List<Color>>(
-        stream: docID.isNotEmpty
-            ? GradientService(userId: docID).getGradientStream()
-            : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
-        builder: (context, snapshot) {
-          colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
-          return Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-            ),
-            child: Column(
-              children: [
-                SearchBar(
-                  controller: _searchController,
-                  hintText: 'Search transactions...',
-                  leading: const Icon(Icons.search),
-                  padding: const MaterialStatePropertyAll<EdgeInsets>(
-                    EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          stream: docID.isNotEmpty
+              ? GradientService(userId: docID).getGradientStream()
+              : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+          builder: (context, snapshot) {
+            colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+              ),
+              child: Column(
+                children: [
+                  SearchBar(
+                    controller: _searchController,
+                    hintText: 'Search transactions...',
+                    leading: const Icon(Icons.search),
+                    padding: const MaterialStatePropertyAll<EdgeInsets>(
+                      EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    ),
                   ),
-                ),
-                SizedBox(height: 20),
-                Container(
-                  padding: EdgeInsets.all(15),
-                  child: Text(
-                    'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _totalBalance >= 0 ? Colors.green : Colors.red),
-                  ), 
-                ),
-                SizedBox(height: 15),
-                Expanded(child: _buildTransactionList()),
-                SizedBox(height: 75,),
-              ],
-            ),
-          );
-        }
-      ),
+                  SizedBox(height: 20),
+                  Container(
+                    padding: EdgeInsets.all(15),
+                    child: Text(
+                      'Total Balance: ${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color:
+                              _totalBalance >= 0 ? Colors.green : Colors.red),
+                    ),
+                  ),
+                  SizedBox(height: 15),
+                  Expanded(child: _buildTransactionList()),
+                  SizedBox(
+                    height: 75,
+                  ),
+                ],
+              ),
+            );
+          }),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Container(
         padding: EdgeInsets.symmetric(vertical: 0, horizontal: 10.0),
@@ -706,12 +1093,15 @@ class _TransactionState extends State<Transactions> {
             FloatingActionButton(
               backgroundColor: colors[0],
               onPressed: sharePdfLink,
-              child: Icon(Icons.share, color: Colors.black,),
+              child: Icon(
+                Icons.share,
+                color: Colors.black,
+              ),
             ),
             FloatingActionButton(
               backgroundColor: colors[0],
               onPressed: _showAddOptions,
-              child: Icon(Icons.add, color: Colors.black), 
+              child: Icon(Icons.add, color: Colors.black),
             ),
           ],
         ),

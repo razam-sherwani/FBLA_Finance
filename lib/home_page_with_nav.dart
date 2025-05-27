@@ -37,7 +37,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
     HomePage(),
     Transactions(),
     SpendingHabitPage(),
-    ReceiptScanner(),
+    Reports(),
     SettingsPage()
   ];
 
