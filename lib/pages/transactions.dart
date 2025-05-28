@@ -271,7 +271,7 @@ class _TransactionState extends State<Transactions> {
         final accessToken = doc.data()['plaidAccessToken'];
         if (accessToken != null) {
           print("✅ Found saved access token.");
-          await fetchTransactions(accessToken); // Auto-fetch transactions
+          //await fetchTransactions(accessToken); // Auto-fetch transactions
         } else {
           print("ℹ️ No access token on file. Will need to launch Plaid.");
         }
@@ -1032,13 +1032,14 @@ class _TransactionState extends State<Transactions> {
         actions: [
           IconButton(
             icon: Icon(Icons.swap_horiz, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => SplitTransactions(),
                 ),
               );
+              _initializeData();
             },
           ),
         ],

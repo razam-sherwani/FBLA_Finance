@@ -187,23 +187,25 @@ class _SplitTransactionsState extends State<SplitTransactions> {
 
 // Method to remove a transaction from Firestore and update the local transactions list
   void _removeTransaction(String transactionId) {
-    if (docID.isEmpty) {
-      print("Warning: docID is empty, cannot remove transaction");
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to remove transaction: User not found')));
-      return;
-    }
+  if (docID.isEmpty) {
+    print("Warning: docID is empty, cannot remove transaction");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Failed to remove transaction: User not found')));
+    return;
+  }
 
-    _firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Transactions')
-        .doc(transactionId)
-        .delete()
-        .then((_) {
+  _firestore
+    .collection('users')
+    .doc(docID)
+    .collection('Transactions')
+    .doc(transactionId)
+    .delete()
+    .then((_) {
       setState(() {
-        // Find the transaction before removing it to update the balance
         Map<String, dynamic>? removedTransaction;
+        List<String> emptyCategories = [];
+
+        // First, find and remove the transaction
         transactionsByCategory.forEach((category, transactions) {
           transactions.removeWhere((transaction) {
             if (transaction is Map<String, dynamic>) {
@@ -215,10 +217,17 @@ class _SplitTransactionsState extends State<SplitTransactions> {
             }
             return false;
           });
+
+          // Mark the category for removal if empty
           if (transactions.isEmpty) {
-            transactionsByCategory.remove(category);
+            emptyCategories.add(category);
           }
         });
+
+        // Now safely remove empty categories
+        for (var category in emptyCategories) {
+          transactionsByCategory.remove(category);
+        }
 
         // Update total balance
         if (removedTransaction != null) {
@@ -234,9 +243,10 @@ class _SplitTransactionsState extends State<SplitTransactions> {
     }).catchError((error) {
       print("Error deleting transaction: $error");
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete transaction')));
+        SnackBar(content: Text('Failed to delete transaction')));
     });
-  }
+}
+
 
   void _promptAddTransaction() {
     showDialog(
