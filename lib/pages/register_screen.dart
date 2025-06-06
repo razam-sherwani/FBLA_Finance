@@ -1,10 +1,13 @@
-import 'package:flutter/cupertino.dart';
+// lib/pages/register_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:fbla_finance/pages/login_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:fbla_finance/backend/auth.dart';
-import 'package:fbla_finance/main.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import 'package:fbla_finance/backend/auth.dart';
+import 'package:fbla_finance/pages/login_screen.dart';
+import 'package:fbla_finance/main.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,6 +18,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   String? errorMessage = '';
+
   final TextEditingController _controllerFirstName = TextEditingController();
   final TextEditingController _controllerLastName = TextEditingController();
   final TextEditingController _controllerEmail = TextEditingController();
@@ -23,38 +27,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _controllerConfirmPassword.dispose();
-    _controllerEmail.dispose();
     _controllerFirstName.dispose();
     _controllerLastName.dispose();
+    _controllerEmail.dispose();
     _controllerPassword.dispose();
+    _controllerConfirmPassword.dispose();
     super.dispose();
   }
 
   Future<void> createUserWithEmailAndPassword() async {
+    final firstName = _controllerFirstName.text.trim();
+    final lastName = _controllerLastName.text.trim();
+    final email = _controllerEmail.text.trim();
+    final password = _controllerPassword.text;
+    final confirm = _controllerConfirmPassword.text;
+
+    if (firstName.isEmpty ||
+        lastName.isEmpty ||
+        email.isEmpty ||
+        password.isEmpty ||
+        confirm.isEmpty) {
+      showErrorMessage('Please fill out all fields.');
+      return;
+    }
+
+    if (password != confirm) {
+      showErrorMessage("Passwords don't match.");
+      return;
+    }
+
     try {
-      if (passwordConfirmed()) {
-        // Create user
-        await Auth().createUserWithEmailAndPassword(
-          email: _controllerEmail.text.trim(),
-          password: _controllerPassword.text,
-        );
+      // Create user in FirebaseAuth
+      await Auth().createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-        // Add user details
-        await addUserDetails(
-          _controllerFirstName.text.trim(),
-          _controllerLastName.text.trim(),
-          _controllerEmail.text.trim(),
-        );
+      // Add user details to Firestore
+      await FirebaseFirestore.instance.collection('users').add({
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'budget': 1000,
+      });
 
-        // Navigate to the main app
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => MyApp()),
-        );
-      } else {
-        showErrorMessage("Passwords don't match");
-      }
+      // Navigate into the main app
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MyApp()),
+      );
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorMessage = e.message;
@@ -62,19 +83,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       showErrorMessage(errorMessage!);
     } catch (e) {
       showErrorMessage(e.toString());
-    }
-  }
-
-  Future<void> addUserDetails(String firstName, String lastName, String email) async {
-    try {
-      await FirebaseFirestore.instance.collection('users').add({
-        'first_name': firstName, // Changed to snake_case for consistency
-        'last_name': lastName,   // Changed to snake_case for consistency
-        'email': email,
-        'budget': 1000,
-      });
-    } catch (e) {
-      showErrorMessage('Failed to add user details: $e');
     }
   }
 
@@ -87,205 +95,427 @@ class _RegisterScreenState extends State<RegisterScreen> {
             message,
             style: const TextStyle(color: Colors.black),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                "OK",
+                style: TextStyle(color: Colors.blue),
+              ),
+            )
+          ],
         );
       },
     );
   }
 
-  bool passwordConfirmed() {
-    return _controllerPassword.text.trim() == _controllerConfirmPassword.text.trim();
-  }
-
-  Widget _errorMessage() {
-    return Text(errorMessage == '' ? '' : 'Humm? $errorMessage');
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Total screen height (should be ~926 logical pixels)
+    final screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      body: SingleChildScrollView(
+      backgroundColor: Colors.white,
+      body: SafeArea(
         child: SizedBox(
-          height: MediaQuery.of(context).size.height,
-          child: Stack(
+          height: screenHeight,
+          width: double.infinity,
+          child: Column(
             children: [
-              Container(
-                height: double.infinity,
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 120, 120, 120)
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.only(top: 70.0, right: 80),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Go ahead and set up\nyour account',
-                        textAlign: TextAlign.left,
-                          style: TextStyle(
-                          fontSize: 30,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.only(top: 8.0, right: 8, left: 8),
-                        child: Text("Sign up to enjoy the best financial experience",
-                        style: TextStyle(
-                            fontSize: 14,
-                            color: Color.fromARGB(255, 230, 228, 228),
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+              // ==== TOP: Logo + Title + Motto + Heading ====
+
+              // 1) Top blank gap (to push content down a bit)
+              const SizedBox(height: 20), // 20 px
+
+              // 2) Logo image (80 px tall)
+              Image.asset(
+                'assets/Logo.png',
+                height: 80,
+                fit: BoxFit.contain,
+              ),
+
+              // 3) Gap: 8 px
+              const SizedBox(height: 8),
+
+              // 4) “FinSafe” Title (fontSize 40 => ~40 px)
+              Text(
+                'FinSafe',
+                style: GoogleFonts.barlow(
+                  textStyle: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.blue.shade900,
                   ),
                 ),
               ),
+
+              // 5) Gap: 4 px
+              const SizedBox(height: 4),
+
+              // 6) Motto (fontSize 16 => ~20 px tall)
+              Text(
+                'Secure. Strategic. Seamless.',
+                style: GoogleFonts.barlow(
+                  textStyle: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              // 7) Gap before heading: 16 px
+              const SizedBox(height: 16),
+
+              // 8) “Create an account” heading (fontSize 20 => ~24 px tall)
+              Text(
+                'Create an account',
+                style: GoogleFonts.barlow(
+                  textStyle: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ),
+
+              // 9) Gap: 2 px
+              const SizedBox(height: 2),
+
+              // 10) Subtitle (fontSize 14 => ~18 px tall)
+              Text(
+                'Enter your email to sign up for this app',
+                style: GoogleFonts.barlow(
+                  textStyle: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              // 11) SMALL SPACER to push the form block down
+              const Spacer(flex: 1),
+
+              // ==== MIDDLE: Form Fields & Continue Button ====
+
+              // 12) First Name Field (50 px tall)
               Padding(
-                padding: const EdgeInsets.only(top: 225.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(40),
-                      topRight: Radius.circular(40),
-                    ),
-                  ),
-                  height: double.infinity,
-                  width: double.infinity,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 25.0, right: 25.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextField(
-                          controller: _controllerFirstName,
-                          decoration: const InputDecoration(
-                            suffixIcon: Icon(Icons.check, color: Colors.grey),
-                            label: Text(
-                              'First Name',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextField(
-                          controller: _controllerLastName,
-                          decoration: const InputDecoration(
-                            suffixIcon: Icon(Icons.check, color: Colors.grey),
-                            label: Text(
-                              'Last Name',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextField(
-                          controller: _controllerEmail,
-                          decoration: const InputDecoration(
-                            suffixIcon: Icon(Icons.check, color: Colors.grey),
-                            label: Text(
-                              'Email',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextField(
-                          obscureText: true,
-                          controller: _controllerPassword,
-                          decoration: const InputDecoration(
-                            suffixIcon: Icon(Icons.visibility_off, color: Colors.grey),
-                            label: Text(
-                              'Password',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                        TextField(
-                          obscureText: true,
-                          controller: _controllerConfirmPassword,
-                          decoration: const InputDecoration(
-                            suffixIcon: Icon(Icons.visibility_off, color: Colors.grey),
-                            label: Text(
-                              'Confirm Password',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-                        const SizedBox(height: 40),
-                        GestureDetector(
-                          onTap: createUserWithEmailAndPassword,
-                          child: Container(
-                            height: 55,
-                            width: 300,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              color: Colors.blue.shade400,
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'SIGN UP',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 50),
-                        Align(
-                          alignment: Alignment.bottomRight,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              const Text(
-                                "Already have an account?",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                                  );
-                                },
-                                child: const Text(
-                                  "Log in",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 17,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      ],
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 50,
+                  child: TextField(
+                    controller: _controllerFirstName,
+                    textCapitalization: TextCapitalization.words,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'First Name',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
               ),
+
+              // 13) Gap: 8 px
+              const SizedBox(height: 8),
+
+              // 14) Last Name Field (50 px)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 50,
+                  child: TextField(
+                    controller: _controllerLastName,
+                    textCapitalization: TextCapitalization.words,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Last Name',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 15) Gap: 8 px
+              const SizedBox(height: 8),
+
+              // 16) Email Field (50 px)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 50,
+                  child: TextField(
+                    controller: _controllerEmail,
+                    keyboardType: TextInputType.emailAddress,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'email@domain.com',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 17) Gap: 8 px
+              const SizedBox(height: 8),
+
+              // 18) Password Field (50 px)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 50,
+                  child: TextField(
+                    controller: _controllerPassword,
+                    obscureText: true,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Password',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: const Icon(
+                        Icons.visibility_off,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 19) Gap: 8 px
+              const SizedBox(height: 8),
+
+              // 20) Confirm Password Field (50 px)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 50,
+                  child: TextField(
+                    controller: _controllerConfirmPassword,
+                    obscureText: true,
+                    style: const TextStyle(fontSize: 16),
+                    decoration: InputDecoration(
+                      hintText: 'Confirm Password',
+                      hintStyle: TextStyle(color: Colors.grey[400]),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 0,
+                        horizontal: 16,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: const Icon(
+                        Icons.visibility_off,
+                        color: Colors.grey,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 21) Gap: 16 px before Continue button
+              const SizedBox(height: 16),
+
+              // 22) Continue Button (48 px tall)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 48,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade900,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: createUserWithEmailAndPassword,
+                    child: Text(
+                      'Continue',
+                      style: GoogleFonts.barlow(
+                        textStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 23) Gap: 12 px before “Log in” link
+              const SizedBox(height: 12),
+
+              // 24) “Already have an account? Log in” (16 px tall)
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  );
+                },
+                child: Text(
+                  'Already have an account? Log in',
+                  style: GoogleFonts.barlow(
+                    textStyle: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.blue.shade900,
+                    ),
+                  ),
+                ),
+              ),
+
+              // 25) Gap: 16 px before divider
+              const SizedBox(height: 16),
+
+              // 26) Divider with “or” (approx 14 px tall)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Row(
+                  children: const [
+                    Expanded(
+                      child: Divider(color: Colors.grey, thickness: 0.5),
+                    ),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Text(
+                        'or',
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(color: Colors.grey, thickness: 0.5),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 27) Gap: 16 px before social buttons
+              const SizedBox(height: 16),
+
+              // 28) “Continue with Google” Button (48 px tall)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 48,
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: Image.asset(
+                      'assets/google.png',
+                      height: 24,
+                      width: 24,
+                    ),
+                    label: Text(
+                      'Continue with Google',
+                      style: GoogleFonts.barlow(
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.grey[100],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    onPressed: () {
+                      // TODO: Hook up Google Sign-In logic here
+                    },
+                  ),
+                ),
+              ),
+
+              // 29) Gap: 8 px between social buttons
+              const SizedBox(height: 8),
+
+              // 30) “Continue with Apple” Button (48 px tall)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: SizedBox(
+                  height: 48,
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(
+                      Icons.apple,
+                      size: 24,
+                      color: Colors.black,
+                    ),
+                    label: Text(
+                      'Continue with Apple',
+                      style: GoogleFonts.barlow(
+                        textStyle: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.grey[100],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      side: BorderSide(color: Colors.grey[300]!),
+                    ),
+                    onPressed: () {
+                      // TODO: Hook up Sign-In with Apple logic here
+                    },
+                  ),
+                ),
+              ),
+
+              // 31) Final spacer to absorb any extra space
+              const Spacer(flex: 1),
             ],
           ),
         ),
