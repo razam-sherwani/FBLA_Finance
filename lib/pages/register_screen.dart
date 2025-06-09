@@ -1,5 +1,3 @@
-// lib/pages/register_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,6 +16,9 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   String? errorMessage = '';
+  bool isLoading = false;
+  bool isPasswordObscure = true;
+  bool isConfirmObscure = true;
 
   final TextEditingController _controllerFirstName = TextEditingController();
   final TextEditingController _controllerLastName = TextEditingController();
@@ -56,14 +57,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    setState(() => isLoading = true);
+
     try {
-      // Create user in FirebaseAuth
       await Auth().createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Add user details to Firestore
       await FirebaseFirestore.instance.collection('users').add({
         'first_name': firstName,
         'last_name': lastName,
@@ -71,7 +72,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'budget': 1000,
       });
 
-      // Navigate into the main app
+      setState(() => isLoading = false);
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MyApp()),
@@ -79,9 +81,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on FirebaseAuthException catch (e) {
       setState(() {
         errorMessage = e.message;
+        isLoading = false;
       });
       showErrorMessage(errorMessage!);
     } catch (e) {
+      setState(() => isLoading = false);
       showErrorMessage(e.toString());
     }
   }
@@ -109,414 +113,268 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Widget buildInputField(TextEditingController controller, String hint,
+      {bool obscure = false, TextInputType? keyboardType, VoidCallback? onToggle, bool? isObscure}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure && (isObscure ?? true),
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 19),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.blueGrey[200], fontWeight: FontWeight.w500),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.80),
+        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 22),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.blueGrey[100]!),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.blueGrey[100]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.blue.shade200, width: 2),
+        ),
+        suffixIcon: obscure
+            ? IconButton(
+                icon: Icon(
+                  (isObscure ?? true) ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.blueGrey[300],
+                ),
+                onPressed: onToggle,
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget buildSocialButton({
+    required String label,
+    required String asset,
+    required VoidCallback onTap,
+    Color? bgColor,
+    Color? textColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            backgroundColor: bgColor ?? Colors.white,
+            side: BorderSide(color: Colors.blueGrey[100]!),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+          ),
+          onPressed: onTap,
+          icon: Image.asset(asset, height: 26, width: 26),
+          label: Text(
+            label,
+            style: GoogleFonts.barlow(
+              fontSize: 19,
+              fontWeight: FontWeight.w600,
+              color: textColor ?? Colors.black87,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Total screen height (should be ~926 logical pixels)
-    final screenHeight = MediaQuery.of(context).size.height;
+    final blue = Colors.blue.shade900;
 
     return Scaffold(
       backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SizedBox(
-          height: screenHeight,
-          width: double.infinity,
-          child: Column(
-            children: [
-              // ==== TOP: Logo + Title + Motto + Heading ====
-
-              // 1) Top blank gap (to push content down a bit)
-              const SizedBox(height: 20), // 20 px
-
-              // 2) Logo image (80 px tall)
-              Image.asset(
-                'assets/Logo.png',
-                height: 80,
-                fit: BoxFit.contain,
-              ),
-
-              // 3) Gap: 8 px
-              const SizedBox(height: 8),
-
-              // 4) “FinSafe” Title (fontSize 40 => ~40 px)
-              Text(
-                'FinSafe',
-                style: GoogleFonts.barlow(
-                  textStyle: TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.blue.shade900,
+      body: Container(
+        width: double.infinity,
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xfffafdff),
+              Color(0xffe6f0fb),
+              Color(0xffe7ecfa),
+            ],
+            stops: [0.0, 0.55, 1.0],
+          ),
+        ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 42),
+                // App Logo at top
+                Opacity(
+                  opacity: 0.92,
+                  child: Image.asset(
+                    "assets/Logo.png",
+                    height: 70,
                   ),
                 ),
-              ),
-
-              // 5) Gap: 4 px
-              const SizedBox(height: 4),
-
-              // 6) Motto (fontSize 16 => ~20 px tall)
-              Text(
-                'Secure. Strategic. Seamless.',
-                style: GoogleFonts.barlow(
-                  textStyle: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
-                    letterSpacing: 0.5,
+                const SizedBox(height: 8),
+                Text(
+                  "Create Your Account",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.barlow(
+                    fontSize: 36,
+                    fontWeight: FontWeight.w900,
+                    color: blue,
                   ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-
-              // 7) Gap before heading: 16 px
-              const SizedBox(height: 16),
-
-              // 8) “Create an account” heading (fontSize 20 => ~24 px tall)
-              Text(
-                'Create an account',
-                style: GoogleFonts.barlow(
-                  textStyle: TextStyle(
-                    fontSize: 20,
+                const SizedBox(height: 18),
+                Text(
+                  "Start your financial journey.\nIt's quick and easy.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.barlow(
+                    fontSize: 19,
+                    color: Colors.blueGrey[400],
                     fontWeight: FontWeight.w600,
-                    color: Colors.grey[800],
                   ),
                 ),
-              ),
-
-              // 9) Gap: 2 px
-              const SizedBox(height: 2),
-
-              // 10) Subtitle (fontSize 14 => ~18 px tall)
-              Text(
-                'Enter your email to sign up for this app',
-                style: GoogleFonts.barlow(
-                  textStyle: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
+                const SizedBox(height: 38),
+                buildInputField(_controllerFirstName, "First Name"),
+                const SizedBox(height: 20),
+                buildInputField(_controllerLastName, "Last Name"),
+                const SizedBox(height: 20),
+                buildInputField(_controllerEmail, "Email", keyboardType: TextInputType.emailAddress),
+                const SizedBox(height: 20),
+                buildInputField(
+                  _controllerPassword,
+                  "Password",
+                  obscure: true,
+                  onToggle: () {
+                    setState(() {
+                      isPasswordObscure = !isPasswordObscure;
+                    });
+                  },
+                  isObscure: isPasswordObscure,
                 ),
-                textAlign: TextAlign.center,
-              ),
-
-              // 11) SMALL SPACER to push the form block down
-              const Spacer(flex: 1),
-
-              // ==== MIDDLE: Form Fields & Continue Button ====
-
-              // 12) First Name Field (50 px tall)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 50,
-                  child: TextField(
-                    controller: _controllerFirstName,
-                    textCapitalization: TextCapitalization.words,
-                    style: const TextStyle(fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'First Name',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
+                const SizedBox(height: 20),
+                buildInputField(
+                  _controllerConfirmPassword,
+                  "Confirm Password",
+                  obscure: true,
+                  onToggle: () {
+                    setState(() {
+                      isConfirmObscure = !isConfirmObscure;
+                    });
+                  },
+                  isObscure: isConfirmObscure,
                 ),
-              ),
-
-              // 13) Gap: 8 px
-              const SizedBox(height: 8),
-
-              // 14) Last Name Field (50 px)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 50,
-                  child: TextField(
-                    controller: _controllerLastName,
-                    textCapitalization: TextCapitalization.words,
-                    style: const TextStyle(fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Last Name',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // 15) Gap: 8 px
-              const SizedBox(height: 8),
-
-              // 16) Email Field (50 px)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 50,
-                  child: TextField(
-                    controller: _controllerEmail,
-                    keyboardType: TextInputType.emailAddress,
-                    style: const TextStyle(fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'email@domain.com',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // 17) Gap: 8 px
-              const SizedBox(height: 8),
-
-              // 18) Password Field (50 px)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 50,
-                  child: TextField(
-                    controller: _controllerPassword,
-                    obscureText: true,
-                    style: const TextStyle(fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Password',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.visibility_off,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // 19) Gap: 8 px
-              const SizedBox(height: 8),
-
-              // 20) Confirm Password Field (50 px)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 50,
-                  child: TextField(
-                    controller: _controllerConfirmPassword,
-                    obscureText: true,
-                    style: const TextStyle(fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Confirm Password',
-                      hintStyle: TextStyle(color: Colors.grey[400]),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: 16,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      suffixIcon: const Icon(
-                        Icons.visibility_off,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // 21) Gap: 16 px before Continue button
-              const SizedBox(height: 16),
-
-              // 22) Continue Button (48 px tall)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 48,
+                const SizedBox(height: 30),
+                // Sign Up Button or Spinner
+                SizedBox(
                   width: double.infinity,
+                  height: 62,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade900,
+                      backgroundColor: blue,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(22),
                       ),
-                      elevation: 0,
+                      elevation: 5,
+                      shadowColor: blue.withOpacity(0.12),
                     ),
-                    onPressed: createUserWithEmailAndPassword,
-                    child: Text(
-                      'Continue',
-                      style: GoogleFonts.barlow(
-                        textStyle: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                    onPressed: isLoading ? null : createUserWithEmailAndPassword,
+                    child: isLoading
+                        ? const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          )
+                        : Text(
+                            'Sign Up',
+                            style: GoogleFonts.barlow(
+                              fontSize: 22,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                // Divider with 'or'
+                Row(
+                  children: [
+                    const Expanded(child: Divider(thickness: 1.2)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        'or',
+                        style: GoogleFonts.barlow(
+                          color: Colors.blueGrey[300],
+                          fontSize: 17,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
-                  ),
+                    const Expanded(child: Divider(thickness: 1.2)),
+                  ],
                 ),
-              ),
-
-              // 23) Gap: 12 px before “Log in” link
-              const SizedBox(height: 12),
-
-              // 24) “Already have an account? Log in” (16 px tall)
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
-                  );
-                },
-                child: Text(
-                  'Already have an account? Log in',
-                  style: GoogleFonts.barlow(
-                    textStyle: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.blue.shade900,
-                    ),
-                  ),
+                const SizedBox(height: 18),
+                // Social Login Buttons
+                buildSocialButton(
+                  label: "Continue with Google",
+                  asset: 'assets/google.png',
+                  onTap: () {
+                    // TODO: Add your Google sign-in logic here
+                  },
                 ),
-              ),
-
-              // 25) Gap: 16 px before divider
-              const SizedBox(height: 16),
-
-              // 26) Divider with “or” (approx 14 px tall)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Row(
-                  children: const [
-                    Expanded(
-                      child: Divider(color: Colors.grey, thickness: 0.5),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        'or',
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                buildSocialButton(
+                  label: "Continue with Apple",
+                  asset: 'assets/apple.png',
+                  onTap: () {
+                    // TODO: Add your Apple sign-in logic here
+                  },
+                  bgColor: Colors.black,
+                  textColor: Colors.white,
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Already have an account? ",
+                      style: GoogleFonts.barlow(
+                        fontSize: 17,
+                        color: Colors.blueGrey[500],
                       ),
                     ),
-                    Expanded(
-                      child: Divider(color: Colors.grey, thickness: 0.5),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'Log in',
+                        style: GoogleFonts.barlow(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: blue,
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-
-              // 27) Gap: 16 px before social buttons
-              const SizedBox(height: 16),
-
-              // 28) “Continue with Google” Button (48 px tall)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 48,
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: Image.asset(
-                      'assets/google.png',
-                      height: 24,
-                      width: 24,
-                    ),
-                    label: Text(
-                      'Continue with Google',
-                      style: GoogleFonts.barlow(
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.grey[100],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    onPressed: () {
-                      // TODO: Hook up Google Sign-In logic here
-                    },
-                  ),
-                ),
-              ),
-
-              // 29) Gap: 8 px between social buttons
-              const SizedBox(height: 8),
-
-              // 30) “Continue with Apple” Button (48 px tall)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: SizedBox(
-                  height: 48,
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(
-                      Icons.apple,
-                      size: 24,
-                      color: Colors.black,
-                    ),
-                    label: Text(
-                      'Continue with Apple',
-                      style: GoogleFonts.barlow(
-                        textStyle: const TextStyle(
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.grey[100],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      side: BorderSide(color: Colors.grey[300]!),
-                    ),
-                    onPressed: () {
-                      // TODO: Hook up Sign-In with Apple logic here
-                    },
-                  ),
-                ),
-              ),
-
-              // 31) Final spacer to absorb any extra space
-              const Spacer(flex: 1),
-            ],
+                const SizedBox(height: 40),
+              ],
+            ),
           ),
         ),
       ),

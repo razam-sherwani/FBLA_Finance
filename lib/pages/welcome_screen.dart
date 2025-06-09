@@ -1,153 +1,112 @@
-import 'dart:io';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:fbla_finance/backend/auth.dart';
-import 'package:fbla_finance/main.dart';
-import 'package:fbla_finance/pages/login_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:fbla_finance/pages/register_screen.dart';
-import 'package:fbla_finance/util/square_tile.dart';
 
-class WelcomeScreen extends StatefulWidget {
+class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
-}
-
-class _WelcomeScreenState extends State<WelcomeScreen> {
-  String? errorMessage;
-  @override
   Widget build(BuildContext context) {
+    final blue = Colors.blue.shade900;
+
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Container(
-          height: double.infinity,
-          width: double.infinity,
-          decoration: BoxDecoration(
-              color: const Color.fromARGB(255, 230, 230, 230),),
+        width: double.infinity,
+        height: MediaQuery.of(context).size.height,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xfffafdff),
+              Color(0xffe6f0fb),
+              Color(0xffe7ecfa),
+            ],
+            stops: [0.0, 0.55, 1.0],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(height: 80,),
-              Text("FinSafe", style: GoogleFonts.barlow(textStyle: TextStyle(fontSize: 75, fontWeight: FontWeight.bold, color: Colors.blue.shade900))),
-              Padding(
-                  padding: const EdgeInsets.only(top: 25.0),
-                  child: Image.asset("assets/Logo.png", height: 1428*0.125,),
-                  ),
-              SizedBox(
-                height: 40,
+              const SizedBox(height: 60),
+              // Logo
+              Image.asset(
+                "assets/Logo.png",
+                height: 200,
               ),
-              Text("Secure. Strategic. Seamless.", style: GoogleFonts.barlow(textStyle: TextStyle(fontSize: 25, fontWeight: FontWeight.bold, color: Colors.blue.shade900))),
-              SizedBox(height: 50,),
-              SizedBox(
-                height: 30,
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => LoginScreen()));
-                },
-                child: Container(
-                  height: 53,
-                  width: 270,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade300,
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.black),
-                  ),
-                  child: Center(
-                      child: Text(
-                    'LOG IN',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
-                  )),
-                ),
-              ),
-              SizedBox(
-                height: 30,
-              ),
-              GestureDetector(
-                onTap:() {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => RegisterScreen()));
-                },
-                child: Container(
-                  height: 53,
-                  width: 270,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade300,
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(color: Colors.black),
-                  ),
-                  child: Center(
-                      child: Text(
-                    'SIGN UP',
-                    style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black),
-                  )),
-                ),
-              ),
-              SizedBox(height: 30,),
+              const SizedBox(height: 48),
               Text(
-                'Login with Social Media',
-                style: TextStyle(fontSize: 17, color: Colors.blue.shade900),
+                "Welcome to FinSafe",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.barlow(
+                  fontSize: 44, // Bigger headline
+                  fontWeight: FontWeight.w900,
+                  color: blue,
+                  letterSpacing: -1.3,
+                ),
               ),
-              SizedBox(
-                height: 5,
+              const SizedBox(height: 30),
+              Text(
+                "Manage your money wisely",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.barlow(
+                  fontSize: 28, // Bigger tagline
+                  color: Colors.blueGrey[400],
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children:  [
-                  // google button
-                  GestureDetector(
-                    child: SquareTile(imagePath: 'assets/google.png'),
-                    onTap: signInWithGoogle,  
+              const SizedBox(height: 20),
+              Text(
+                "Take control of your finances with FinSafe — the easiest and most powerful way to track your money.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.barlow(
+                  fontSize: 20, // Bigger description
+                  color: Colors.blueGrey[300],
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 60), // Button is now higher up
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 68,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      elevation: 5,
+                      shadowColor: blue.withOpacity(0.18),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterScreen(),
+                        ),
+                      );
+                    },
+                    child: Text(
+                      'Get Started',
+                      style: GoogleFonts.barlow(
+                        fontSize: 25, // Bigger button text
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
                   ),
-
-                  SizedBox(width: 25),
-
-                  // apple button
-                  SquareTile(imagePath: 'assets/apple.png'),
-
-                   SizedBox(width: 25),
-
-                  // apple button
-                  SquareTile(imagePath: 'assets/facebook.png')
-                ],
-              ),
-              SizedBox(
-                height: 10,
+                ),
               ),
             ],
-          )),
+          ),
+        ),
+      ),
     );
-  }
-
-  Future<void> signInWithGoogle() async {
-    try {
-      await Auth().signInWithGoogle();
-       Navigator.pushReplacement(
-                    context, MaterialPageRoute(builder: (_) => MyApp()));
-    } on FirebaseAuthException catch(e){
-      setState(() {
-        errorMessage = e.message;
-      });
-      showErrorMessage(errorMessage!);
-    }
-  }
-  void showErrorMessage(String message) {
-    showDialog(
-        context: context,
-        builder: (context) {
-          return  AlertDialog(
-            title: Text(message,
-              style: TextStyle(color: Colors.black),
-            ),
-          );
-        });
   }
 }
