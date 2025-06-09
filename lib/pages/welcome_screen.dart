@@ -16,11 +16,7 @@ class WelcomeScreen extends StatelessWidget {
             width: double.infinity,
             height: MediaQuery.of(context).size.height * 0.5,
             decoration: BoxDecoration(
-              color: Colors.blue.shade900,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(32),
-                bottomRight: Radius.circular(32),
-              ),
+              color: const Color.fromARGB(255, 8, 42, 93),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -63,7 +59,7 @@ class WelcomeScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 40),
+          const SizedBox(height: 20),
 
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
