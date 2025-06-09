@@ -7,105 +7,132 @@ class WelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final blue = Colors.blue.shade900;
-
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Container(
-        width: double.infinity,
-        height: MediaQuery.of(context).size.height,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xfffafdff),
-              Color(0xffe6f0fb),
-              Color(0xffe7ecfa),
-            ],
-            stops: [0.0, 0.55, 1.0],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 60),
-              // Logo
-              Image.asset(
-                "assets/Logo.png",
-                height: 200,
-              ),
-              const SizedBox(height: 48),
-              Text(
-                "Welcome to FinSafe",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.barlow(
-                  fontSize: 44, // Bigger headline
-                  fontWeight: FontWeight.w900,
-                  color: blue,
-                  letterSpacing: -1.3,
+      body: Column(
+        children: [
+          // 🔵 Expanded dark blue header
+          Container(
+            width: double.infinity,
+            height: MediaQuery.of(context).size.height * 0.5,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 8, 42, 93),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "FinSafe",
+                  style: GoogleFonts.barlow(
+                    fontSize: 60,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 30),
-              Text(
-                "Manage your money wisely",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.barlow(
-                  fontSize: 28, // Bigger tagline
-                  color: Colors.blueGrey[400],
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                "Take control of your finances with FinSafe — the easiest and most powerful way to track your money.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.barlow(
-                  fontSize: 20, // Bigger description
-                  color: Colors.blueGrey[300],
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 60), // Button is now higher up
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 68,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      elevation: 5,
-                      shadowColor: blue.withOpacity(0.18),
+                const SizedBox(height: 20),
+                Container(
+                  height: 160 * 1.25,
+                  width: 260 * 1.25,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFFe7b8ff),
+                        Color(0xFFb7e9ff),
+                        Color(0xFFcaffbf),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const RegisterScreen(),
-                        ),
-                      );
-                    },
+                  ),
+                  child: Center(
+                    child: Image.asset(
+                      "assets/Logo.png",
+                      height: 80 * 1.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+              
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: [
+                Text(
+                  "Manage your money wisely",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.barlow(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.blue.shade900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  "Take control of your finances with FinSafe — the easiest and most powerful way to track your money.",
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.barlow(
+                    fontSize: 24,
+                    color: Colors.grey[900],
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Spacer(),
+
+          Padding(
+            padding: const EdgeInsets.only(bottom: 40, left: 24, right: 24),
+            child: SizedBox(
+              width: double.infinity,
+              height: 66,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  elevation: 5,
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                  );
+                },
+                child: Ink(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF72d1ff), Color(0xFF60efff)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.all(Radius.circular(18)),
+                  ),
+                  child: Center(
                     child: Text(
                       'Get Started',
                       style: GoogleFonts.barlow(
-                        fontSize: 25, // Bigger button text
-                        color: Colors.white,
+                        fontSize: 30,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 0.2,
+                        color: Colors.white,
                       ),
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
