@@ -24,6 +24,7 @@ import 'package:fbla_finance/util/profile_picture.dart';
 import 'package:fbla_finance/pages/spending_habit.dart';
 
 double public_bal = 0;
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -53,10 +54,11 @@ class _HomePageState extends State<HomePage> {
     _initializeData();
     formattedDate = formatter.format(now);
   }
+
   Future<void> _initializeData() async {
-  await fetchDocID();  // Wait for fetchDocID to complete
-  _fetchTransactions();  // Call _fetchTransactions after fetchDocID
-}
+    await fetchDocID(); // Wait for fetchDocID to complete
+    _fetchTransactions(); // Call _fetchTransactions after fetchDocID
+  }
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -116,11 +118,15 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to fetch transactions')));
     });
-    
   }
 
   void _fetchTransactions() {
-    _firestore.collection('users').doc(docID).collection('Transactions').get().then((querySnapshot) {
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get()
+        .then((querySnapshot) {
       setState(() {
         _transactionsList.clear();
         _totalBalance = 0.0;
@@ -142,7 +148,8 @@ class _HomePageState extends State<HomePage> {
       });
     }).catchError((error) {
       print("Error fetching transactions: $error");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to fetch transactions')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch transactions')));
     });
   }
 
@@ -155,50 +162,83 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-    return Card(
-      color: colors[0],
-      elevation: 4,
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: ListTile(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              transaction['category'] ?? 'Uncategorized',
-              style: GoogleFonts.ibmPlexSans(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              "Type: ${transaction['type'] ?? 'Unknown'} - Date: ${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
-              style: GoogleFonts.ibmPlexSans(fontSize: 10, color: Colors.black, fontWeight: FontWeight.w500),
-            ),
-          ],
+ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
+  return Card(
+    color: colors[0],
+    elevation: 4,
+    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+    child: ListTile(
+      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Added padding
+      leading: Container(
+        width: 40, // Fixed width
+        height: 40, // Fixed height
+        decoration: BoxDecoration(
+          color: Colors.white, // White background
+          borderRadius: BorderRadius.circular(8), // Rounded corners
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                  .format(transaction['amount'] ?? 0.0),
-              style: GoogleFonts.ibmPlexSans(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: (transaction['type'] ?? 'Unknown') == 'Expense' ? Colors.red : Colors.green,
-              ),
-            ),
-          ],
+        child: Center(
+          child: Icon(
+            transaction['type'] != 'Income' 
+              ? Icons.arrow_downward 
+              : Icons.arrow_upward,
+            color: colors[1],
+            size: 20, // Consistent icon size
+          ),
         ),
       ),
-    );
-  }
-  
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            transaction['category'] ?? 'Uncategorized',
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 16, 
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis, // Prevent overflow
+            maxLines: 1, // Single line
+          ),
+          SizedBox(height: 4), // Spacing between texts
+          Text(
+            "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
+            style: GoogleFonts.ibmPlexSans(
+              fontSize: 10,
+              color: Colors.black,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis, // Prevent overflow
+            maxLines: 1, // Single line
+          ),
+        ],
+      ),
+      trailing: Container(
+        constraints: BoxConstraints(minWidth: 70), // Ensure minimum width
+        child: Text(
+          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+              .format(transaction['amount'] ?? 0.0),
+          style: GoogleFonts.ibmPlexSans(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: (transaction['type'] ?? 'Unknown') == 'Expense'
+                ? Colors.red
+                : Colors.green,
+          ),
+          overflow: TextOverflow.ellipsis, // Prevent overflow
+        ),
+      ),
+    ),
+  );
+}
 
   Future<void> signOut() async {
     await Auth().signOut();
   }
 
   Widget _userUID() {
-    return Text(user?.email ?? 'User email', style: GoogleFonts.ibmPlexSans(),);
+    return Text(
+      user?.email ?? 'User email',
+      style: GoogleFonts.ibmPlexSans(),
+    );
   }
 
   Widget _signOutButton() {
@@ -209,12 +249,11 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<List<Color>>(
-            stream: docID.isNotEmpty
-                ? GradientService(userId: docID).getGradientStream()
-                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
-            builder: (context, snapshot) {
-              colors = snapshot.data ??
-                  [Color(0xffB8E8FF), Colors.blue.shade900];
+        stream: docID.isNotEmpty
+            ? GradientService(userId: docID).getGradientStream()
+            : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
+        builder: (context, snapshot) {
+          colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
           return Container(
             color: colors[0],
             child: SafeArea(
@@ -254,14 +293,15 @@ class _HomePageState extends State<HomePage> {
                                         snapshot.data != null) {
                                       String userName = snapshot.data ?? 'User';
                                       return Padding(
-                                        padding: const EdgeInsets.only(top: 20.0),
+                                        padding:
+                                            const EdgeInsets.only(top: 10.0),
                                         child: Row(
                                           children: [
                                             Text(
-                                              "Hi ",
+                                              "Welcome ",
                                               style: GoogleFonts.ibmPlexSans(
                                                 color: Colors.black,
-                                                fontSize: 20,
+                                                fontSize: 30,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -269,7 +309,7 @@ class _HomePageState extends State<HomePage> {
                                               "$userName!",
                                               style: GoogleFonts.ibmPlexSans(
                                                 color: Colors.black,
-                                                fontSize: 18,
+                                                fontSize: 28,
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
@@ -286,121 +326,46 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ],
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  formattedDate ?? formatter.format(now),
-                                  style: GoogleFonts.ibmPlexSans(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w500),
-                                )
-                              ],
-                            ),
                           ],
                         ),
                         // Current balance display
-                        Container(
-                          padding: const EdgeInsets.only(left: 4),
-                          alignment: Alignment.center,
-                          child: Column(
-                            children: [
-                              Text(
-                                'Balance',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.ibmPlexSans(
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.ibmPlexSans(
-                                  fontSize: 50,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+
                         SizedBox(
                           height: 25,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.only(right: 20.0, left: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return FilterByAmountPage(userId: docID);
-                                      },
-                                    ),
-                                  );
-                                },
-                                child: FilterTile(
-                                            icon: Icons.price_check,
-                                            FilterName: 'Amount',
-                                            color: colors[1],
-                                          ),
+                        Container(
+                          height: 160 * 1.25,
+                          width: 260 * 1.25,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFFe7b8ff),
+                                Color(0xFFb7e9ff),
+                                Color(0xFFcaffbf),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                          ),
+                          child: Align(
+                            alignment: Alignment.bottomLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.all(
+                                  16.0), // Add some padding from the edges
+                              child: Text(
+                                NumberFormat.simpleCurrency(
+                                        locale: 'en_US', decimalDigits: 2)
+                                    .format(_totalBalance),
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontSize: 30,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return TransactionsByCategory(userId: docID);
-                                      },
-                                    ),
-                                  );
-                                },
-                                child: FilterTile(
-                                            icon: Icons.category,
-                                            FilterName: 'Category',
-                                            color: colors[1],
-                                          ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return FilterByTypePage(userId: docID);
-                                      },
-                                    ),
-                                  );
-                                },
-                                child: FilterTile(
-                                            icon: Icons.filter_alt,
-                                            FilterName: 'Type',
-                                            color: colors[1],
-                                          ),
-                              ),
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return FilterByDatePage(userId: docID);
-                                      },
-                                    ),
-                                  );
-                                },
-                                child: FilterTile(
-                                            icon: Icons.calendar_month,
-                                            FilterName: 'Date',
-                                            color: colors[1],
-                                          ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
+
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -422,7 +387,7 @@ class _HomePageState extends State<HomePage> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    'Recent Transactions',
+                                    'Recent Activity',
                                     style: GoogleFonts.ibmPlexSans(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 20,
@@ -430,8 +395,11 @@ class _HomePageState extends State<HomePage> {
                                   ),
                                   GestureDetector(
                                     onTap: () {
-                                      final homePageState = context.findAncestorStateOfType<HomePageWithNavState>();
-                                      homePageState?.onItemTapped(1); // 1 is the index for Transactions page
+                                      final homePageState =
+                                          context.findAncestorStateOfType<
+                                              HomePageWithNavState>();
+                                      homePageState?.onItemTapped(
+                                          1); // 1 is the index for Transactions page
                                     },
                                     child: Text(
                                       "See More",
@@ -442,10 +410,11 @@ class _HomePageState extends State<HomePage> {
                                       ),
                                     ),
                                   ),
-                                  
                                 ],
                               ),
-                              Expanded(child: _buildTransactionList(),),
+                              Expanded(
+                                child: _buildTransactionList(),
+                              ),
                               const SizedBox(height: 20),
                             ],
                           ),
