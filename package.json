@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@material-tailwind/react": "^3.0.0-beta.24",
     "plaid": "^31.1.0"
   }
 }
