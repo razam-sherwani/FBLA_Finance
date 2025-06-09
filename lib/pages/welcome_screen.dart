@@ -14,7 +14,7 @@ class WelcomeScreen extends StatelessWidget {
           // 🔵 Expanded dark blue header
           Container(
             width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.4,
+            height: MediaQuery.of(context).size.height * 0.5,
             decoration: BoxDecoration(
               color: Colors.blue.shade900,
               borderRadius: const BorderRadius.only(
@@ -25,13 +25,12 @@ class WelcomeScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 40),
                 Text(
                   "FinSafe",
                   style: GoogleFonts.barlow(
-                    fontSize: 36,
+                    fontSize: 60,
                     color: Colors.white,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: -1,
                   ),
                 ),
@@ -58,7 +57,9 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                const SizedBox(height: 10),
               ],
+              
             ),
           ),
 
@@ -72,9 +73,9 @@ class WelcomeScreen extends StatelessWidget {
                   "Manage your money wisely",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.barlow(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.black87,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.blue.shade900,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -82,8 +83,8 @@ class WelcomeScreen extends StatelessWidget {
                   "Take control of your finances with FinSafe — the easiest and most powerful way to track your money.",
                   textAlign: TextAlign.center,
                   style: GoogleFonts.barlow(
-                    fontSize: 18,
-                    color: Colors.grey[600],
+                    fontSize: 24,
+                    color: Colors.grey[900],
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -125,7 +126,7 @@ class WelcomeScreen extends StatelessWidget {
                     child: Text(
                       'Get Started',
                       style: GoogleFonts.barlow(
-                        fontSize: 22,
+                        fontSize: 30,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
