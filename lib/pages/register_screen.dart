@@ -119,30 +119,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
       controller: controller,
       obscureText: obscure && (isObscure ?? true),
       keyboardType: keyboardType,
-      style: const TextStyle(fontSize: 19),
+      style: GoogleFonts.barlow(fontSize: 18),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.blueGrey[200], fontWeight: FontWeight.w500),
+        hintStyle: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.w500),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.80),
-        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 22),
+        fillColor: Colors.grey[100],
+        contentPadding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.blueGrey[100]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.blueGrey[100]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.blue.shade200, width: 2),
+          borderSide: BorderSide.none,
         ),
         suffixIcon: obscure
             ? IconButton(
                 icon: Icon(
                   (isObscure ?? true) ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.blueGrey[300],
+                  color: Colors.blueGrey[200],
                 ),
                 onPressed: onToggle,
               )
@@ -162,11 +154,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: SizedBox(
         width: double.infinity,
-        height: 56,
+        height: 54,
         child: OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
             backgroundColor: bgColor ?? Colors.white,
-            side: BorderSide(color: Colors.blueGrey[100]!),
+            side: BorderSide(color: Colors.grey[200]!),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -177,7 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           label: Text(
             label,
             style: GoogleFonts.barlow(
-              fontSize: 19,
+              fontSize: 17,
               fontWeight: FontWeight.w600,
               color: textColor ?? Colors.black87,
             ),
@@ -189,191 +181,175 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final blue = Colors.blue.shade900;
-
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Container(
-        width: double.infinity,
-        height: MediaQuery.of(context).size.height,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xfffafdff),
-              Color(0xffe6f0fb),
-              Color(0xffe7ecfa),
-            ],
-            stops: [0.0, 0.55, 1.0],
-          ),
-        ),
+      backgroundColor: const Color(0xffe6f0fb), // Soft blue background
+      body: Center(
         child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 42),
-                // App Logo at top
-                Opacity(
-                  opacity: 0.92,
-                  child: Image.asset(
-                    "assets/Logo.png",
-                    height: 70,
+            padding: const EdgeInsets.symmetric(vertical: 42, horizontal: 16),
+            child: Container(
+              width: 400,
+              padding: const EdgeInsets.symmetric(vertical: 38, horizontal: 22),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(36),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blueGrey.withOpacity(0.06),
+                    spreadRadius: 8,
+                    blurRadius: 26,
+                    offset: const Offset(0, 8),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Create Your Account",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.barlow(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w900,
-                    color: blue,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  "Start your financial journey.\nIt's quick and easy.",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.barlow(
-                    fontSize: 19,
-                    color: Colors.blueGrey[400],
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 38),
-                buildInputField(_controllerFirstName, "First Name"),
-                const SizedBox(height: 20),
-                buildInputField(_controllerLastName, "Last Name"),
-                const SizedBox(height: 20),
-                buildInputField(_controllerEmail, "Email", keyboardType: TextInputType.emailAddress),
-                const SizedBox(height: 20),
-                buildInputField(
-                  _controllerPassword,
-                  "Password",
-                  obscure: true,
-                  onToggle: () {
-                    setState(() {
-                      isPasswordObscure = !isPasswordObscure;
-                    });
-                  },
-                  isObscure: isPasswordObscure,
-                ),
-                const SizedBox(height: 20),
-                buildInputField(
-                  _controllerConfirmPassword,
-                  "Confirm Password",
-                  obscure: true,
-                  onToggle: () {
-                    setState(() {
-                      isConfirmObscure = !isConfirmObscure;
-                    });
-                  },
-                  isObscure: isConfirmObscure,
-                ),
-                const SizedBox(height: 30),
-                // Sign Up Button or Spinner
-                SizedBox(
-                  width: double.infinity,
-                  height: 62,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      elevation: 5,
-                      shadowColor: blue.withOpacity(0.12),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // FinSafe title
+                  Text(
+                    "FinSafe",
+                    style: GoogleFonts.barlow(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.blueGrey[900],
+                      letterSpacing: -1.3,
                     ),
-                    onPressed: isLoading ? null : createUserWithEmailAndPassword,
-                    child: isLoading
-                        ? const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          )
-                        : Text(
-                            'Sign Up',
-                            style: GoogleFonts.barlow(
-                              fontSize: 22,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.2,
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    "Sign Up",
+                    style: GoogleFonts.barlow(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blueGrey[800],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  buildInputField(_controllerFirstName, "First Name"),
+                  const SizedBox(height: 16),
+                  buildInputField(_controllerLastName, "Last Name"),
+                  const SizedBox(height: 16),
+                  buildInputField(_controllerEmail, "Email", keyboardType: TextInputType.emailAddress),
+                  const SizedBox(height: 16),
+                  buildInputField(
+                    _controllerPassword,
+                    "Password",
+                    obscure: true,
+                    onToggle: () {
+                      setState(() {
+                        isPasswordObscure = !isPasswordObscure;
+                      });
+                    },
+                    isObscure: isPasswordObscure,
+                  ),
+                  const SizedBox(height: 16),
+                  buildInputField(
+                    _controllerConfirmPassword,
+                    "Confirm Password",
+                    obscure: true,
+                    onToggle: () {
+                      setState(() {
+                        isConfirmObscure = !isConfirmObscure;
+                      });
+                    },
+                    isObscure: isConfirmObscure,
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.cyan.shade300,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        elevation: 0,
+                      ),
+                      onPressed: isLoading ? null : createUserWithEmailAndPassword,
+                      child: isLoading
+                          ? const CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            )
+                          : Text(
+                              'Sign Up',
+                              style: GoogleFonts.barlow(
+                                fontSize: 19,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.2,
+                              ),
                             ),
-                          ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 22),
-                // Divider with 'or'
-                Row(
-                  children: [
-                    const Expanded(child: Divider(thickness: 1.2)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        'or',
-                        style: GoogleFonts.barlow(
-                          color: Colors.blueGrey[300],
-                          fontSize: 17,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const Expanded(child: Divider(thickness: 1.2)),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                // Social Login Buttons
-                buildSocialButton(
-                  label: "Continue with Google",
-                  asset: 'assets/google.png',
-                  onTap: () {
-                    // TODO: Add your Google sign-in logic here
-                  },
-                ),
-                buildSocialButton(
-                  label: "Continue with Apple",
-                  asset: 'assets/apple.png',
-                  onTap: () {
-                    // TODO: Add your Apple sign-in logic here
-                  },
-                  bgColor: Colors.black,
-                  textColor: Colors.white,
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Already have an account? ",
-                      style: GoogleFonts.barlow(
-                        fontSize: 17,
-                        color: Colors.blueGrey[500],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const LoginScreen(),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider(thickness: 1.1)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'or',
+                          style: GoogleFonts.barlow(
+                            color: Colors.blueGrey[200],
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
-                        );
-                      },
-                      child: Text(
-                        'Log in',
-                        style: GoogleFonts.barlow(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: blue,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40),
-              ],
+                      const Expanded(child: Divider(thickness: 1.1)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  buildSocialButton(
+                    label: "Continue with Google",
+                    asset: 'assets/google.png',
+                    onTap: () {
+                      // TODO: Add your Google sign-in logic here
+                    },
+                  ),
+                  buildSocialButton(
+                    label: "Continue with Apple",
+                    asset: 'assets/apple.png',
+                    onTap: () {
+                      // TODO: Add your Apple sign-in logic here
+                    },
+                    bgColor: Colors.black,
+                    textColor: Colors.white,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Already have an account? ",
+                        style: GoogleFonts.barlow(
+                          fontSize: 15,
+                          color: Colors.blueGrey[400],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const LoginScreen(),
+                            ),
+                          );
+                        },
+                        child: Text(
+                          'Log in',
+                          style: GoogleFonts.barlow(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.cyan.shade700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
