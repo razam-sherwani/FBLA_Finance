@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fbla_finance/pages/chat_screen.dart';
 import 'package:fbla_finance/pages/filter_by_amount.dart';
@@ -162,73 +164,104 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
- Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-  return Card(
-    color: colors[0],
-    elevation: 4,
-    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-    child: ListTile(
-      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), // Added padding
-      leading: Container(
-        width: 40, // Fixed width
-        height: 40, // Fixed height
-        decoration: BoxDecoration(
-          color: Colors.white, // White background
-          borderRadius: BorderRadius.circular(8), // Rounded corners
+  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.white.withOpacity(0.7),
+            colors[0].withOpacity(0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Center(
-          child: Icon(
-            transaction['type'] != 'Income' 
-              ? Icons.arrow_downward 
-              : Icons.arrow_upward,
-            color: colors[1],
-            size: 20, // Consistent icon size
-          ),
-        ),
-      ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            transaction['category'] ?? 'Uncategorized',
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: 16, 
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis, // Prevent overflow
-            maxLines: 1, // Single line
-          ),
-          SizedBox(height: 4), // Spacing between texts
-          Text(
-            "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: 10,
-              color: Colors.black,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis, // Prevent overflow
-            maxLines: 1, // Single line
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: colors[1].withOpacity(0.25),
+            blurRadius: 8,
+            offset: Offset(0, 4),
           ),
         ],
       ),
-      trailing: Container(
-        constraints: BoxConstraints(minWidth: 70), // Ensure minimum width
-        child: Text(
-          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-              .format(transaction['amount'] ?? 0.0),
-          style: GoogleFonts.ibmPlexSans(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: (transaction['type'] ?? 'Unknown') == 'Expense'
-                ? Colors.red
-                : Colors.green,
+      child: Card(
+        color: Colors.transparent,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: colors[1].withOpacity(0.5),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Icon(
+                transaction['type'] != 'Income'
+                    ? Icons.arrow_downward
+                    : Icons.arrow_upward,
+                color: colors[1],
+                size: 20,
+              ),
+            ),
           ),
-          overflow: TextOverflow.ellipsis, // Prevent overflow
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                transaction['category'] ?? 'Uncategorized',
+                style: GoogleFonts.ibmPlexSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              SizedBox(height: 4),
+              Text(
+                "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
+                style: GoogleFonts.ibmPlexSans(
+                  fontSize: 10,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ],
+          ),
+          trailing: Container(
+            constraints: BoxConstraints(minWidth: 70),
+            child: Text(
+              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                  .format(transaction['amount'] ?? 0.0),
+              style: GoogleFonts.ibmPlexSans(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: (transaction['type'] ?? 'Unknown') == 'Expense'
+                    ? Colors.red
+                    : Colors.green,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Future<void> signOut() async {
     await Auth().signOut();
@@ -248,186 +281,179 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StreamBuilder<List<Color>>(
-        stream: docID.isNotEmpty
-            ? GradientService(userId: docID).getGradientStream()
-            : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
-        builder: (context, snapshot) {
-          colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
-          return Container(
-            color: colors[0],
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // Greetings row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xffB8E8FF),
+              Colors.white,
+            ],
+          ),
+        ),
+        child: StreamBuilder<List<Color>>(
+          stream: docID.isNotEmpty
+              ? GradientService(userId: docID).getGradientStream()
+              : Stream.value([Color(0xffB8E8FF)]),
+          builder: (context, snapshot) {
+            colors = snapshot.data ?? [Color(0xffB8E8FF)];
+            return Stack(
+              children: [
+                // Remove glassmorphic BackdropFilter/background
+                SafeArea(
+                  child: Column(
+                    children: [
+                      // Keep all existing widgets inside this column unchanged
+                      // They will now appear above the blurred background
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                        child: Column(
                           children: [
                             Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Stack(
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ProfilePicture(userId: docID),
+                                    Stack(
+                                      children: [
+                                        ProfilePicture(userId: docID),
+                                      ],
+                                    ),
+                                    FutureBuilder<String>(
+                                      future: GetUserName(documentId: docID).getUserName(),
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return const Text('Loading...', style: TextStyle(color: Colors.white));
+                                        } else if (snapshot.hasError) {
+                                          return const Text('Error', style: TextStyle(color: Colors.white));
+                                        } else {
+                                          String userName = snapshot.data ?? 'User';
+                                          return Padding(
+                                            padding: const EdgeInsets.only(top: 10.0),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "Welcome ",
+                                                  style: GoogleFonts.ibmPlexSans(
+                                                    color: Colors.black,
+                                                    fontSize: 30,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  "$userName!",
+                                                  style: GoogleFonts.ibmPlexSans(
+                                                    color: Colors.black,
+                                                    fontSize: 28,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
                                   ],
                                 ),
-                                FutureBuilder<String>(
-                                  future: GetUserName(documentId: docID)
-                                      .getUserName(),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Text('Loading...',
-                                          style:
-                                              TextStyle(color: Colors.white));
-                                    } else if (snapshot.hasError) {
-                                      print(snapshot.error.toString());
-                                      return const Text('Error',
-                                          style:
-                                              TextStyle(color: Colors.white));
-                                    } else if (snapshot.hasData &&
-                                        snapshot.data != null) {
-                                      String userName = snapshot.data ?? 'User';
-                                      return Padding(
-                                        padding:
-                                            const EdgeInsets.only(top: 10.0),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              "Welcome ",
-                                              style: GoogleFonts.ibmPlexSans(
-                                                color: Colors.black,
-                                                fontSize: 30,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              "$userName!",
-                                              style: GoogleFonts.ibmPlexSans(
-                                                color: Colors.black,
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    } else {
-                                      return const Text(
-                                          'Username not available',
-                                          style:
-                                              TextStyle(color: Colors.white));
-                                    }
-                                  },
-                                ),
                               ],
                             ),
+                            SizedBox(height: 25),
+                            Container(
+                              height: 160 * 1.25,
+                              width: 260 * 1.25,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color.fromRGBO(132, 255, 201, 1), // hsla(154, 100%, 76%)
+                                    Color.fromRGBO(170, 178, 255, 1), // hsla(234, 100%, 83%)
+                                    Color.fromRGBO(255, 97, 246, 1),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Align(
+                                alignment: Alignment.center,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16.0),
+                                  child: Text(
+                                    NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
+                                    style: GoogleFonts.ibmPlexSans(
+                                      color: Colors.white,
+                                      fontSize: 42,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 30),
                           ],
                         ),
-                        // Current balance display
-
-                        SizedBox(
-                          height: 25,
-                        ),
-                        Container(
-                          height: 160 * 1.25,
-                          width: 260 * 1.25,
+                      ),
+                      // Remaining widgets...
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(25),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(24),
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFFe7b8ff),
-                                Color(0xFFb7e9ff),
-                                Color(0xFFcaffbf),
-                              ],
+                            gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withOpacity(0.7),
+                                colors[0].withOpacity(0.4),
+                              ],
                             ),
                           ),
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: Padding(
-                              padding: const EdgeInsets.all(
-                                  16.0), // Add some padding from the edges
-                              child: Text(
-                                NumberFormat.simpleCurrency(
-                                        locale: 'en_US', decimalDigits: 2)
-                                    .format(_totalBalance),
-                                style: GoogleFonts.ibmPlexSans(
-                                  color: Colors.grey.shade700,
-                                  fontSize: 42,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 30),
-                      ],
-                    ),
-                  ),
-                  // Other Widgets...
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(25)),
-                      child: Container(
-                        padding: const EdgeInsets.all(25),
-                        color: Colors.white,
-                        child: Center(
-                          child: Column(
-                            children: [
-                              // Heading
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Recent Activity',
-                                    style: GoogleFonts.ibmPlexSans(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
-                                    ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () {
-                                      final homePageState =
-                                          context.findAncestorStateOfType<
-                                              HomePageWithNavState>();
-                                      homePageState?.onItemTapped(
-                                          1); // 1 is the index for Transactions page
-                                    },
-                                    child: Text(
-                                      "See More",
+                          child: Center(
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Recent Activity',
                                       style: GoogleFonts.ibmPlexSans(
-                                        color: colors[1],
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 16,
+                                        fontSize: 20,
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Expanded(
-                                child: _buildTransactionList(),
-                              ),
-                              const SizedBox(height: 20),
-                            ],
+                                    GestureDetector(
+                                      onTap: () {
+                                        final homePageState = context.findAncestorStateOfType<HomePageWithNavState>();
+                                        homePageState?.onItemTapped(1);
+                                      },
+                                      child: Text(
+                                        "See More",
+                                        style: GoogleFonts.ibmPlexSans(
+                                          color: colors[1],
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Expanded(
+                                  child: _buildTransactionList(),
+                                ),
+                                SizedBox(height: 20),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          );
-        },
+                ),
+              ],
+            );
+          },
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
@@ -435,9 +461,7 @@ class _HomePageState extends State<HomePage> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) {
-                return ChatScreen();
-              },
+              builder: (context) => ChatScreen(),
             ),
           );
         },
