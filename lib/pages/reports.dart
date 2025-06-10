@@ -104,58 +104,57 @@ class _ReportsState extends State<Reports> {
   }
 
   Future<void> sharePdfLink() async {
-  // Show dialog to select the name type
-  String selectedName = 'General'; // Default value
-  await showDialog<String>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Select PDF Type'),
-        content: DropdownButton<String>(
-          value: selectedName,
-          items: ['General', 'Weekly', 'Monthly'].map((String value) {
-            return DropdownMenuItem<String>(
-              value: value,
-              child: Text(value),
-            );
-          }).toList(),
-          onChanged: (newValue) {
-            if (newValue != null) {
-              selectedName = newValue;
-              Navigator.pop(context); // Close dialog when a selection is made
-            }
-          },
-        ),
+    // Show dialog to select the name type
+    String selectedName = 'General'; // Default value
+    await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select PDF Type'),
+          content: DropdownButton<String>(
+            value: selectedName,
+            items: ['General', 'Weekly', 'Monthly'].map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (newValue) {
+              if (newValue != null) {
+                selectedName = newValue;
+                Navigator.pop(context); // Close dialog when a selection is made
+              }
+            },
+          ),
+        );
+      },
+    );
+
+    // Generate the PDF with the selected name
+    var paragraphPdf;
+    if (selectedName == 'General') {
+      paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+    } else if (selectedName == 'Weekly') {
+      paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+    } else if (selectedName == 'Monthly') {
+      paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+    }
+    final pdfFileName = selectedName + 'Report.pdf';
+    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+        paragraphPdf, pdfFileName);
+
+    if (downloadUrl != null) {
+      SaveAndOpenDocument.copyToClipboard(downloadUrl);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF link copied to clipboard!')),
       );
-    },
-  );
-
-  // Generate the PDF with the selected name
-  var paragraphPdf;
-  if (selectedName == 'General') {
-    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-  } else if (selectedName == 'Weekly') {
-    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-  } else if (selectedName == 'Monthly') {
-    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+      print('Download URL: $downloadUrl');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload PDF')),
+      );
+    }
   }
-  final pdfFileName = selectedName + 'Report.pdf';
-  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
-      paragraphPdf, pdfFileName);
-
-  if (downloadUrl != null) {
-    SaveAndOpenDocument.copyToClipboard(downloadUrl);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('PDF link copied to clipboard!')),
-    );
-    print('Download URL: $downloadUrl');
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Failed to upload PDF')),
-    );
-  }
-}
-
 
   // Future<void> shareToInstagramStory() async {
   //   final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
@@ -271,319 +270,178 @@ class _ReportsState extends State<Reports> {
     await Share.share(portfolioData);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: StreamBuilder<List<Color>>(
-            stream: docID.isNotEmpty
-                ? GradientService(userId: docID).getGradientStream()
-                : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
-            builder: (context, snapshot) {
-              colors = snapshot.data ??
-                  [Color(0xffB8E8FF), Colors.blue.shade900];
-            return Container(
-              color: colors[0],
-              child: SafeArea(
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    body: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xffB8E8FF), // Light blue
+            Colors.white,             // White
+          ],
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with time and title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  Text(
+                    "Reports",
+                    style: GoogleFonts.ibmPlexSans(
+                      color: Colors.black,
+                      fontSize: 50,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Balance display
+            Center(
+              child: Container(
+                padding: const EdgeInsets.only(left: 4),
                 child: Column(
                   children: [
-                    // Greetings row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                      child: Column(
-                        children: [
-                          Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Stack(
-                                  children: [
-                                    ProfilePicture(userId: docID),
-                                  ],
-                                ),
-                                FutureBuilder<String>(
-                                  future: GetUserName(documentId: docID)
-                                      .getUserName(),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Text('Loading...',
-                                          style:
-                                              TextStyle(color: Colors.white));
-                                    } else if (snapshot.hasError) {
-                                      print(snapshot.error.toString());
-                                      return const Text('Error',
-                                          style:
-                                              TextStyle(color: Colors.white));
-                                    } else if (snapshot.hasData &&
-                                        snapshot.data != null) {
-                                      String userName = snapshot.data!;
-                                      return Padding(
-                                        padding: const EdgeInsets.only(top: 20.0),
-                                        child: Row(
-                                          children: [
-                                            Text(
-                                              "Hi ",
-                                              style: GoogleFonts.ibmPlexSans(
-                                                color: Colors.black,
-                                                fontSize: 20,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            Text(
-                                              "$userName!",
-                                              style: GoogleFonts.ibmPlexSans(
-                                                color: Colors.black,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    } else {
-                                      return const Text(
-                                          'Username not available',
-                                          style:
-                                              TextStyle(color: Colors.white));
-                                    }
-                                  },
-                                ),
-                              ],
-                            ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  formattedDate!,
-                                  style: GoogleFonts.ibmPlexSans(color: Colors.black, fontSize: 20, fontWeight: FontWeight.w500),
-                                )
-                              ],
-                            ),
-                          ],
-                        ),
-                        // Current balance display
-                        Container(
-                          padding: const EdgeInsets.only(left: 4),
-                          alignment: Alignment.center,
-                          child: Column(
-                            children: [
-                              SizedBox(height: 40),
-                              Text(
-                                'Balance',
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.ibmPlexSans(
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.ibmPlexSans(
-                                  fontSize: 50,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                          SizedBox(
-                            height: 60,
-                          ),
-                        ],
+                    const SizedBox(height: 40),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20), // Adjust for desired roundness
+                        boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+                      )],
                       ),
-                    ),
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(25)),
-                        child: Container(
-                          padding: EdgeInsets.all(25),
-                          color:  Colors.white, //changes background color
-                          child: Center(
-                            child: Column(
-                              children: [
-                                // Heading
-                                const Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Reports',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                      ),
-                                    ),
-                                    Icon(Icons.more_horiz),
-                                  ],
-                                ),
-                                SizedBox(height: 25),
-                                // Content
-                                Expanded(
-                                  child: ListView(
-                                    children: [
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: colors[0],
-                                          borderRadius:
-                                              BorderRadius.circular(8.0),
-                                        ),
-                                        child: TextButton(
-                                          onPressed: () async {
-                                            final paragraphPdf =
-                                                await ParagraphPdfApi
-                                                    .generateParagraphPdf(
-                                                        docID);
-                                            SaveAndOpenDocument.openPdf(
-                                                paragraphPdf);
-                                          },
-                                          child: Text(
-                                            'Generate General Report',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 18.0, // Increased font size
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 20.0, vertical: 12.0), // Increased padding
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10,),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: colors[0],
-                                          borderRadius:
-                                              BorderRadius.circular(8.0),
-                                        ),
-                                        child: TextButton(
-                                          onPressed: () async {
-                                            final paragraphPdf =
-                                                await ParagraphPdfApi
-                                                    .generateWeeklyPdf(
-                                                        docID);
-                                            SaveAndOpenDocument.openPdf(
-                                                paragraphPdf);
-                                          },
-                                          child: Text(
-                                            'Generate Weekly Report',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 18.0, // Increased font size
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 20.0, vertical: 12.0), // Increased padding
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10,),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: colors[0],
-                                          borderRadius:
-                                              BorderRadius.circular(8.0),
-                                        ),
-                                        child: TextButton(
-                                          onPressed: () async {
-                                            final paragraphPdf =
-                                                await ParagraphPdfApi
-                                                    .generateMonthlyPdf(
-                                                        docID);
-                                            SaveAndOpenDocument.openPdf(
-                                                paragraphPdf);
-                                          },
-                                          child: Text(
-                                            'Generate Monthly Report',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 18.0, // Increased font size
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 20.0, vertical: 12.0), // Increased padding
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(height: 10,),
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          color: colors[0],
-                                          borderRadius:
-                                              BorderRadius.circular(8.0),
-                                        ),
-                                        child: TextButton(
-                                          onPressed: sharePdfLink
-                                          ,
-                                          child: Text(
-                                            'Share PDF Link',
-                                            style: TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 18.0, // Increased font size
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          style: TextButton.styleFrom(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 20.0, vertical: 12.0), // Increased padding
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                      child: Text(
+                        NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                .format(_totalBalance),
+                        style: GoogleFonts.ibmPlexSans(
+              fontSize: 50,
+              fontWeight: FontWeight.bold,
+              color: Colors.black, // Ensure text is visible on white
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            );
-          }),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                return ChatScreen();
-              },
             ),
-          );
-        },
-        child: const Icon(Icons.chat),
-        foregroundColor: colors[1],
-        backgroundColor: colors[0],
+            
+            // Spacer to push options down slightly
+            const SizedBox(height: 20),
+            
+            // Floating report options
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _buildFloatingOption(
+                    icon: Icons.description,
+                    title: "Generate General Report",
+                    onTap: () async {
+                      final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+                      SaveAndOpenDocument.openPdf(paragraphPdf);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  _buildFloatingOption(
+                    icon: Icons.calendar_view_week,
+                    title: "Generate Weekly Report",
+                    onTap: () async {
+                      final paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+                      SaveAndOpenDocument.openPdf(paragraphPdf);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  _buildFloatingOption(
+                    icon: Icons.calendar_today,
+                    title: "Generate Monthly Report",
+                    onTap: () async {
+                      final paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+                      SaveAndOpenDocument.openPdf(paragraphPdf);
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  _buildFloatingOption(
+                    icon: Icons.share,
+                    title: "Share PDF Link",
+                    onTap: sharePdfLink,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+    floatingActionButton: FloatingActionButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+      },
+      child: const Icon(Icons.chat),
+      backgroundColor: Colors.blue.shade900,
+      foregroundColor: Colors.white,
+    ),
+  );
+}
+
+Widget _buildFloatingOption({
+  required IconData icon,
+  required String title,
+  required VoidCallback onTap,
+}) {
+  return Material(
+    elevation: 2,
+    borderRadius: BorderRadius.circular(15),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.7),
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 28, color: Colors.blue.shade900),
+            const SizedBox(width: 20),
+            Text(
+              title,
+              style: GoogleFonts.ibmPlexSans(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+                color: Colors.black,
+              ),
+            ),
+            const Spacer(),
+            Icon(Icons.chevron_right, color: Colors.grey.shade400),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 }

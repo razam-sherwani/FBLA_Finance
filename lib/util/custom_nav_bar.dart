@@ -25,20 +25,10 @@ class CustomNavBar extends StatelessWidget {
           padding: EdgeInsets.all(16),
           gap: 8,
           tabs: [
-            GButton(
-              icon: Icons.home,
-              text: "Home",
-            ),
-            GButton(
-              icon: Icons.payments,
-              text: "Transactions",
-            ),
-            GButton(icon:Icons.query_stats,text: "Analysis",),
-            GButton(icon: Icons.summarize,text: "Reports",),
-            GButton(
-              icon: Icons.settings,
-              text: "Settings",
-            ),
+            GButton(icon: Icons.home, text: "Home"),
+            GButton(icon: Icons.payments, text: "Transactions"),
+            GButton(icon: Icons.settings, text: "Settings"),
+            GButton(icon: Icons.more_horiz, text: "More"), // New "More" tab
           ],
         ),
       ),

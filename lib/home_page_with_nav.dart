@@ -29,23 +29,72 @@ class HomePageWithNav extends StatefulWidget {
   HomePageWithNavState createState() => HomePageWithNavState();
 }
 
-// HomePageWithNav
-
 class HomePageWithNavState extends State<HomePageWithNav> {
   int _selectedIndex = 0;
 
   static List<Widget> _pages = <Widget>[
     HomePage(),
     Transactions(),
-    SpendingHabitPage(),
+    SettingsPage(),
+    BudgetSavingsPage(),
     Reports(),
-    SettingsPage()
+    SpendingHabitPage(),
+    HomePage() // Your 7th page
   ];
 
   void onItemTapped(int index) {
+    if (index == 3) { // "More" tab selected
+      _showMoreMenu(context);
+      return;
+    }
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  void _showMoreMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Container(
+        color: Colors.black,
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.savings, color: Colors.white),
+              title: Text('Savings', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 3);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.summarize, color: Colors.white),
+              title: Text('Reports', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 4);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.query_stats, color: Colors.white),
+              title: Text('Analysis', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 5);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.emoji_events, color: Colors.white),
+              title: Text('Awards', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                setState(() => _selectedIndex = 6);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -54,12 +103,8 @@ class HomePageWithNavState extends State<HomePageWithNav> {
       body: _pages[_selectedIndex],
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
-        onTabChange: (index) {
-          onItemTapped(index);
-        },
+        onTabChange: onItemTapped,
       ),
     );
   }
-
-  
 }
