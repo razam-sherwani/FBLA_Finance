@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:chat_bubbles/bubbles/bubble_normal.dart';
-import 'package:fbla_finance/pages/message.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import '../pages/message.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -15,7 +15,9 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
-  final List<Message> msgs = [];
+  final List<Message> msgs = [
+    Message(false, "Hi! I'm Fineas, your financial assistant. Ask me anything about budgeting, saving, or investing.")
+  ];
   bool isTyping = false;
 
   final List<String> suggestedQuestions = [
@@ -85,32 +87,83 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildSuggestedButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: suggestedQuestions.map((question) {
+    return Container(
+      height: 46,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        scrollDirection: Axis.horizontal,
+        itemCount: suggestedQuestions.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final question = suggestedQuestions[index];
           return GestureDetector(
             onTap: () => sendMsg(question),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.teal.shade50,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.teal.shade300, width: 1.5),
+                border: Border.all(color: const Color(0xFF15314B), width: 1.2),
               ),
               child: Text(
                 question,
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
-                  color: Colors.teal,
+                  color: Color(0xFF15314B),
                 ),
               ),
             ),
           );
-        }).toList(),
+        },
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(Message msg, String timestamp, bool showTime) {
+    final isSender = msg.isSender;
+    return Align(
+      alignment: isSender ? Alignment.centerRight : Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment:
+            isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSender ? const Color.fromARGB(255, 0, 140, 255) : const Color(0xFFE5E5EA),
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isSender ? 18 : 0),
+                bottomRight: Radius.circular(isSender ? 0 : 18),
+              ),
+            ),
+            child: Text(
+              msg.msg,
+              style: TextStyle(
+                color: isSender ? Colors.white : Colors.black,
+                fontSize: 16,
+                height: 1.3,
+              ),
+            ),
+          ),
+          if (showTime)
+            Padding(
+              padding: EdgeInsets.only(
+                left: isSender ? 0 : 18,
+                right: isSender ? 18 : 0,
+                bottom: 4,
+              ),
+              child: Text(
+                timestamp,
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            )
+        ],
       ),
     );
   }
@@ -118,168 +171,100 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      extendBody: true,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
+        toolbarHeight: 80,
+        shadowColor: Colors.transparent,
+        title: Text(
           "Fineas",
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.w800,
+          style: GoogleFonts.barlow(
+            fontSize: 40,
+            fontWeight: FontWeight.bold,
             color: Colors.white,
-            letterSpacing: 1.2,
           ),
         ),
         centerTitle: true,
-        backgroundColor: const Color(0xFF15314B),
+        backgroundColor: const Color(0xFFb7e9ff),
+        elevation: 0.5,
         leading: IconButton(
+          iconSize: 30,
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE8F5E9), Color(0xFFFAFAFA)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Column(
-          children: [
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "💼 Fineas - Your financial assistant",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(left: 16, bottom: 4),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "Hi! I'm Fineas. Ask me about budgeting, saving, or investing.",
-                  style: TextStyle(fontStyle: FontStyle.italic),
-                ),
-              ),
-            ),
-            _buildSuggestedButtons(),
-            Expanded(
-              child: ListView.builder(
-                controller: scrollController,
-                itemCount: msgs.length,
-                reverse: true,
-                itemBuilder: (context, index) {
-                  final msg = msgs[index];
-                  final timestamp = TimeOfDay.now().format(context);
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOut,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Column(
-                      crossAxisAlignment: msg.isSender
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        msg.isSender
-                            ? BubbleNormal(
-                                text: msg.msg,
-                                isSender: true,
-                                color: Colors.teal.shade100,
-                                textStyle: const TextStyle(
-                                    fontSize: 15, color: Colors.black87),
-                                tail: true,
-                              )
-                            : Container(
-                                margin:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  border: Border.all(color: Colors.black26),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  msg.msg,
-                                  style: const TextStyle(
-                                      fontSize: 15, color: Colors.black87),
-                                ),
-                              ),
-                        if (index % 3 == 0)
-                          Padding(
-                            padding:
-                                const EdgeInsets.only(left: 16.0, top: 2.0),
-                            child: Text(
-                              timestamp,
-                              style: const TextStyle(
-                                  fontSize: 10, color: Colors.grey),
-                            ),
-                          ),
-                        if (isTyping && index == 0)
-                          const Padding(
-                            padding: EdgeInsets.only(left: 16, top: 6),
-                            child: SpinKitThreeBounce(
-                              color: Colors.teal,
-                              size: 18,
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: Offset(0, 2))
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: TextField(
-                          controller: controller,
-                          onSubmitted: (_) => sendMsg(),
-                          decoration: const InputDecoration(
-                            hintText: "Ask Fineas...",
-                            border: InputBorder.none,
-                          ),
+      body: Column(
+        children: [
+          
+          Expanded(
+            child: ListView.builder(
+              controller: scrollController,
+              itemCount: msgs.length,
+              reverse: true,
+              itemBuilder: (context, index) {
+                final msg = msgs[index];
+                final timestamp = TimeOfDay.now().format(context);
+                final showTime = index % 3 == 0;
+                return Column(
+                  crossAxisAlignment:
+                      msg.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    _buildMessageBubble(msg, timestamp, showTime),
+                    if (isTyping && index == 0)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 6),
+                        child: SpinKitThreeBounce(
+                          color: Colors.lightBlueAccent,
+                          size: 18,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: () => sendMsg(),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: Colors.teal,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.send, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
+          ),
+          _buildSuggestedButtons(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: const Color.fromARGB(255, 165, 165, 165),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: TextField(
+                      controller: controller,
+                      onSubmitted: (_) => sendMsg(),
+                      decoration: InputDecoration(
+                        hintText: "Ask Fineas...",
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(color: Colors.grey.shade500),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: sendMsg,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Color.fromARGB(255, 0, 140, 255),
+                    ),
+                    child: const Icon(Icons.arrow_upward, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

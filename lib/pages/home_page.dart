@@ -349,7 +349,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           child: Align(
-                            alignment: Alignment.bottomLeft,
+                            alignment: Alignment.center,
                             child: Padding(
                               padding: const EdgeInsets.all(
                                   16.0), // Add some padding from the edges
@@ -358,7 +358,8 @@ class _HomePageState extends State<HomePage> {
                                         locale: 'en_US', decimalDigits: 2)
                                     .format(_totalBalance),
                                 style: GoogleFonts.ibmPlexSans(
-                                  fontSize: 30,
+                                  color: Colors.grey.shade700,
+                                  fontSize: 42,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
