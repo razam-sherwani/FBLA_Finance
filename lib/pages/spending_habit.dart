@@ -314,6 +314,8 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   double overallMin = 0;
   double overallMax = 0;
   int _interactedSpotIndex = -1;
+  int _interactedSpotIndexExpense = -1; // For expense graph
+  int _interactedSpotIndexBalance = -1; // For balance graph
 
   Future<void> _initializeData() async {
     await fetchDocID(); // Wait for fetchDocID to complete
@@ -921,20 +923,35 @@ void _promptUpdateBudget() {
                                 maxIncluded: false,
                                 interval: 1,
                                 getTitlesWidget: (value, meta) {
-                                  if (_selectedPeriod == PeriodType.weekly) {
+                                  if (_selectedPeriod == PeriodType.monthly) {
+                                    int day = value.toInt() + 1;
+                                    int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
+                                    final isHovered = _interactedSpotIndexExpense == value.toInt();
+                                    // Only show first, last, every 5th day, or if hovered
+                                    if (day == 1 || day == daysInMonth || day % 5 == 0 || isHovered) {
+                                      return SideTitleWidget(
+                                        meta: meta,
+                                        child: Transform.rotate(
+                                          angle: -0.7,
+                                          child: Text(
+                                            '$day',
+                                            style: TextStyle(
+                                              fontSize: isHovered ? 13 : 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: isHovered ? Colors.black : Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return const SizedBox.shrink();
+                                    }
+                                  } else if (_selectedPeriod == PeriodType.weekly) {
                                     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                                     return SideTitleWidget(
                                       meta: meta,
                                       child: Text(
                                         days[value.toInt().clamp(0, 6)],
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                      ),
-                                    );
-                                  } else if (_selectedPeriod == PeriodType.monthly) {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        '${value.toInt() + 1}',
                                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
                                     );
@@ -961,8 +978,34 @@ void _promptUpdateBudget() {
                           ),
                           lineTouchData: LineTouchData(
                             enabled: true,
-                            handleBuiltInTouches: false,
-                            touchCallback: _touchCallback,
+                            handleBuiltInTouches: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipItems: (touchedSpots) {
+                                return touchedSpots.map((spot) {
+                                  final value = spot.y;
+                                  return LineTooltipItem(
+                                    value.toStringAsFixed(2),
+                                    const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                            touchCallback: (event, touchResponse) {
+                              if (!event.isInterestedForInteractions ||
+                                  touchResponse?.lineBarSpots == null ||
+                                  touchResponse!.lineBarSpots!.isEmpty) {
+                                setState(() {
+                                  _interactedSpotIndexExpense = -1;
+                                });
+                                return;
+                              }
+                              setState(() {
+                                _interactedSpotIndexExpense = touchResponse.lineBarSpots!.first.spotIndex;
+                              });
+                            },
                           ),
                         ),
                       ),
@@ -1024,21 +1067,34 @@ void _promptUpdateBudget() {
                                 maxIncluded: false,
                                 interval: 1,
                                 getTitlesWidget: (value, meta) {
-                                  // Same as above for x-axis
-                                  if (_selectedPeriod == PeriodType.weekly) {
+                                  if (_selectedPeriod == PeriodType.monthly) {
+                                    int day = value.toInt() + 1;
+                                    int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
+                                    final isHovered = _interactedSpotIndexBalance == value.toInt();
+                                    if (day == 1 || day == daysInMonth || day % 5 == 0 || isHovered) {
+                                      return SideTitleWidget(
+                                        meta: meta,
+                                        child: Transform.rotate(
+                                          angle: -0.7,
+                                          child: Text(
+                                            '$day',
+                                            style: TextStyle(
+                                              fontSize: isHovered ? 13 : 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: isHovered ? Colors.black : Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return const SizedBox.shrink();
+                                    }
+                                  } else if (_selectedPeriod == PeriodType.weekly) {
                                     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
                                     return SideTitleWidget(
                                       meta: meta,
                                       child: Text(
                                         days[value.toInt().clamp(0, 6)],
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                      ),
-                                    );
-                                  } else if (_selectedPeriod == PeriodType.monthly) {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        '${value.toInt() + 1}',
                                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
                                     );
@@ -1062,6 +1118,37 @@ void _promptUpdateBudget() {
                                 },
                               ),
                             ),
+                          ),
+                          lineTouchData: LineTouchData(
+                            enabled: true,
+                            handleBuiltInTouches: true,
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipItems: (touchedSpots) {
+                                return touchedSpots.map((spot) {
+                                  final value = spot.y;
+                                  return LineTooltipItem(
+                                    value.toStringAsFixed(2),
+                                    const TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  );
+                                }).toList();
+                              },
+                            ),
+                            touchCallback: (event, touchResponse) {
+                              if (!event.isInterestedForInteractions ||
+                                  touchResponse?.lineBarSpots == null ||
+                                  touchResponse!.lineBarSpots!.isEmpty) {
+                                setState(() {
+                                  _interactedSpotIndexBalance = -1;
+                                });
+                                return;
+                              }
+                              setState(() {
+                                _interactedSpotIndexBalance = touchResponse.lineBarSpots!.first.spotIndex;
+                              });
+                            },
                           ),
                         ),
                       ),
