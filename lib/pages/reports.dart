@@ -313,12 +313,22 @@ Widget build(BuildContext context) {
                 padding: const EdgeInsets.only(left: 4),
                 child: Column(
                   children: [
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20), // Adjust for desired roundness
+                        gradient: const LinearGradient(
+                                  colors: [
+                                    Color.fromRGBO(132, 255, 201, 1), // hsla(154, 100%, 76%)
+                                    Color.fromRGBO(170, 178, 255, 1), // hsla(234, 100%, 83%)
+                                    Color.fromRGBO(255, 97, 246, 1),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+
                         boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.1),
@@ -332,7 +342,7 @@ Widget build(BuildContext context) {
                         style: GoogleFonts.ibmPlexSans(
               fontSize: 50,
               fontWeight: FontWeight.bold,
-              color: Colors.black, // Ensure text is visible on white
+              color: Colors.white, // Ensure text is visible on white
                         ),
                       ),
                     ),
@@ -342,7 +352,7 @@ Widget build(BuildContext context) {
             ),
             
             // Spacer to push options down slightly
-            const SizedBox(height: 20),
+            const SizedBox(height: 80),
             
             // Floating report options
             Expanded(

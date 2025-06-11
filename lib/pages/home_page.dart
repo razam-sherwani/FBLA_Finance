@@ -37,6 +37,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final List<Map<String, dynamic>> _transactionsList = [];
   int myIndex = 0;
+  bool _isLoading = true;
   final User? user = Auth().currentUser;
   List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
   var now = DateTime.now();
@@ -63,31 +64,40 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> fetchDocID() async {
+  setState(() => _isLoading = true);
+
+  try {
     var user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      await FirebaseFirestore.instance
+      var snapshot = await FirebaseFirestore.instance
           .collection('users')
           .where('email', isEqualTo: user.email)
-          .get()
-          .then((snapshot) {
-        if (snapshot.docs.isNotEmpty) {
-          setState(() {
-            docID = snapshot.docs[0].id;
-          });
-        } else {
-          setState(() {
-            docID = '';
-          });
-        }
-      }).catchError((error) {
-        print('Error fetching docID: $error');
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        setState(() {
+          docID = snapshot.docs[0].id;
+        });
+
+        // Only fetch data once docID is valid
+        await _fetchTransactions();
+        await calculateTotalBalance();
+      } else {
         setState(() {
           docID = '';
         });
-      });
+      }
     }
-    calculateTotalBalance();
+  } catch (e) {
+    print('Error in fetchDocID: $e');
+    setState(() {
+      docID = '';
+    });
+  } finally {
+    setState(() => _isLoading = false);
   }
+}
+
 
   Future<void> calculateTotalBalance() async {
     _firestore
@@ -122,47 +132,56 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _fetchTransactions() {
-    _firestore
+  Future<void> _fetchTransactions() async {
+  try {
+    final querySnapshot = await _firestore
         .collection('users')
         .doc(docID)
         .collection('Transactions')
-        .get()
-        .then((querySnapshot) {
-      setState(() {
-        _transactionsList.clear();
-        _totalBalance = 0.0;
-        querySnapshot.docs.forEach((doc) {
-          var transaction = {
-            'transactionId': doc.id,
-            'amount': doc['amount'] ?? 0.0,
-            'type': doc['type'] ?? 'Unknown',
-            'category': doc['category'] ?? 'Uncategorized',
-            'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          };
-          _transactionsList.add(transaction);
-          if (transaction['type'] == 'Income') {
-            _totalBalance += transaction['amount'];
-          } else {
-            _totalBalance -= transaction['amount'];
-          }
-        });
-      });
-    }).catchError((error) {
-      print("Error fetching transactions: $error");
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fetch transactions')));
+        .get();
+
+    setState(() {
+      _transactionsList.clear();
+      for (var doc in querySnapshot.docs) {
+        var transaction = {
+          'transactionId': doc.id,
+          'amount': doc['amount'] ?? 0.0,
+          'type': doc['type'] ?? 'Unknown',
+          'category': doc['category'] ?? 'Uncategorized',
+          'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        };
+        _transactionsList.add(transaction);
+      }
     });
+  } catch (e) {
+    print("Error fetching transactions: $e");
   }
+}
+
 
   Widget _buildTransactionList() {
-    return ListView.builder(
-      itemCount: _transactionsList.length > 6 ? 6 : _transactionsList.length,
-      itemBuilder: (context, index) {
-        return _buildTransactionItem(_transactionsList[index], index);
-      },
+    if (_isLoading) {
+  return const Center(child: CircularProgressIndicator());
+} else if (_transactionsList.isEmpty) {
+    return Center(
+      child: Text(
+        'No transactions yet!',
+        style: GoogleFonts.ibmPlexSans(fontSize: 16),
+      ),
     );
   }
+
+  return ListView.builder(
+  itemCount: _transactionsList.length > 6 ? 6 : _transactionsList.length,
+  itemBuilder: (context, index) {
+    if (index < 0 || index >= _transactionsList.length) {
+      return const SizedBox(); // Prevent RangeError
+    }
+    return _buildTransactionItem(_transactionsList[index], index);
+  },
+);
+}
+
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Container(
