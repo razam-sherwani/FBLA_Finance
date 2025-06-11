@@ -60,7 +60,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _initializeData() async {
     await fetchDocID(); // Wait for fetchDocID to complete
-    _fetchTransactions(); // Call _fetchTransactions after fetchDocID
+    await _fetchTransactions(); // Call _fetchTransactions after fetchDocID
   }
 
   Future<void> fetchDocID() async {
@@ -316,7 +316,7 @@ class _HomePageState extends State<HomePage> {
               ? GradientService(userId: docID).getGradientStream()
               : Stream.value([Color(0xffB8E8FF)]),
           builder: (context, snapshot) {
-            colors = snapshot.data ?? [Color(0xffB8E8FF)];
+            //colors = snapshot.data ?? [Color(0xffB8E8FF)];
             return Stack(
               children: [
                 // Remove glassmorphic BackdropFilter/background

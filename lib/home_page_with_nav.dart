@@ -32,15 +32,16 @@ class HomePageWithNavState extends State<HomePageWithNav> {
   int _selectedIndex = 0;
   bool _isInitialized = false; // Add initialization flag
 
-    static List<Widget> _pages = <Widget>[
-    HomePage(),
-    Transactions(),
-    SettingsPage(),
-    BudgetSavingsPage(),
-    Reports(),
-    SpendingHabitPage(),
-    HomePage() // Your 7th page
-  ];
+    final List<Widget Function()> _pageBuilders = [
+  () => HomePage(),
+  () => Transactions(),
+  () => SettingsPage(),
+  () => BudgetSavingsPage(),
+  () => Reports(),
+  () => SpendingHabitPage(),
+  () => HomePage()
+];
+
 
   @override
   void initState() {
@@ -53,7 +54,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
   }
 
     void onItemTapped(int index) {
-    if (index >= 0 && index < _pages.length) {
+    if (index >= 0 && index < _pageBuilders.length) {
       if (index == 3) { // "More" tab selected
         _showMoreMenu(context);
         return;
@@ -117,9 +118,12 @@ class HomePageWithNavState extends State<HomePageWithNav> {
     
     return Scaffold(
       body: IndexedStack(
-        index: _selectedIndex,
-        children: _pages,
-      ),
+  index: _selectedIndex,
+  children: List.generate(_pageBuilders.length, (index) {
+    return _pageBuilders[index]();
+  }),
+),
+
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
         onTabChange: onItemTapped,
