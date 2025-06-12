@@ -117,13 +117,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
     }
     
     return Scaffold(
-      body: IndexedStack(
-  index: _selectedIndex,
-  children: List.generate(_pageBuilders.length, (index) {
-    return _pageBuilders[index]();
-  }),
-),
-
+      body: _pageBuilders[_selectedIndex](),
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
         onTabChange: onItemTapped,

@@ -1254,9 +1254,9 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
                     style: GoogleFonts.ibmPlexSans(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: (transaction['type'] ?? 'Unknown') == 'Expense'
-                          ? Colors.red
-                          : Colors.green,
+                      color: transaction['type'] != 'Income'
+                      ? Colors.red
+                      : Colors.green,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
