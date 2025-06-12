@@ -64,100 +64,113 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> fetchDocID() async {
-  setState(() => _isLoading = true);
+    setState(() => _isLoading = true);
 
-  try {
-    var user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      var snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: user.email)
-          .get();
+    try {
+      var user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        var snapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: user.email)
+            .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        setState(() {
-          docID = snapshot.docs[0].id;
-        });
+        if (snapshot.docs.isNotEmpty) {
+          setState(() {
+            docID = snapshot.docs[0].id;
+          });
 
-        // Only fetch data once docID is valid
-        await _fetchTransactions();
-        await calculateTotalBalance();
-      } else {
-        setState(() {
-          docID = '';
-        });
+          // Only fetch data once docID is valid
+          await _fetchTransactions();
+          await calculateTotalBalance();
+        } else {
+          setState(() {
+            docID = '';
+          });
+        }
       }
+    } catch (e) {
+      print('Error in fetchDocID: $e');
+      setState(() {
+        docID = '';
+      });
+    } finally {
+      setState(() => _isLoading = false);
     }
-  } catch (e) {
-    print('Error in fetchDocID: $e');
-    setState(() {
-      docID = '';
-    });
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
-
 
   Future<void> calculateTotalBalance() async {
-    _firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Transactions')
-        .get()
-        .then((querySnapshot) {
-      setState(() {
-        _totalBalance = 0.0;
-        querySnapshot.docs.forEach((doc) {
-          var transaction = {
-            'transactionId': doc.id,
-            'amount': doc['amount'],
-            'type': doc['type'],
-            'category': doc['category'],
-            'date': (doc['date'] as Timestamp).toDate(),
-          };
-          //_transactionsList.add(transaction);
-          if (transaction['type'] == 'Income') {
-            _totalBalance += transaction['amount'];
-          } else {
-            _totalBalance -= transaction['amount'];
-          }
-        });
-        public_bal = _totalBalance;
-      });
-    }).catchError((error) {
-      print("Error fetching transactions: $error");
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fetch transactions')));
-    });
-  }
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(docID)
+          .collection('Transactions')
+          .get();
 
-  Future<void> _fetchTransactions() async {
-  try {
-    final querySnapshot = await _firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Transactions')
-        .get();
-
-    setState(() {
-      _transactionsList.clear();
+      double total = 0.0;
       for (var doc in querySnapshot.docs) {
         var transaction = {
           'transactionId': doc.id,
-          'amount': doc['amount'] ?? 0.0,
-          'type': doc['type'] ?? 'Unknown',
-          'category': doc['category'] ?? 'Uncategorized',
-          'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          'amount': doc['amount'],
+          'type': doc['type'],
+          'category': doc['category'],
+          'date': (doc['date'] as Timestamp).toDate(),
         };
-        _transactionsList.add(transaction);
+        if (transaction['type'] == 'Income') {
+          total += transaction['amount'];
+        } else {
+          total -= transaction['amount'];
+        }
       }
-    });
-  } catch (e) {
-    print("Error fetching transactions: $e");
+      setState(() {
+        _totalBalance = total;
+        public_bal = _totalBalance;
+      });
+    } catch (error) {
+      print("Error fetching transactions: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to fetch transactions')));
+    }
   }
-}
 
+  Future<void> _fetchTransactions() async {
+    try {
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(docID)
+          .collection('Transactions')
+          .get();
+
+      setState(() {
+        _transactionsList.clear();
+        for (var doc in querySnapshot.docs) {
+          var transaction = {
+            'transactionId': doc.id,
+            'amount': doc['amount'] ?? 0.0,
+            'type': doc['type'] ?? 'Unknown',
+            'category': doc['category'] ?? 'Uncategorized',
+            'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          };
+          _transactionsList.add(transaction);
+        }
+      });
+      // Always update total balance after fetching transactions
+      await calculateTotalBalance();
+    } catch (e) {
+      print("Error fetching transactions: $e");
+    }
+  }
+
+  // Call this after adding a transaction
+  Future<void> addTransaction(Map<String, dynamic> transaction) async {
+    // ...add transaction logic...
+    await _fetchTransactions();
+  }
+
+  // Call this after deleting a transaction
+  Future<void> deleteTransaction(String transactionId) async {
+    // ...delete transaction logic...
+    await _fetchTransactions();
+  }
 
   Widget _buildTransactionList() {
     if (_isLoading) {

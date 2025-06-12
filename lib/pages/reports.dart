@@ -357,7 +357,7 @@ Widget build(BuildContext context) {
             // Floating report options
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 physics: const BouncingScrollPhysics(),
                 children: [
                   _buildFloatingOption(
@@ -423,25 +423,25 @@ Widget _buildFloatingOption({
 }) {
   return Material(
     elevation: 2,
-    borderRadius: BorderRadius.circular(15),
+    borderRadius: BorderRadius.circular(20),
     child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.7),
           borderRadius: BorderRadius.circular(15),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 28, color: Colors.blue.shade900),
+            Icon(icon, size: 32, color: Colors.blue.shade900),
             const SizedBox(width: 20),
             Text(
               title,
               style: GoogleFonts.ibmPlexSans(
-                fontSize: 18,
+                fontSize: 21,
                 fontWeight: FontWeight.w500,
                 color: Colors.black,
               ),
