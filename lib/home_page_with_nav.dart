@@ -1,3 +1,4 @@
+import 'package:fbla_finance/analysis.dart';
 import 'package:fbla_finance/pages/plaid_page.dart';
 import 'package:fbla_finance/pages/receipt_scanner_page.dart';
 import 'package:fbla_finance/pages/savings_budget_page.dart';
@@ -39,7 +40,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
   () => BudgetSavingsPage(),
   () => Reports(),
   () => SpendingHabitPage(),
-  () => HomePage()
+  () => AiAnalysisPage(),
 ];
 
 
@@ -89,7 +90,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
             ),
             ListTile(
               leading: Icon(Icons.query_stats, color: Colors.white),
-              title: Text('Analysis', style: TextStyle(color: Colors.white)),
+              title: Text('Graphs', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 setState(() => _selectedIndex = 5);
@@ -97,7 +98,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
             ),
             ListTile(
               leading: Icon(Icons.emoji_events, color: Colors.white),
-              title: Text('Awards', style: TextStyle(color: Colors.white)),
+              title: Text('Analysis', style: TextStyle(color: Colors.white)),
               onTap: () {
                 Navigator.pop(context);
                 setState(() => _selectedIndex = 6);

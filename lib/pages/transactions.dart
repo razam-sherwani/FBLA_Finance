@@ -1363,11 +1363,7 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
   elevation: 0,
   flexibleSpace: Container(
     decoration: BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: colors,
-      ),
+      color: colors[0],
     ),
   ),
 ),

@@ -200,7 +200,8 @@ $budgetList
       }
 
       final response = await http.post(
-        Uri.parse("[https://api.openai.com/v1/chat/completions](https://api.openai.com/v1/chat/completions)"),
+        // CORRECTED URL: Removed Markdown link formatting
+        Uri.parse("https://api.openai.com/v1/chat/completions"),
         headers: {
           "Authorization": "Bearer $openAIApiKey", 
           "Content-Type": "application/json",
@@ -209,7 +210,7 @@ $budgetList
           "model": "gpt-4o",
           "messages": [
             {"role": "system", "content": prompt},
-            {"role": "user", "content": "Please analyze my finances and give me feedback."},
+            {"role": "user", "content": "Please analyze my finances and give me feedback. Make sure you are directing your advice to the user, so its like your instead of the user's actual name. Also make the advices more personalized and actionable. Give them examples of what they can do with their current situation."},
           ],
         }),
       );
