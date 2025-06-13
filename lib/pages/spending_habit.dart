@@ -59,7 +59,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   final int maxDays = 31;
   double budget = 0;
 
-  int _currentMonthIndex = 0;
+  int _currentMonthIndex = 5;
   int _currentWeekIndex = 0;
   int _currentYearIndex = DateTime.now().year - 2020; // adjust as needed
   final List<String> monthsNames = [
@@ -95,8 +95,8 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   double _periodOutflow = 0;
 
   // Shared scroll index for month/quarter/year
-  int _sharedScrollIndex = 0;
-  int _selectedYear = DateTime.now().year;
+  int _sharedScrollIndex = 5;
+  int _selectedYear = 2025;
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -124,7 +124,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
-  void _fetchRawData() async {
+  Future<void> _fetchRawData() async {
     try {
       final querySnapshot = await _firestore
           .collection('users')
@@ -196,7 +196,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
-  void _fetchRawDataLine() async {
+  Future<void> _fetchRawDataLine() async {
     try {
       final querySnapshot = await _firestore
           .collection('users')
@@ -238,7 +238,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     }
   }
 
-  void _fetchRawDataCurrentBalance() async {
+  Future<void> _fetchRawDataCurrentBalance() async {
     try {
       final querySnapshot = await _firestore
           .collection('users')
@@ -498,7 +498,7 @@ void _promptUpdateBudget() {
     _fetchPeriodData();
   }
 
-  void _fetchPeriodData() async {
+  Future<void> _fetchPeriodData() async {
     // Fetch and aggregate data for the selected period
     try {
       final querySnapshot = await _firestore
@@ -783,14 +783,11 @@ void _promptUpdateBudget() {
 
     // Fetch docID, then all transaction data, then compute period data, then set loading to false
     fetchDocID().then((_) async {
-      // Wait for all fetches to complete
-      await Future.wait([
-        Future(() async => _fetchRawDataLine()),
-        Future(() async => _fetchRawData()),
-        Future(() async => _fetchRawDataCurrentBalance()),
-        Future(() async => _fetchPeriodData()),
-      ]);
-      // Now compute period data from the loaded _rawData
+      // Wait for all fetches to complete in order
+      await _fetchRawDataLine();
+      await _fetchRawData();
+      await _fetchRawDataCurrentBalance();
+      await _fetchPeriodData();
       setState(() {
         _loading = false;
       });
