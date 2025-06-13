@@ -6,6 +6,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
+import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -15,7 +17,6 @@ import 'package:plaid_flutter/plaid_flutter.dart';
 import '../backend/paragraph_pdf_api.dart';
 import '../backend/save_and_open_pdf.dart';
 import '../util/gradient_service.dart';
-
 
 class Transactions extends StatefulWidget {
   const Transactions({super.key});
@@ -95,6 +96,7 @@ class _TransactionsPageState extends State<Transactions> {
         .orderBy('date', descending: true)
         .get()
         .then((querySnapshot) {
+      if (!mounted) return; // Prevent setState after dispose
       setState(() {
         _transactionsList.clear();
         _totalBalance = 0.0;
@@ -130,26 +132,34 @@ class _TransactionsPageState extends State<Transactions> {
               .contains(_searchQuery.toLowerCase()) ||
           transaction['amount'].toString().contains(_searchQuery);
 
-      final matchesType = _selectedType == null || transaction['type'] == _selectedType;
+      final matchesType =
+          _selectedType == null || transaction['type'] == _selectedType;
       final matchesCategory = _selectedCategory == null ||
           (transaction['category'] as String?)
-              ?.toLowerCase()
-              .contains(_selectedCategory!.toLowerCase()) ==
+                  ?.toLowerCase()
+                  .contains(_selectedCategory!.toLowerCase()) ==
               true;
 
       final matchesDate = _startDate == null ||
           (transaction['date'].isAfter(_startDate!) &&
-              (_endDate == null || transaction['date'].isBefore(_endDate!.add(Duration(days: 1)))));
+              (_endDate == null ||
+                  transaction['date']
+                      .isBefore(_endDate!.add(Duration(days: 1)))));
 
       final amount = transaction['amount'] as double;
       final matchesAmount = (_minAmount == null || amount >= _minAmount!) &&
           (_maxAmount == null || amount <= _maxAmount!);
 
-      return matchesSearch && matchesType && matchesCategory && matchesDate && matchesAmount;
+      return matchesSearch &&
+          matchesType &&
+          matchesCategory &&
+          matchesDate &&
+          matchesAmount;
     }).toList();
 
     filtered.sort((a, b) => b['date'].compareTo(a['date']));
 
+    if (!mounted) return; // Prevent setState after dispose
     setState(() {
       _filteredTransactions = filtered;
       if (_groupByCategory) {
@@ -218,11 +228,13 @@ class _TransactionsPageState extends State<Transactions> {
                               child: Text(type),
                             ))
                         .toList(),
-                    onChanged: (val) => setStateInDialog(() => _selectedType = val),
+                    onChanged: (val) =>
+                        setStateInDialog(() => _selectedType = val),
                   ),
                   TextField(
                     decoration: InputDecoration(labelText: 'Category'),
-                    onChanged: (val) => _selectedCategory = val.isEmpty ? null : val,
+                    onChanged: (val) =>
+                        _selectedCategory = val.isEmpty ? null : val,
                   ),
                   Row(
                     children: [
@@ -254,7 +266,8 @@ class _TransactionsPageState extends State<Transactions> {
                     trailing: Icon(Icons.calendar_today),
                     onTap: () async {
                       await _selectDateRange();
-                      setStateInDialog(() {}); // Update dialog after date selection
+                      setStateInDialog(
+                          () {}); // Update dialog after date selection
                     },
                   ),
                 ],
@@ -299,134 +312,157 @@ class _TransactionsPageState extends State<Transactions> {
     }
   }
 
-  void _promptAddTransaction() {
-    showDialog(
+  SpeedDial _buildAnimatedFAB() {
+    return SpeedDial(
+      icon: Icons.add,
+      activeIcon: Icons.close,
+      backgroundColor: colors[0],
+      foregroundColor: Colors.black,
+      overlayOpacity: 0.3,
+      elevation: 10,
+      spacing: 12,
+      spaceBetweenChildren: 8,
+      buttonSize: Size(60, 60), // Standard FAB size for a circle
+      childrenButtonSize: Size(52, 52),
+      animatedIconTheme: IconThemeData(size: 28),
+      shape: const CircleBorder(), // Make the main button a circle
+      children: [
+        SpeedDialChild(
+          child: Icon(Icons.edit),
+          label: 'Manual Entry',
+          onTap: () => _showModalManualEntry(),
+        ),
+        SpeedDialChild(
+          child: Icon(Icons.receipt_long),
+          label: 'Scan Receipt',
+          onTap: () => _showModalScanReceipt(),
+        ),
+        SpeedDialChild(
+          child: Icon(Icons.account_balance),
+          label: 'Get From Bank',
+          onTap: () async {
+            final doc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(docID)
+                .get();
+            final accessToken = doc.data()?['plaidAccessToken'];
+            if (accessToken != null) {
+              await fetchTransactions(accessToken);
+            } else {
+              await _launchPlaidFlow();
+            }
+          },
+        ),
+        SpeedDialChild(
+          child: Icon(Icons.picture_as_pdf),
+          label: 'Generate Report',
+          onTap: () async {
+            await sharePdfLink();
+          },
+        ),
+      ],
+    );
+  }
+
+  void _showModalManualEntry() {
+    showModalBottomSheet(
       context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('New Transaction'),
-              content: Container(
-                height: 250,
-                width: 230,
-                child: Column(
-                  children: [
-                    SizedBox(
-                      child: Center(
-                        child: ToggleButtons(
-                          selectedBorderColor: colors[0],
-                          borderRadius: BorderRadius.circular(5),
-                          fillColor: colors[0],
-                          isSelected: [type1 == 'Expense', type1 == 'Income'],
-                          onPressed: (int index) {
-                            setState(() {
-                              type1 = index == 0 ? 'Expense' : 'Income';
-                            });
-                          },
-                          children: <Widget>[
-                            Container(
-                              width: 110, // Adjust width as needed
-                              child: Center(
-                                  child: Text('Expense',
-                                      style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500))),
-                            ),
-                            Container(
-                              width: 110, // Adjust width as needed
-                              child: Center(
-                                  child: Text('Income',
-                                      style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500))),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Container(
-                      width: 200,
-                      child: TextField(
-                        autofocus: true,
-                        keyboardType:
-                            TextInputType.numberWithOptions(decimal: true),
-                        decoration:
-                            InputDecoration(labelText: 'Enter the amount'),
-                        onChanged: (String? val) {
-                          if (val != null && val.isNotEmpty) {
-                            try {
-                              amt = double.parse(val);
-                            } catch (e) {
-                              amt = 0;
-                            }
-                          } else {
-                            amt = 0;
-                          }
-                        },
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Container(
-                      width: 200,
-                      child: TextField(
-                        decoration:
-                            InputDecoration(labelText: 'Enter the category'),
-                        onChanged: (String? val) {
-                          categ = val;
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: 200,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.max,
-                        children: <Widget>[
-                          const SizedBox(height: 30.0),
-                          ElevatedButton(
-                            onPressed: () async {
-                              await _selectDate(context);
-                              setState(() {});
-                            },
-                            child: Text("${date.toLocal()}".split(' ')[0]),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            top: 20,
+            left: 20,
+            right: 20,
+          ),
+          child: Wrap(
+            children: [
+              Center(
+                child: Text("New Transaction",
+                    style: GoogleFonts.ibmPlexSans(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    )),
+              ),
+              SizedBox(height: 16),
+              ToggleButtons(
+                borderRadius: BorderRadius.circular(10),
+                fillColor: colors[0],
+                isSelected: [type1 == 'Expense', type1 == 'Income'],
+                onPressed: (index) {
+                  setState(() => type1 = index == 0 ? 'Expense' : 'Income');
+                },
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text('Expense'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text('Income'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              TextField(
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(labelText: 'Amount'),
+                onChanged: (val) => amt = double.tryParse(val) ?? 0,
+              ),
+              TextField(
+                decoration: InputDecoration(labelText: 'Category'),
+                onChanged: (val) => categ = val,
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text("Date: ${DateFormat('yyyy-MM-dd').format(date)}"),
+                trailing: Icon(Icons.calendar_today),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: date,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) setState(() => date = picked);
+                },
+              ),
+              SizedBox(height: 10),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _addTransaction(amt, type1, categ, date);
+                },
+                child: Text("Add Transaction"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: colors[0],
+                  foregroundColor: Colors.black,
+                  minimumSize: Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              actions: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      child: Text('Cancel'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    TextButton(
-                      child: Text('Enter'),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _addTransaction(amt, type1, categ, date);
-                      },
-                    ),
-                  ],
-                ),
-              ],
-            );
-          },
+              SizedBox(height: 20),
+            ],
+          ),
         );
       },
     );
   }
 
-  Future<void> _updateTotalBalanceInFirestore() async {
-  await _firestore.collection('users').doc(docID).update({
-    'totalBalance': _totalBalance,
-  });
-}
+  void _showModalScanReceipt() async {
+    await _scanReceipt();
+  }
 
+  Future<void> _updateTotalBalanceInFirestore() async {
+    await _firestore.collection('users').doc(docID).update({
+      'totalBalance': _totalBalance,
+    });
+  }
 
   void _addTransaction(
       double amount, String? type, String? category, DateTime date) {
@@ -458,76 +494,86 @@ class _TransactionsPageState extends State<Transactions> {
   }
 
   void _removeTransaction(String transactionId) {
-  _firestore
-      .collection('users')
-      .doc(docID)
-      .collection('Transactions')
-      .doc(transactionId)
-      .delete()
-      .then((_) {
-    setState(() {
-      _transactionsList.removeWhere((t) => t['transactionId'] == transactionId);
-      _filteredTransactions.removeWhere((t) => t['transactionId'] == transactionId);
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .doc(transactionId)
+        .delete()
+        .then((_) {
+      if (!mounted) return;
+      setState(() {
+        _transactionsList
+            .removeWhere((t) => t['transactionId'] == transactionId);
+        _filteredTransactions
+            .removeWhere((t) => t['transactionId'] == transactionId);
 
-      _totalBalance = 0.0;
-      for (var t in _transactionsList) {
-        _totalBalance += t['type'] == 'Income' ? t['amount'] : -t['amount'];
-      }
+        _totalBalance = 0.0;
+        for (var t in _transactionsList) {
+          _totalBalance += t['type'] == 'Income' ? t['amount'] : -t['amount'];
+        }
+      });
+      _updateTotalBalanceInFirestore();
     });
-    _updateTotalBalanceInFirestore();
-  });
-}
-
+  }
 
   Future<void> sharePdfLink() async {
-    String? selectedName = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select PDF Type'),
-          content: DropdownButton<String>(
-            value: 'General',
-            items: ['General', 'Weekly', 'Monthly'].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: (newValue) {
-              if (newValue != null) {
-                Navigator.pop(context, newValue);
-              }
-            },
-          ),
-        );
-      },
-    );
+  final RenderBox button = context.findRenderObject() as RenderBox;
+  final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+  final Offset offset = button.localToGlobal(Offset.zero, ancestor: overlay);
 
-    selectedName ??= 'General';
-
-    var paragraphPdf;
-    if (selectedName == 'General') {
-      paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-    } else if (selectedName == 'Weekly') {
-      paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-    } else {
-      paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
-    }
-    final pdfFileName = '$selectedName-Report.pdf';
-    final downloadUrl =
-        await SaveAndOpenDocument.uploadPdfAndGetLink(paragraphPdf, pdfFileName);
-
-    if (downloadUrl != null) {
-      SaveAndOpenDocument.copyToClipboard(downloadUrl);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF link copied to clipboard!')),
+  String? selected = await showMenu<String>(
+    context: context,
+    position: RelativeRect.fromLTRB(
+      offset.dx + 10,
+      offset.dy - 10,
+      overlay.size.width - offset.dx,
+      overlay.size.height - offset.dy,
+    ),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    items: ['General', 'Weekly', 'Monthly'].map((option) {
+      return PopupMenuItem<String>(
+        value: option,
+        child: Text(option),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to upload PDF')),
-      );
-    }
+    }).toList(),
+  );
+
+  selected ??= 'General';
+
+  var paragraphPdf;
+  if (selected == 'General') {
+    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+  } else if (selected == 'Weekly') {
+    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+  } else {
+    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
   }
+
+  final pdfFileName = '$selected-Report.pdf';
+  final downloadUrl =
+      await SaveAndOpenDocument.uploadPdfAndGetLink(paragraphPdf, pdfFileName);
+
+  if (downloadUrl != null) {
+    SaveAndOpenDocument.copyToClipboard(downloadUrl);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$selected PDF link copied to clipboard!'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to upload $selected report.'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
 
   void _searchTransactions(String query) {
     setState(() {
@@ -535,7 +581,6 @@ class _TransactionsPageState extends State<Transactions> {
     });
     _filterTransactions(); // Apply filters immediately after search query changes
   }
-
 
   void _showPlaidTransactionPicker() {
     final Set<int> selectedIndexes = {};
@@ -627,7 +672,8 @@ class _TransactionsPageState extends State<Transactions> {
     if (image != null) {
       final inputImage = InputImage.fromFilePath(image.path);
       final textRecognizer = GoogleMlKit.vision.textRecognizer();
-      final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
 
       String rawText = recognizedText.text;
       print('Recognized Text: $rawText'); // For debugging
@@ -646,14 +692,17 @@ class _TransactionsPageState extends State<Transactions> {
       }
 
       // Simple regex to find a date (e.g., MM/DD/YYYY or YYYY-MM-DD)
-      final dateRegex = RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2}');
+      final dateRegex =
+          RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2}');
       final dateMatch = dateRegex.firstMatch(rawText);
       if (dateMatch != null) {
         try {
-          scannedDate = DateFormat('MM/dd/yyyy').parse(dateMatch.group(0)!) ; // Adjust format as needed
+          scannedDate = DateFormat('MM/dd/yyyy')
+              .parse(dateMatch.group(0)!); // Adjust format as needed
         } catch (e) {
           try {
-            scannedDate = DateFormat('yyyy-MM-dd').parse(dateMatch.group(0)!) ; // Adjust format as needed
+            scannedDate = DateFormat('yyyy-MM-dd')
+                .parse(dateMatch.group(0)!); // Adjust format as needed
           } catch (e) {
             print("Could not parse date: $e");
           }
@@ -679,12 +728,14 @@ class _TransactionsPageState extends State<Transactions> {
                   TextField(
                     decoration: InputDecoration(labelText: 'Amount'),
                     keyboardType: TextInputType.number,
-                    controller: TextEditingController(text: scannedAmount?.toStringAsFixed(2) ?? ''),
+                    controller: TextEditingController(
+                        text: scannedAmount?.toStringAsFixed(2) ?? ''),
                     onChanged: (val) => scannedAmount = double.tryParse(val),
                   ),
                   DropdownButtonFormField<String>(
                     decoration: InputDecoration(labelText: 'Type'),
-                    value: 'Expense', // Assume expense for receipts, or let user pick
+                    value:
+                        'Expense', // Assume expense for receipts, or let user pick
                     items: ['Income', 'Expense']
                         .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                         .toList(),
@@ -696,7 +747,8 @@ class _TransactionsPageState extends State<Transactions> {
                     onChanged: (val) => scannedCategory = val,
                   ),
                   ListTile(
-                    title: Text("Date: ${scannedDate != null ? DateFormat('yyyy-MM-dd').format(scannedDate!) : 'Select Date'}"),
+                    title: Text(
+                        "Date: ${scannedDate != null ? DateFormat('yyyy-MM-dd').format(scannedDate!) : 'Select Date'}"),
                     trailing: Icon(Icons.calendar_today),
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -720,13 +772,20 @@ class _TransactionsPageState extends State<Transactions> {
               ),
               ElevatedButton(
                 onPressed: () {
-                  if (scannedAmount != null && type1 != null && scannedCategory != null && scannedDate != null) {
-                    _addTransaction(scannedAmount!, type1!, scannedCategory!, scannedDate!);
+                  if (scannedAmount != null &&
+                      type1 != null &&
+                      scannedCategory != null &&
+                      scannedDate != null) {
+                    _addTransaction(
+                        scannedAmount!, type1!, scannedCategory!, scannedDate!);
                     Navigator.pop(context);
                   } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Please verify all scanned details')),
-                    );
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Please verify all scanned details')),
+                      );
+                    }
                   }
                 },
                 child: Text('Add Scanned'),
@@ -737,9 +796,11 @@ class _TransactionsPageState extends State<Transactions> {
       );
       textRecognizer.close();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No image selected.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No image selected.')),
+        );
+      }
     }
   }
 
@@ -764,11 +825,15 @@ class _TransactionsPageState extends State<Transactions> {
         });
       }
 
-      _showPlaidTransactionPicker();
+      if (mounted) {
+        _showPlaidTransactionPicker();
+      }
     } catch (e) {
       print('Failed to fetch transactions: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to load Plaid transactions")));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Failed to load Plaid transactions")));
+      }
     }
   }
 
@@ -833,66 +898,24 @@ class _TransactionsPageState extends State<Transactions> {
     }
   }
 
-  void _showAddOptions() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Add Transaction'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.add_circle_outline),
-                  title: Text('Manual Entry'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _promptAddTransaction();
-                  },
-                ),
-              ),
-              Card(
-                child: ListTile(
-                  leading: Icon(Icons.camera_alt),
-                  title: Text('Scan Receipt'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _scanReceipt();
-                  },
-                ),
-              ),Card(
-                child: ListTile(
-                  leading: Icon(Icons.attach_money),
-                  title: Text('Get From Bank'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    // Fetch latest user data in case access token was saved previously
-                    final doc = await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(docID)
-                        .get();
-                    final accessToken = doc.data()?['plaidAccessToken'];
 
-                    if (accessToken != null) {
-                      print("🔁 Already linked. Fetching transactions...");
-                      await fetchTransactions(accessToken);
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content:
-                              Text("Fetched transactions from saved account")));
-                    } else {
-                      print("➡️ Launching Plaid...");
-                      await _launchPlaidFlow();
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
+Widget _buildAddOptionTile(IconData icon, String title, VoidCallback onTap) {
+  return ListTile(
+    leading: Icon(icon, color: Colors.black),
+    title: Text(
+      title,
+      style: GoogleFonts.ibmPlexSans(
+        fontWeight: FontWeight.w500,
+        fontSize: 16,
+      ),
+    ),
+    onTap: () {
+      Navigator.pop(context);
+      onTap();
+    },
+  );
+}
+
 
   // Update a transaction in Firestore
   void _updateTransaction(String transactionId, double amount, String type,
@@ -908,6 +931,7 @@ class _TransactionsPageState extends State<Transactions> {
       'category': category,
       'date': date
     }).then((value) {
+      if (!mounted) return;
       setState(() {
         _transactionsList[index] = {
           'transactionId': transactionId,
@@ -928,79 +952,83 @@ class _TransactionsPageState extends State<Transactions> {
       });
     }).catchError((error) {
       print("Failed to update transaction: $error");
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to update transaction')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update transaction')));
+      }
     });
     _updateTotalBalanceInFirestore();
   }
-  
-  Widget _buildSearchAndFilterBar() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-    child: Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: TextEditingController.fromValue(
-              TextEditingValue(
-                text: _searchQuery,
-                selection: TextSelection.collapsed(offset: _searchQuery.length),
-              ),
-            ),
-            onChanged: (query) {
-              setState(() {
-                _searchQuery = query;
-              });
-              _searchTransactions(query);
-            },
-            style: TextStyle(color: Colors.black87),
-            decoration: InputDecoration(
-              hintText: 'Search transactions...',
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              suffixIcon: _searchQuery.isNotEmpty
-                  ? IconButton(
-                      icon: Icon(Icons.clear, color: Colors.black54),
-                      onPressed: () {
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                        _searchTransactions('');
-                      },
-                    )
-                  : null,
-            ),
-          ),
-        ),
-        SizedBox(width: 8),
-        IconButton(
-          icon: Icon(Icons.filter_alt_outlined, color: Colors.black87),
-          onPressed: _showFilterDialog,
-        ),
-        IconButton(
-          icon: Icon(
-            _groupByCategory ? Icons.folder_open : Icons.folder,
-            color: Colors.black87,
-          ),
-          onPressed: () {
-            setState(() {
-              _groupByCategory = !_groupByCategory;
-              _filterTransactions(); // Ensure this uses the search query
-            });
-          },
-          tooltip: 'Group by Category',
-        ),
-      ],
-    ),
-  );
-}
 
-void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
+  Widget _buildSearchAndFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: TextEditingController.fromValue(
+                TextEditingValue(
+                  text: _searchQuery,
+                  selection:
+                      TextSelection.collapsed(offset: _searchQuery.length),
+                ),
+              ),
+              onChanged: (query) {
+                setState(() {
+                  _searchQuery = query;
+                });
+                _searchTransactions(query);
+              },
+              style: TextStyle(color: Colors.black87),
+              decoration: InputDecoration(
+                hintText: 'Search transactions...',
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding:
+                    EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.clear, color: Colors.black54),
+                        onPressed: () {
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                          _searchTransactions('');
+                        },
+                      )
+                    : null,
+              ),
+            ),
+          ),
+          SizedBox(width: 8),
+          IconButton(
+            icon: Icon(Icons.filter_alt_outlined, color: Colors.black87),
+            onPressed: _showFilterDialog,
+          ),
+          IconButton(
+            icon: Icon(
+              _groupByCategory ? Icons.folder_open : Icons.folder,
+              color: Colors.black87,
+            ),
+            onPressed: () {
+              setState(() {
+                _groupByCategory = !_groupByCategory;
+                _filterTransactions(); // Ensure this uses the search query
+              });
+            },
+            tooltip: 'Group by Category',
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1150,8 +1178,8 @@ void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
       },
     );
   }
-  
-Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
+
+  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Dismissible(
       key: Key(transaction['transactionId']),
       direction: DismissDirection.endToStart,
@@ -1249,14 +1277,15 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
                 Container(
                   constraints: BoxConstraints(minWidth: 70),
                   child: Text(
-                    NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                    NumberFormat.simpleCurrency(
+                            locale: 'en_US', decimalDigits: 2)
                         .format(transaction['amount'] ?? 0.0),
                     style: GoogleFonts.ibmPlexSans(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: transaction['type'] != 'Income'
-                      ? Colors.red
-                      : Colors.green,
+                          ? Colors.red
+                          : Colors.green,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1300,7 +1329,8 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
 
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             elevation: 2,
             child: ExpansionTile(
               title: Text(
@@ -1321,7 +1351,8 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
               },
               initiallyExpanded: isExpanded,
               children: transactionsInCategory.map((transaction) {
-                return _buildTransactionItem(transaction, transactionsInCategory.indexOf(transaction));
+                return _buildTransactionItem(
+                    transaction, transactionsInCategory.indexOf(transaction));
               }).toList(),
             ),
           );
@@ -1349,25 +1380,6 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
         return Scaffold(
           extendBodyBehindAppBar: true,
           backgroundColor: Colors.white,
-          appBar: AppBar(
-  title: Text(
-    "Transactions",
-    style: GoogleFonts.barlow(
-      color: Colors.white,
-      fontWeight: FontWeight.bold,
-      fontSize: 42,
-    ),
-  ),
-  centerTitle: true,
-  backgroundColor: Colors.transparent,
-  elevation: 0,
-  flexibleSpace: Container(
-    decoration: BoxDecoration(
-      color: colors[0],
-    ),
-  ),
-),
-
           body: Stack(
             children: [
               Container(
@@ -1386,6 +1398,29 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
               SafeArea(
                 child: Column(
                   children: [
+                    SizedBox(height: 20),
+                    Row(
+                      children: [
+                        SizedBox(width: 25),
+                        Text(
+                          'Transactions',
+                          style: GoogleFonts.ibmPlexSans(
+                            fontSize: 40,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withOpacity(0.30),
+                                offset: Offset(2, 2),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          textAlign: TextAlign.left,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
                     _buildSearchAndFilterBar(),
                     SizedBox(height: 20),
                     Padding(
@@ -1393,7 +1428,7 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
                       child: Text(
                         '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
                         style: GoogleFonts.ibmPlexSans(
-                          fontSize: 40,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
                         ),
@@ -1406,27 +1441,54 @@ Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
               ),
             ],
           ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-          floatingActionButton: Container(
-            padding: EdgeInsets.symmetric(horizontal: 10.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                FloatingActionButton(
-                  backgroundColor: colors[0],
-                  onPressed: sharePdfLink,
-                  child: Icon(Icons.share, color: Colors.black),
-                ),
-                FloatingActionButton(
-                  backgroundColor: colors[0],
-                  onPressed: _showAddOptions,
-                  child: Icon(Icons.add, color: Colors.black),
-                ),
-              ],
-            ),
+          floatingActionButton: ExpandableFab(
+          type: ExpandableFabType.up,
+          openButtonBuilder: RotateFloatingActionButtonBuilder(
+            child: const Icon(Icons.add),
+            fabSize: ExpandableFabSize.regular,
+            shape: const CircleBorder(),
           ),
-        );
-      },
-    );
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'manual',
+              backgroundColor: colors[0],
+              child: const Icon(Icons.edit, color: Colors.black),
+              onPressed: _showModalManualEntry,
+            ),
+            FloatingActionButton.small(
+              heroTag: 'scan',
+              backgroundColor: colors[0],
+              child: const Icon(Icons.receipt, color: Colors.black),
+              onPressed: _showModalScanReceipt,
+            ),
+            FloatingActionButton.small(
+              heroTag: 'plaid',
+              backgroundColor: colors[0],
+              child: const Icon(Icons.account_balance, color: Colors.black),
+              onPressed: () async {
+                final doc = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(docID)
+                    .get();
+                final accessToken = doc.data()?['plaidAccessToken'];
+                if (accessToken != null) {
+                  await fetchTransactions(accessToken);
+                } else {
+                  await _launchPlaidFlow();
+                }
+              },
+            ),
+            FloatingActionButton.small(
+              heroTag: 'share',
+              backgroundColor: colors[0],
+              child: const Icon(Icons.share, color: Colors.black),
+              onPressed: sharePdfLink,
+            ),
+          ],
+        ),
+        floatingActionButtonLocation: ExpandableFab.location,
+      );
+    },
+  );
   }
 }
