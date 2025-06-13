@@ -1532,9 +1532,10 @@ void _promptUpdateBudget() {
     final selected = _selectedPeriod == type;
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
+        fixedSize: Size(100, 50),
         backgroundColor: selected ? colors[1] : colors[0],
         foregroundColor: selected ? Colors.white : Colors.black,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       onPressed: () async {
         if (type == PeriodType.custom) {
@@ -1571,13 +1572,13 @@ void _promptUpdateBudget() {
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
         border: Border.all(color: color, width: 2),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
           Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
           SizedBox(height: 4),
-          Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, color: color)),
+          Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 16, color: color)),
         ],
       ),
     );

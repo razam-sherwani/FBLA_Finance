@@ -69,7 +69,20 @@ class HomePageWithNavState extends State<HomePageWithNav> {
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
-        color: Colors.black,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: EdgeInsets.only(
+          left: 10,
+          right: 10,
+          top: 16,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        constraints: BoxConstraints(
+          minHeight: 250,
+          maxHeight: 300,
+        ),
         child: Wrap(
           children: [
             ListTile(
@@ -107,6 +120,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
           ],
         ),
       ),
+      backgroundColor: Colors.transparent, // <-- Add this line
     );
   }
   @override
