@@ -16,7 +16,7 @@ import 'package:fbla_finance/backend/app_utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:math';
 
-enum PeriodType { weekly, monthly, yearly, custom }
+enum PeriodType { monthly, quarterly, yearly, custom }
 
 class SpendingHabitPage extends StatefulWidget {
   SpendingHabitPage({Key? key}) : super(key: key);
@@ -75,6 +75,9 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
     'November',
     'December',
   ];
+  final List<String> quarterNames = [
+    'Q1', 'Q2', 'Q3', 'Q4'
+  ];
   final List<int> years = List.generate(6, (i) => 2020 + i); // 2020-2025
 
   // Add this map to store category-wise totals
@@ -90,8 +93,9 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   double _periodInflow = 0;
   double _periodOutflow = 0;
 
-  // Shared scroll index for week/month/year
+  // Shared scroll index for month/quarter/year
   int _sharedScrollIndex = 0;
+  int _selectedYear = DateTime.now().year;
 
   Future<void> fetchDocID() async {
     var user = FirebaseAuth.instance.currentUser;
@@ -440,10 +444,14 @@ void _promptUpdateBudget() {
       _selectedPeriod = type;
       if (type == PeriodType.monthly) {
         _sharedScrollIndex = DateTime.now().month - 1;
+        _selectedYear = DateTime.now().year;
+      } else if (type == PeriodType.quarterly) {
+        // 0 = Q1, 1 = Q2, ...
+        _sharedScrollIndex = ((DateTime.now().month - 1) ~/ 3);
+        _selectedYear = DateTime.now().year;
       } else if (type == PeriodType.yearly) {
-        _sharedScrollIndex = years.indexOf(DateTime.now().year);
-      } else if (type == PeriodType.weekly) {
         _sharedScrollIndex = 0;
+        _selectedYear = DateTime.now().year;
       }
     });
     if (type != PeriodType.custom) {
@@ -453,12 +461,18 @@ void _promptUpdateBudget() {
 
   void _previousPeriod() {
     setState(() {
-      if (_selectedPeriod == PeriodType.weekly && _sharedScrollIndex > 0) {
+      if (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex > 0) {
         _sharedScrollIndex--;
-      } else if (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex > 0) {
+      } else if (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex == 0) {
+        _selectedYear--;
+        _sharedScrollIndex = 11;
+      } else if (_selectedPeriod == PeriodType.quarterly && _sharedScrollIndex > 0) {
         _sharedScrollIndex--;
-      } else if (_selectedPeriod == PeriodType.yearly && _sharedScrollIndex > 0) {
-        _sharedScrollIndex--;
+      } else if (_selectedPeriod == PeriodType.quarterly && _sharedScrollIndex == 0) {
+        _selectedYear--;
+        _sharedScrollIndex = 3;
+      } else if (_selectedPeriod == PeriodType.yearly) {
+        _selectedYear--;
       }
     });
     _fetchPeriodData();
@@ -466,12 +480,18 @@ void _promptUpdateBudget() {
 
   void _nextPeriod() {
     setState(() {
-      if (_selectedPeriod == PeriodType.weekly) {
+      if (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex < 11) {
         _sharedScrollIndex++;
-      } else if (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex < 11) {
+      } else if (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex == 11) {
+        _selectedYear++;
+        _sharedScrollIndex = 0;
+      } else if (_selectedPeriod == PeriodType.quarterly && _sharedScrollIndex < 3) {
         _sharedScrollIndex++;
-      } else if (_selectedPeriod == PeriodType.yearly && _sharedScrollIndex < years.length - 1) {
-        _sharedScrollIndex++;
+      } else if (_selectedPeriod == PeriodType.quarterly && _sharedScrollIndex == 3) {
+        _selectedYear++;
+        _sharedScrollIndex = 0;
+      } else if (_selectedPeriod == PeriodType.yearly) {
+        _selectedYear++;
       }
     });
     _fetchPeriodData();
@@ -488,20 +508,19 @@ void _promptUpdateBudget() {
 
       List<Map<String, dynamic>> periodData = [];
       double inflow = 0, outflow = 0;
-      DateTime now = DateTime.now();
       DateTime start, end;
 
-      if (_selectedPeriod == PeriodType.weekly) {
-        final weekStart = now.subtract(Duration(days: now.weekday - 1)).add(Duration(days: 7 * _sharedScrollIndex));
-        start = DateTime(weekStart.year, weekStart.month, weekStart.day);
-        end = start.add(Duration(days: 6));
-      } else if (_selectedPeriod == PeriodType.monthly) {
-        start = DateTime(now.year, _sharedScrollIndex + 1, 1);
-        end = DateTime(now.year, _sharedScrollIndex + 2, 0);
+      if (_selectedPeriod == PeriodType.monthly) {
+        start = DateTime(_selectedYear, _sharedScrollIndex + 1, 1);
+        end = DateTime(_selectedYear, _sharedScrollIndex + 2, 0);
+      } else if (_selectedPeriod == PeriodType.quarterly) {
+        int startMonth = _sharedScrollIndex * 3 + 1;
+        int endMonth = startMonth + 2;
+        start = DateTime(_selectedYear, startMonth, 1);
+        end = DateTime(_selectedYear, endMonth + 1, 0);
       } else if (_selectedPeriod == PeriodType.yearly) {
-        final year = years[_sharedScrollIndex];
-        start = DateTime(year, 1, 1);
-        end = DateTime(year, 12, 31);
+        start = DateTime(_selectedYear, 1, 1);
+        end = DateTime(_selectedYear, 12, 31);
       } else {
         // Custom
         if (_customStart == null || _customEnd == null) return;
@@ -548,46 +567,47 @@ void _promptUpdateBudget() {
   // Helper to aggregate data for the selected period for the line chart
   List<FlSpot> _getExpenseSpots() {
     if (_rawData.isEmpty) return [];
-    Map<int, double> dayMap = {};
-    if (_selectedPeriod == PeriodType.weekly) {
-      for (var tx in _rawData) {
-        final date = tx['date'] as DateTime;
-        final weekday = date.weekday - 1; // 0=Mon
-        if (tx['type'] == 'Expense') {
-          dayMap[weekday] = (dayMap[weekday] ?? 0) + (tx['amount'] as double);
-        }
-      }
-      return List.generate(7, (i) => FlSpot(i.toDouble(), dayMap[i] ?? 0));
-    } else if (_selectedPeriod == PeriodType.monthly) {
+    Map<int, double> map = {};
+    if (_selectedPeriod == PeriodType.monthly) {
       for (var tx in _rawData) {
         final date = tx['date'] as DateTime;
         final day = date.day - 1;
         if (tx['type'] == 'Expense') {
-          dayMap[day] = (dayMap[day] ?? 0) + (tx['amount'] as double);
+          map[day] = (map[day] ?? 0) + (tx['amount'] as double);
         }
       }
-      int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
-      return List.generate(daysInMonth, (i) => FlSpot(i.toDouble(), dayMap[i] ?? 0));
+      int daysInMonth = DateTime(_selectedYear, _sharedScrollIndex + 2, 0).day;
+      return List.generate(daysInMonth, (i) => FlSpot(i.toDouble(), map[i] ?? 0));
+    } else if (_selectedPeriod == PeriodType.quarterly) {
+      // Group by month in quarter
+      int startMonth = _sharedScrollIndex * 3 + 1;
+      for (var tx in _rawData) {
+        final date = tx['date'] as DateTime;
+        final month = date.month - startMonth;
+        if (tx['type'] == 'Expense' && month >= 0 && month < 3) {
+          map[month] = (map[month] ?? 0) + (tx['amount'] as double);
+        }
+      }
+      return List.generate(3, (i) => FlSpot(i.toDouble(), map[i] ?? 0));
     } else if (_selectedPeriod == PeriodType.yearly) {
       for (var tx in _rawData) {
         final date = tx['date'] as DateTime;
         final month = date.month - 1;
         if (tx['type'] == 'Expense') {
-          dayMap[month] = (dayMap[month] ?? 0) + (tx['amount'] as double);
+          map[month] = (map[month] ?? 0) + (tx['amount'] as double);
         }
       }
-      return List.generate(12, (i) => FlSpot(i.toDouble(), dayMap[i] ?? 0));
+      return List.generate(12, (i) => FlSpot(i.toDouble(), map[i] ?? 0));
     } else if (_selectedPeriod == PeriodType.custom) {
-      // Group by day
       for (var tx in _rawData) {
         final date = tx['date'] as DateTime;
         final day = date.difference(_customStart!).inDays;
         if (tx['type'] == 'Expense') {
-          dayMap[day] = (dayMap[day] ?? 0) + (tx['amount'] as double);
+          map[day] = (map[day] ?? 0) + (tx['amount'] as double);
         }
       }
       int totalDays = _customEnd!.difference(_customStart!).inDays + 1;
-      return List.generate(totalDays, (i) => FlSpot(i.toDouble(), dayMap[i] ?? 0));
+      return List.generate(totalDays, (i) => FlSpot(i.toDouble(), map[i] ?? 0));
     }
     return [];
   }
@@ -599,25 +619,23 @@ void _promptUpdateBudget() {
       ..sort((a, b) => (a['date'] as DateTime).compareTo(b['date'] as DateTime));
     double balance = 0;
     List<FlSpot> spots = [];
-    if (_selectedPeriod == PeriodType.weekly) {
-      for (int i = 0; i < 7; i++) {
-        DateTime day = sorted.isNotEmpty
-            ? (sorted.first['date'] as DateTime).add(Duration(days: i))
-            : DateTime.now().add(Duration(days: i));
+    if (_selectedPeriod == PeriodType.monthly) {
+      int daysInMonth = DateTime(_selectedYear, _sharedScrollIndex + 2, 0).day;
+      for (int i = 0; i < daysInMonth; i++) {
         for (var tx in sorted) {
           final txDate = tx['date'] as DateTime;
-          if (txDate.weekday - 1 == i) {
+          if (txDate.day - 1 == i) {
             balance += tx['type'] == 'Expense' ? -tx['amount'] : tx['amount'];
           }
         }
         spots.add(FlSpot(i.toDouble(), balance));
       }
-    } else if (_selectedPeriod == PeriodType.monthly) {
-      int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
-      for (int i = 0; i < daysInMonth; i++) {
+    } else if (_selectedPeriod == PeriodType.quarterly) {
+      int startMonth = _sharedScrollIndex * 3 + 1;
+      for (int i = 0; i < 3; i++) {
         for (var tx in sorted) {
           final txDate = tx['date'] as DateTime;
-          if (txDate.day - 1 == i) {
+          if (txDate.month == startMonth + i) {
             balance += tx['type'] == 'Expense' ? -tx['amount'] : tx['amount'];
           }
         }
@@ -754,6 +772,19 @@ void _promptUpdateBudget() {
             : Stream.value([Color(0xffB8E8FF), Colors.blue.shade900]),
         builder: (context, snapshot) {
           colors = snapshot.data ?? [Color(0xffB8E8FF), Colors.blue.shade900];
+          // If custom is selected and dates are not picked, show a prompt
+          if (_selectedPeriod == PeriodType.custom && (_customStart == null || _customEnd == null)) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32.0),
+                child: Text(
+                  'Please select a start and end date to view custom data.',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
           return SingleChildScrollView(
             child: Column(
               children: [
@@ -763,8 +794,8 @@ void _promptUpdateBudget() {
                   child: Wrap(
                     spacing: 8,
                     children: [
-                      _periodButton('Week', PeriodType.weekly),
                       _periodButton('Month', PeriodType.monthly),
+                      _periodButton('Quarter', PeriodType.quarterly),
                       _periodButton('Year', PeriodType.yearly),
                       _periodButton('Custom', PeriodType.custom),
                     ],
@@ -777,17 +808,23 @@ void _promptUpdateBudget() {
                     children: [
                       IconButton(
                         icon: Icon(Icons.chevron_left),
-                        onPressed: _sharedScrollIndex > 0 ? _previousPeriod : null,
+                        onPressed: (_selectedPeriod == PeriodType.monthly && (_sharedScrollIndex > 0 || _selectedYear > 2020)) ||
+                                  (_selectedPeriod == PeriodType.quarterly && (_sharedScrollIndex > 0 || _selectedYear > 2020)) ||
+                                  (_selectedPeriod == PeriodType.yearly && _selectedYear > 2020)
+                            ? _previousPeriod
+                            : null,
                       ),
                       Flexible(
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            _selectedPeriod == PeriodType.weekly
-                                ? 'Week ${_sharedScrollIndex + 1}'
-                                : _selectedPeriod == PeriodType.monthly
-                                    ? monthsNames[_sharedScrollIndex]
-                                    : years[_sharedScrollIndex].toString(),
+                            _selectedPeriod == PeriodType.monthly
+                                ? '${_selectedYear} ${monthsNames[_sharedScrollIndex]}'
+                                : _selectedPeriod == PeriodType.quarterly
+                                    ? '${_selectedYear} ${quarterNames[_sharedScrollIndex]}'
+                                    : _selectedPeriod == PeriodType.yearly
+                                        ? '${_selectedYear}'
+                                        : '',
                             style: TextStyle(
                               color: AppColors.contentColorBlue,
                               fontSize: 16,
@@ -798,9 +835,9 @@ void _promptUpdateBudget() {
                       ),
                       IconButton(
                         icon: Icon(Icons.chevron_right),
-                        onPressed: (_selectedPeriod == PeriodType.monthly && _sharedScrollIndex < 11) ||
-                                (_selectedPeriod == PeriodType.yearly && _sharedScrollIndex < years.length - 1) ||
-                                (_selectedPeriod == PeriodType.weekly)
+                        onPressed: (_selectedPeriod == PeriodType.monthly) ||
+                                  (_selectedPeriod == PeriodType.quarterly) ||
+                                  (_selectedPeriod == PeriodType.yearly)
                             ? _nextPeriod
                             : null,
                       ),
@@ -847,13 +884,11 @@ void _promptUpdateBudget() {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            _selectedPeriod == PeriodType.weekly
-                                ? 'Expenses Per Week'
-                                : _selectedPeriod == PeriodType.monthly
-                                    ? 'Expenses Per Month'
-                                    : _selectedPeriod == PeriodType.yearly
-                                        ? 'Expenses Per Year'
-                                        : 'Expenses (Custom)',
+                            _selectedPeriod == PeriodType.monthly
+                                ? 'Expenses Per Month'
+                                : _selectedPeriod == PeriodType.yearly
+                                    ? 'Expenses Per Year'
+                                    : 'Expenses (Custom)',
                             style: TextStyle(
                               color: Colors.black,
                               fontSize: 20,
@@ -902,13 +937,11 @@ void _promptUpdateBudget() {
                               axisNameWidget: Container(
                                 margin: const EdgeInsets.only(left: 25, bottom: 20),
                                 child: Text(
-                                  _selectedPeriod == PeriodType.weekly
-                                      ? 'Day of Week'
-                                      : _selectedPeriod == PeriodType.monthly
-                                          ? 'Day of Month'
-                                          : _selectedPeriod == PeriodType.yearly
-                                              ? 'Month'
-                                              : 'Day',
+                                  _selectedPeriod == PeriodType.monthly
+                                      ? 'Day of Month'
+                                      : _selectedPeriod == PeriodType.yearly
+                                          ? 'Month'
+                                          : 'Day',
                                   style: TextStyle(
                                     color: Colors.black,
                                     fontWeight: FontWeight.bold,
@@ -946,12 +979,11 @@ void _promptUpdateBudget() {
                                     } else {
                                       return const SizedBox.shrink();
                                     }
-                                  } else if (_selectedPeriod == PeriodType.weekly) {
-                                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                  } else if (_selectedPeriod == PeriodType.quarterly) {
                                     return SideTitleWidget(
                                       meta: meta,
                                       child: Text(
-                                        days[value.toInt().clamp(0, 6)],
+                                        quarterNames[value.toInt().clamp(0, 3)],
                                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
                                     );
@@ -1016,13 +1048,11 @@ void _promptUpdateBudget() {
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
-                    _selectedPeriod == PeriodType.weekly
-                        ? 'Balance Per Day (Week)'
-                        : _selectedPeriod == PeriodType.monthly
-                            ? 'Balance Per Day (Month)'
-                            : _selectedPeriod == PeriodType.yearly
-                                ? 'Balance Per Month (Year)'
-                                : 'Balance (Custom)',
+                    _selectedPeriod == PeriodType.monthly
+                        ? 'Balance Per Day (Month)'
+                        : _selectedPeriod == PeriodType.yearly
+                            ? 'Balance Per Month (Year)'
+                            : 'Balance (Custom)',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -1089,12 +1119,11 @@ void _promptUpdateBudget() {
                                     } else {
                                       return const SizedBox.shrink();
                                     }
-                                  } else if (_selectedPeriod == PeriodType.weekly) {
-                                    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                                  } else if (_selectedPeriod == PeriodType.quarterly) {
                                     return SideTitleWidget(
                                       meta: meta,
                                       child: Text(
-                                        days[value.toInt().clamp(0, 6)],
+                                        quarterNames[value.toInt().clamp(0, 3)],
                                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
                                     );
@@ -1358,7 +1387,30 @@ void _promptUpdateBudget() {
         foregroundColor: selected ? Colors.white : Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      onPressed: () => _onPeriodChanged(type),
+      onPressed: () async {
+        if (type == PeriodType.custom) {
+          setState(() {
+            _selectedPeriod = type;
+          });
+          final picked = await showDateRangePicker(
+            context: context,
+            firstDate: DateTime(2020),
+            lastDate: DateTime.now(),
+            initialDateRange: _customStart != null && _customEnd != null
+                ? DateTimeRange(start: _customStart!, end: _customEnd!)
+                : null,
+          );
+          if (picked != null) {
+            setState(() {
+              _customStart = picked.start;
+              _customEnd = picked.end;
+            });
+            _fetchPeriodData();
+          }
+        } else {
+          _onPeriodChanged(type);
+        }
+      },
       child: Text(label),
     );
   }
