@@ -28,6 +28,7 @@ class SpendingHabitPage extends StatefulWidget {
 class _SpendingHabitPageState extends State<SpendingHabitPage> {
   final User? user = Auth().currentUser;
   String docID = "";
+  bool _loading = true;
   final List<Color> gradientColors = [
     Colors.redAccent,
     Colors.orangeAccent,
@@ -666,6 +667,70 @@ void _promptUpdateBudget() {
     return spots;
   }
 
+  /// Helper to split spots into segments above and below cutoff (y=0)
+  List<List<List<FlSpot>>> splitSpotsByCutoff(List<FlSpot> spots, double cutoff) {
+    List<List<FlSpot>> aboveSegments = [];
+    List<List<FlSpot>> belowSegments = [];
+    List<FlSpot> currentAbove = [];
+    List<FlSpot> currentBelow = [];
+
+    for (int i = 0; i < spots.length; i++) {
+      final spot = spots[i];
+      final isAbove = spot.y > cutoff;
+      final isBelow = spot.y < cutoff;
+      final isAt = spot.y == cutoff;
+
+      // Handle above 0
+      if (isAbove) {
+        if (currentBelow.isNotEmpty) {
+          // Crossing from below to above
+          if (i > 0 && spots[i - 1].y <= cutoff) {
+            final prev = spots[i - 1];
+            final t = (cutoff - prev.y) / (spot.y - prev.y);
+            final crossX = prev.x + (spot.x - prev.x) * t;
+            final crossSpot = FlSpot(crossX, cutoff);
+            currentBelow.add(crossSpot);
+            belowSegments.add(List.from(currentBelow));
+            currentBelow.clear();
+            currentAbove.add(crossSpot);
+          }
+        }
+        currentAbove.add(spot);
+      } else if (isBelow) {
+        if (currentAbove.isNotEmpty) {
+          // Crossing from above to below
+          if (i > 0 && spots[i - 1].y >= cutoff) {
+            final prev = spots[i - 1];
+            final t = (cutoff - prev.y) / (spot.y - prev.y);
+            final crossX = prev.x + (spot.x - prev.x) * t;
+            final crossSpot = FlSpot(crossX, cutoff);
+            currentAbove.add(crossSpot);
+            aboveSegments.add(List.from(currentAbove));
+            currentAbove.clear();
+            currentBelow.add(crossSpot);
+          }
+        }
+        currentBelow.add(spot);
+      } else if (isAt) {
+        // At cutoff, add to both if transitioning
+        if (currentAbove.isNotEmpty) {
+          currentAbove.add(spot);
+          aboveSegments.add(List.from(currentAbove));
+          currentAbove.clear();
+        }
+        if (currentBelow.isNotEmpty) {
+          currentBelow.add(spot);
+          belowSegments.add(List.from(currentBelow));
+          currentBelow.clear();
+        }
+        // If not transitioning, do nothing (isolated cutoff point)
+      }
+    }
+    if (currentAbove.isNotEmpty) aboveSegments.add(currentAbove);
+    if (currentBelow.isNotEmpty) belowSegments.add(currentBelow);
+    return [aboveSegments, belowSegments];
+  }
+
   // Add this method for saving graph as image
   Future<void> saveGraphAsImage(GlobalKey graphKey, String fileName) async {
     try {
@@ -716,12 +781,23 @@ void _promptUpdateBudget() {
   void initState() {
     super.initState();
 
-    // Fetch data
-    _initializeData();
+    // Fetch docID, then all transaction data, then compute period data, then set loading to false
+    fetchDocID().then((_) async {
+      // Wait for all fetches to complete
+      await Future.wait([
+        Future(() async => _fetchRawDataLine()),
+        Future(() async => _fetchRawData()),
+        Future(() async => _fetchRawDataCurrentBalance()),
+        Future(() async => _fetchPeriodData()),
+      ]);
+      // Now compute period data from the loaded _rawData
+      setState(() {
+        _loading = false;
+      });
+    });
 
     // Wait for the first frame and then delay before capturing images
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Delay to ensure rendering is complete
       await Future.delayed(Duration(milliseconds: 500));
 
       // Save the graphs as images after rendering
@@ -923,6 +999,17 @@ void _promptUpdateBudget() {
                               barWidth: 4,
                               curveSmoothness: 0.5,
                               preventCurveOverShooting: true,
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.red.withOpacity(0.25),
+                                    Colors.purple.withOpacity(0.10),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
                             ),
                           ],
                           titlesData: FlTitlesData(
@@ -959,9 +1046,8 @@ void _promptUpdateBudget() {
                                   if (_selectedPeriod == PeriodType.monthly) {
                                     int day = value.toInt() + 1;
                                     int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
-                                    final isHovered = _interactedSpotIndexExpense == value.toInt();
-                                    // Only show first, last, every 5th day, or if hovered
-                                    if (day == 1 || day == daysInMonth || day % 5 == 0 || isHovered) {
+                                    // Only show first, last, every 5th day
+                                    if (day == 1 || day == daysInMonth || day % 5 == 0) {
                                       return SideTitleWidget(
                                         meta: meta,
                                         child: Transform.rotate(
@@ -969,9 +1055,9 @@ void _promptUpdateBudget() {
                                           child: Text(
                                             '$day',
                                             style: TextStyle(
-                                              fontSize: isHovered ? 13 : 11,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
-                                              color: isHovered ? Colors.black : Colors.black,
+                                              color: Colors.black,
                                             ),
                                           ),
                                         ),
@@ -1012,30 +1098,42 @@ void _promptUpdateBudget() {
                             enabled: true,
                             handleBuiltInTouches: true,
                             touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (LineBarSpot touchedSpot) => colors[0], // <-- Blue background for tooltip
                               getTooltipItems: (touchedSpots) {
-                                return touchedSpots.map((spot) {
-                                  final value = spot.y;
-                                  return LineTooltipItem(
-                                    value.toStringAsFixed(2),
-                                    const TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                }).toList();
+                                // Only show one tooltip per x value (day), and skip if at intersection (start/end of segment)
+                                final seen = <double>{};
+                                return touchedSpots
+                                    .where((spot) {
+                                      // Prevent hover at intersection points (where x is not an integer)
+                                      // Only allow hover if x is a whole number (i.e., a real day)
+                                      return seen.add(spot.x) && spot.x == spot.x.roundToDouble();
+                                    })
+                                    .map((spot) {
+                                      final value = spot.y;
+                                      final day = spot.x.toInt() + 1;
+                                      return LineTooltipItem(
+                                        'Day $day\n${value.toStringAsFixed(2)}',
+                                        const TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    }).toList();
                               },
                             ),
                             touchCallback: (event, touchResponse) {
+                              // Prevent interaction at intersection points (non-integer x)
                               if (!event.isInterestedForInteractions ||
                                   touchResponse?.lineBarSpots == null ||
-                                  touchResponse!.lineBarSpots!.isEmpty) {
+                                  touchResponse!.lineBarSpots!.isEmpty ||
+                                  touchResponse.lineBarSpots!.first.x != touchResponse.lineBarSpots!.first.x.roundToDouble()) {
                                 setState(() {
-                                  _interactedSpotIndexExpense = -1;
+                                  _interactedSpotIndexBalance = -1;
                                 });
                                 return;
                               }
                               setState(() {
-                                _interactedSpotIndexExpense = touchResponse.lineBarSpots!.first.spotIndex;
+                                _interactedSpotIndexBalance = touchResponse.lineBarSpots!.first.spotIndex;
                               });
                             },
                           ),
@@ -1066,20 +1164,62 @@ void _promptUpdateBudget() {
                         curve: Curves.linear,
                         LineChartData(
                           lineBarsData: [
-                            LineChartBarData(
-                              spots: _getBalanceSpots(),
-                              isCurved: true,
-                              dotData: const FlDotData(show: true),
-                              color: Colors.lightBlue,
-                              gradient: const LinearGradient(
-                                colors: [Colors.green, Colors.blue],
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                              ),
-                              barWidth: 4,
-                              curveSmoothness: 0.5,
-                              preventCurveOverShooting: true,
-                            )
+                            // Robust split: above 0 segments
+                            ...splitSpotsByCutoff(_getBalanceSpots(), 0)[0].map((segment) =>
+                              LineChartBarData(
+                                spots: segment,
+                                isCurved: true,
+                                dotData: const FlDotData(show: false),
+                                barWidth: 4,
+                                curveSmoothness: 0.5,
+                                preventCurveOverShooting: true,
+                                gradient: const LinearGradient(
+                                  colors: [Colors.green, Colors.blue],
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                ),
+                                aboveBarData: BarAreaData(
+                                  show: true,
+                                  color: Colors.red.withOpacity(0.18),
+                                  cutOffY: 0,
+                                  applyCutOffY: true,
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: Colors.green.withOpacity(0.18),
+                                  cutOffY: 0,
+                                  applyCutOffY: true,
+                                ),
+                              )
+                            ),
+                            // Robust split: below 0 segments
+                            ...splitSpotsByCutoff(_getBalanceSpots(), 0)[1].map((segment) =>
+                              LineChartBarData(
+                                spots: segment,
+                                isCurved: true,
+                                dotData: const FlDotData(show: false),
+                                barWidth: 4,
+                                curveSmoothness: 0.5,
+                                preventCurveOverShooting: true,
+                                gradient: const LinearGradient(
+                                  colors: [Colors.red, Colors.orange],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                                aboveBarData: BarAreaData(
+                                  show: true,
+                                  color: Colors.red.withOpacity(0.18),
+                                  cutOffY: 0,
+                                  applyCutOffY: true,
+                                ),
+                                belowBarData: BarAreaData(
+                                  show: true,
+                                  color: Colors.green.withOpacity(0.18),
+                                  cutOffY: 0,
+                                  applyCutOffY: true,
+                                ),
+                              )
+                            ),
                           ],
                           titlesData: FlTitlesData(
                             show: true,
@@ -1100,8 +1240,8 @@ void _promptUpdateBudget() {
                                   if (_selectedPeriod == PeriodType.monthly) {
                                     int day = value.toInt() + 1;
                                     int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
-                                    final isHovered = _interactedSpotIndexBalance == value.toInt();
-                                    if (day == 1 || day == daysInMonth || day % 5 == 0 || isHovered) {
+                                    // Only show first, last, every 5th day
+                                    if (day == 1 || day == daysInMonth || day % 5 == 0) {
                                       return SideTitleWidget(
                                         meta: meta,
                                         child: Transform.rotate(
@@ -1109,9 +1249,9 @@ void _promptUpdateBudget() {
                                           child: Text(
                                             '$day',
                                             style: TextStyle(
-                                              fontSize: isHovered ? 13 : 11,
+                                              fontSize: 11,
                                               fontWeight: FontWeight.bold,
-                                              color: isHovered ? Colors.black : Colors.black,
+                                              color: Colors.black,
                                             ),
                                           ),
                                         ),
@@ -1152,23 +1292,35 @@ void _promptUpdateBudget() {
                             enabled: true,
                             handleBuiltInTouches: true,
                             touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (LineBarSpot touchedSpot) => colors[0],
                               getTooltipItems: (touchedSpots) {
-                                return touchedSpots.map((spot) {
-                                  final value = spot.y;
-                                  return LineTooltipItem(
-                                    value.toStringAsFixed(2),
-                                    const TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  );
-                                }).toList();
+                                // Only show one tooltip per x value (day), and skip if at intersection (start/end of segment)
+                                final seen = <double>{};
+                                return touchedSpots
+                                    .where((spot) {
+                                      // Prevent hover at intersection points (where x is not an integer)
+                                      // Only allow hover if x is a whole number (i.e., a real day)
+                                      return seen.add(spot.x) && spot.x == spot.x.roundToDouble();
+                                    })
+                                    .map((spot) {
+                                      final value = spot.y;
+                                      final day = spot.x.toInt() + 1;
+                                      return LineTooltipItem(
+                                        'Day $day\n${value.toStringAsFixed(2)}',
+                                        const TextStyle(
+                                          color: Colors.black,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      );
+                                    }).toList();
                               },
                             ),
                             touchCallback: (event, touchResponse) {
+                              // Prevent interaction at intersection points (non-integer x)
                               if (!event.isInterestedForInteractions ||
                                   touchResponse?.lineBarSpots == null ||
-                                  touchResponse!.lineBarSpots!.isEmpty) {
+                                  touchResponse!.lineBarSpots!.isEmpty ||
+                                  touchResponse.lineBarSpots!.first.x != touchResponse.lineBarSpots!.first.x.roundToDouble()) {
                                 setState(() {
                                   _interactedSpotIndexBalance = -1;
                                 });
@@ -1430,6 +1582,35 @@ void _promptUpdateBudget() {
           SizedBox(height: 4),
           Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 18, color: color)),
         ],
+      ),
+    );
+  }
+
+  Widget _balanceSignRow(List<FlSpot> spots) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(spots.length, (i) {
+          final y = spots[i].y;
+          Color color;
+          if (y > 0) {
+            color = Colors.green;
+          } else if (y < 0) {
+            color = Colors.red;
+          } else {
+            color = Colors.grey;
+          }
+          return Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.symmetric(horizontal: 1),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          );
+        }),
       ),
     );
   }
