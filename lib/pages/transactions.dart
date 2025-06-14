@@ -949,6 +949,7 @@ Widget _buildAddOptionTile(IconData icon, String title, VoidCallback onTap) {
             _totalBalance -= transaction['amount'];
           }
         });
+        _filterTransactions(); // <-- Ensure UI updates with new values
       });
     }).catchError((error) {
       print("Failed to update transaction: $error");
