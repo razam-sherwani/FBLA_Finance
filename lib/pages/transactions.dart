@@ -7,7 +7,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
-import 'package:flutter_speed_dial/flutter_speed_dial.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -51,6 +51,8 @@ class _TransactionsPageState extends State<Transactions> {
   double? _minAmount;
   double? _maxAmount;
   bool _groupByCategory = false;
+
+  final GlobalKey<ExpandableFabState> _fabKey = GlobalKey<ExpandableFabState>();
 
   bool _isDuplicateTransaction(Map<String, dynamic> txn) {
     return _transactionsList.any((existing) =>
@@ -312,58 +314,6 @@ class _TransactionsPageState extends State<Transactions> {
     }
   }
 
-  SpeedDial _buildAnimatedFAB() {
-    return SpeedDial(
-      icon: Icons.add,
-      activeIcon: Icons.close,
-      backgroundColor: colors[0],
-      foregroundColor: Colors.black,
-      overlayOpacity: 0.3,
-      elevation: 10,
-      spacing: 12,
-      spaceBetweenChildren: 8,
-      buttonSize: Size(60, 60), // Standard FAB size for a circle
-      childrenButtonSize: Size(52, 52),
-      animatedIconTheme: IconThemeData(size: 28),
-      shape: const CircleBorder(), // Make the main button a circle
-      children: [
-        SpeedDialChild(
-          child: Icon(Icons.edit),
-          label: 'Manual Entry',
-          onTap: () => _showModalManualEntry(),
-        ),
-        SpeedDialChild(
-          child: Icon(Icons.receipt_long),
-          label: 'Scan Receipt',
-          onTap: () => _showModalScanReceipt(),
-        ),
-        SpeedDialChild(
-          child: Icon(Icons.account_balance),
-          label: 'Get From Bank',
-          onTap: () async {
-            final doc = await FirebaseFirestore.instance
-                .collection('users')
-                .doc(docID)
-                .get();
-            final accessToken = doc.data()?['plaidAccessToken'];
-            if (accessToken != null) {
-              await fetchTransactions(accessToken);
-            } else {
-              await _launchPlaidFlow();
-            }
-          },
-        ),
-        SpeedDialChild(
-          child: Icon(Icons.picture_as_pdf),
-          label: 'Generate Report',
-          onTap: () async {
-            await sharePdfLink();
-          },
-        ),
-      ],
-    );
-  }
-
   void _showModalManualEntry() {
     showModalBottomSheet(
       context: context,
@@ -518,62 +468,64 @@ class _TransactionsPageState extends State<Transactions> {
   }
 
   Future<void> sharePdfLink() async {
-  final RenderBox button = context.findRenderObject() as RenderBox;
-  final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-  final Offset offset = button.localToGlobal(Offset.zero, ancestor: overlay);
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    final RenderBox overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final Offset offset = button.localToGlobal(Offset.zero, ancestor: overlay);
 
-  String? selected = await showMenu<String>(
-    context: context,
-    position: RelativeRect.fromLTRB(
-      offset.dx + 10,
-      offset.dy - 10,
-      overlay.size.width - offset.dx,
-      overlay.size.height - offset.dy,
-    ),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    items: ['General', 'Weekly', 'Monthly'].map((option) {
-      return PopupMenuItem<String>(
-        value: option,
-        child: Text(option),
+    String? selected = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx + 10,
+        offset.dy - 10,
+        overlay.size.width - offset.dx,
+        overlay.size.height - offset.dy,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      items: ['General', 'Weekly', 'Monthly'].map((option) {
+        return PopupMenuItem<String>(
+          value: option,
+          child: Text(option),
+        );
+      }).toList(),
+    );
+
+    selected ??= 'General';
+
+    var paragraphPdf;
+    if (selected == 'General') {
+      paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+    } else if (selected == 'Weekly') {
+      paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+    } else {
+      paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+    }
+
+    final pdfFileName = '$selected-Report.pdf';
+    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
+        paragraphPdf, pdfFileName);
+
+    if (downloadUrl != null) {
+      SaveAndOpenDocument.copyToClipboard(downloadUrl);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$selected PDF link copied to clipboard!'),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
-    }).toList(),
-  );
-
-  selected ??= 'General';
-
-  var paragraphPdf;
-  if (selected == 'General') {
-    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-  } else if (selected == 'Weekly') {
-    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-  } else {
-    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to upload $selected report.'),
+          behavior: SnackBarBehavior.floating,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
   }
-
-  final pdfFileName = '$selected-Report.pdf';
-  final downloadUrl =
-      await SaveAndOpenDocument.uploadPdfAndGetLink(paragraphPdf, pdfFileName);
-
-  if (downloadUrl != null) {
-    SaveAndOpenDocument.copyToClipboard(downloadUrl);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$selected PDF link copied to clipboard!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to upload $selected report.'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
-
 
   void _searchTransactions(String query) {
     setState(() {
@@ -898,24 +850,22 @@ class _TransactionsPageState extends State<Transactions> {
     }
   }
 
-
-Widget _buildAddOptionTile(IconData icon, String title, VoidCallback onTap) {
-  return ListTile(
-    leading: Icon(icon, color: Colors.black),
-    title: Text(
-      title,
-      style: GoogleFonts.ibmPlexSans(
-        fontWeight: FontWeight.w500,
-        fontSize: 16,
+  Widget _buildAddOptionTile(IconData icon, String title, VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.black),
+      title: Text(
+        title,
+        style: GoogleFonts.ibmPlexSans(
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+        ),
       ),
-    ),
-    onTap: () {
-      Navigator.pop(context);
-      onTap();
-    },
-  );
-}
-
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
+    );
+  }
 
   // Update a transaction in Firestore
   void _updateTransaction(String transactionId, double amount, String type,
@@ -1182,131 +1132,130 @@ Widget _buildAddOptionTile(IconData icon, String title, VoidCallback onTap) {
 
   Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
     return Dismissible(
-      key: Key(transaction['transactionId']),
-      direction: DismissDirection.endToStart,
-      onDismissed: (direction) {
-        _removeTransaction(transaction['transactionId']);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Transaction deleted. Add a NEW Transaction!'),
-          ),
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withOpacity(0.7),
-              colors[0].withOpacity(0.85),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: colors[1].withOpacity(0.25),
-              blurRadius: 8,
-              offset: Offset(0, 4),
+        key: Key(transaction['transactionId']),
+        direction: DismissDirection.endToStart,
+        onDismissed: (direction) {
+          _removeTransaction(transaction['transactionId']);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Transaction deleted. Add a NEW Transaction!'),
             ),
-          ],
-        ),
-        child: Card(
-          color: Colors.transparent,
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ListTile(
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: colors[1].withOpacity(0.5),
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Icon(
-                  transaction['type'] != 'Income'
-                      ? Icons.arrow_downward
-                      : Icons.arrow_upward,
-                  color: transaction['type'] != 'Income'
-                      ? Colors.red
-                      : Colors.green,
-                  size: 20,
-                ),
-              ),
-            ),
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  transaction['category'] ?? 'Uncategorized',
-                  style: GoogleFonts.ibmPlexSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-                SizedBox(height: 4),
-                Text(
-                  "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
-                  style: GoogleFonts.ibmPlexSans(
-                    fontSize: 10,
-                    color: Colors.black,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
+          );
+        },
+        child: Container(
+          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.white.withOpacity(0.7),
+                colors[0].withOpacity(0.85),
               ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  constraints: BoxConstraints(minWidth: 70),
-                  child: Text(
-                    NumberFormat.simpleCurrency(
-                            locale: 'en_US', decimalDigits: 2)
-                        .format(transaction['amount'] ?? 0.0),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: colors[1].withOpacity(0.25),
+                blurRadius: 8,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Card(
+            color: Colors.transparent,
+            elevation: 0,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors[1].withOpacity(0.5),
+                      blurRadius: 8,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Icon(
+                    transaction['type'] != 'Income'
+                        ? Icons.arrow_downward
+                        : Icons.arrow_upward,
+                    color: transaction['type'] != 'Income'
+                        ? Colors.red
+                        : Colors.green,
+                    size: 20,
+                  ),
+                ),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    transaction['category'] ?? 'Uncategorized',
                     style: GoogleFonts.ibmPlexSans(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: transaction['type'] != 'Income'
-                          ? Colors.red
-                          : Colors.green,
                     ),
                     overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                ),
-                IconButton(
-                  icon: Icon(
-                    Icons.edit,
-                    color: Colors.black,
-                    size: 30,
+                  SizedBox(height: 4),
+                  Text(
+                    "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
+                    style: GoogleFonts.ibmPlexSans(
+                      fontSize: 10,
+                      color: Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
-                  onPressed: () {
-                    _promptEditTransaction(transaction, index);
-                  },
-                ),
-              ],
+                ],
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    constraints: BoxConstraints(minWidth: 70),
+                    child: Text(
+                      NumberFormat.simpleCurrency(
+                              locale: 'en_US', decimalDigits: 2)
+                          .format(transaction['amount'] ?? 0.0),
+                      style: GoogleFonts.ibmPlexSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: transaction['type'] != 'Income'
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.edit,
+                      color: Colors.black,
+                      size: 30,
+                    ),
+                    onPressed: () {
+                      _promptEditTransaction(transaction, index);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 
   Widget _buildTransactionList() {
@@ -1372,124 +1321,154 @@ Widget _buildAddOptionTile(IconData icon, String title, VoidCallback onTap) {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<List<Color>>(
-      stream: docID.isNotEmpty
-          ? GradientService(userId: docID).getGradientStream()
-          : Stream.value([Color(0xffB8E8FF), Colors.white]),
-      builder: (context, snapshot) {
-        colors = snapshot.data ?? colors;
-        return Scaffold(
-          extendBodyBehindAppBar: true,
-          backgroundColor: Colors.white,
-          body: Stack(
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xffB8E8FF), Colors.white],
-                  ),
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xffB8E8FF), Colors.white],
                 ),
               ),
-              BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: Container(color: Colors.white.withOpacity(0.05)),
-              ),
-              SafeArea(
-                child: Column(
+            ),
+          ),
+          IgnorePointer(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              child: Container(color: Colors.white.withOpacity(0.05)),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                SizedBox(height: 20),
+                Row(
                   children: [
-                    SizedBox(height: 20),
-                    Row(
-                      children: [
-                        SizedBox(width: 25),
-                        Text(
-                          'Transactions',
-                          style: GoogleFonts.ibmPlexSans(
-                            fontSize: 40,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.30),
-                                offset: Offset(2, 2),
-                                blurRadius: 6,
-                              ),
-                            ],
+                    SizedBox(width: 25),
+                    Text(
+                      'Transactions',
+                      style: GoogleFonts.ibmPlexSans(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.30),
+                            offset: Offset(2, 2),
+                            blurRadius: 6,
                           ),
-                          textAlign: TextAlign.left,
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 20),
-                    _buildSearchAndFilterBar(),
-                    SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Text(
-                        '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                        style: GoogleFonts.ibmPlexSans(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
+                        ],
                       ),
+                      textAlign: TextAlign.left,
                     ),
-                    SizedBox(height: 10),
-                    Expanded(child: _buildTransactionList()),
                   ],
                 ),
+                SizedBox(height: 20),
+                _buildSearchAndFilterBar(),
+                SizedBox(height: 20),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Text(
+                    '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                    style: GoogleFonts.ibmPlexSans(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 10),
+                Expanded(child: _buildTransactionList()),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButtonLocation: ExpandableFab.location,
+      floatingActionButton: ExpandableFab(
+        type: ExpandableFabType.up,
+        childrenAnimation: ExpandableFabAnimation.none,
+        distance: 70,
+        overlayStyle: ExpandableFabOverlayStyle(
+          color: Colors.transparent,
+        ),
+        openButtonBuilder: DefaultFloatingActionButtonBuilder(
+          child: Icon(Icons.add),
+          backgroundColor: Colors.red,
+          foregroundColor: Colors.white,
+        ),
+        closeButtonBuilder: DefaultFloatingActionButtonBuilder(
+          child: Icon(Icons.close),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+        ),
+        children: [
+          Row(
+            children: [
+              const Text('Manual Entry'),
+              const SizedBox(width: 20),
+              FloatingActionButton.small(
+                heroTag: 'manual',
+                backgroundColor: colors[0],
+                child: const Icon(Icons.edit, color: Colors.black),
+                onPressed: _showModalManualEntry,
               ),
             ],
           ),
-          floatingActionButton: ExpandableFab(
-          type: ExpandableFabType.up,
-          openButtonBuilder: RotateFloatingActionButtonBuilder(
-            child: const Icon(Icons.add),
-            fabSize: ExpandableFabSize.regular,
-            shape: const CircleBorder(),
+          Row(
+            children: [
+              const Text('Scan Receipt'),
+              const SizedBox(width: 20),
+              FloatingActionButton.small(
+                heroTag: 'scan',
+                backgroundColor: colors[0],
+                child: const Icon(Icons.receipt, color: Colors.black),
+                onPressed: _showModalScanReceipt,
+              ),
+            ],
           ),
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'manual',
-              backgroundColor: colors[0],
-              child: const Icon(Icons.edit, color: Colors.black),
-              onPressed: _showModalManualEntry,
-            ),
-            FloatingActionButton.small(
-              heroTag: 'scan',
-              backgroundColor: colors[0],
-              child: const Icon(Icons.receipt, color: Colors.black),
-              onPressed: _showModalScanReceipt,
-            ),
-            FloatingActionButton.small(
-              heroTag: 'plaid',
-              backgroundColor: colors[0],
-              child: const Icon(Icons.account_balance, color: Colors.black),
-              onPressed: () async {
-                final doc = await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(docID)
-                    .get();
-                final accessToken = doc.data()?['plaidAccessToken'];
-                if (accessToken != null) {
-                  await fetchTransactions(accessToken);
-                } else {
-                  await _launchPlaidFlow();
-                }
-              },
-            ),
-            FloatingActionButton.small(
-              heroTag: 'share',
-              backgroundColor: colors[0],
-              child: const Icon(Icons.share, color: Colors.black),
-              onPressed: sharePdfLink,
-            ),
-          ],
-        ),
-        floatingActionButtonLocation: ExpandableFab.location,
-      );
-    },
-  );
+          Row(
+            children: [
+              const Text('Get From Bank'),
+              const SizedBox(width: 20),
+              FloatingActionButton.small(
+                heroTag: 'plaid',
+                backgroundColor: colors[0],
+                child: const Icon(Icons.account_balance, color: Colors.black),
+                onPressed: () async {
+                  final doc = await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(docID)
+                      .get();
+                  final accessToken = doc.data()?['plaidAccessToken'];
+                  if (accessToken != null) {
+                    await fetchTransactions(accessToken);
+                  } else {
+                    await _launchPlaidFlow();
+                  }
+                },
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              const Text('Generate Report'),
+              const SizedBox(width: 20),
+              FloatingActionButton.small(
+                heroTag: 'share',
+                backgroundColor: colors[0],
+                child: const Icon(Icons.share, color: Colors.black),
+                onPressed: sharePdfLink,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

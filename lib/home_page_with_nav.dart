@@ -132,6 +132,7 @@ class HomePageWithNavState extends State<HomePageWithNav> {
     }
     
     return Scaffold(
+      
       body: _pageBuilders[_selectedIndex](),
       bottomNavigationBar: CustomNavBar(
         selectedIndex: _selectedIndex,
