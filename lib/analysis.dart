@@ -13,6 +13,7 @@ class AiAnalysisPage extends StatefulWidget {
 }
 
 class _AiAnalysisPageState extends State<AiAnalysisPage> {
+  List<Color> colors = [Color(0xffB8E8FF), Colors.white];
   bool _loading = true;
   bool _showAnalysisButton = true; // Controls visibility of the "Get AI Analysis" button
   String? _userName;
@@ -554,124 +555,290 @@ $budgetList
 
   @override
   Widget build(BuildContext context) {
+    // Use the same color scheme as spending habits/settings
+    final Color primaryColor = const Color(0xFF2A4288);
+    final Color secondaryColor = colors.length > 1 ? colors[1] : Colors.blue.shade900;
+    final Color bgColor = Colors.white;
+
     return Scaffold(
+      backgroundColor: primaryColor,
       appBar: AppBar(
-        title: Text("Financial Analysis", 
-          style: GoogleFonts.barlow(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+        toolbarHeight: 75,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0),
+          child: Text(
+            "Financial Analysis",
+            style: GoogleFonts.barlow(
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blue[900],
-        foregroundColor: Colors.white, // Ensure text is visible
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: Column(
+        children: [
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(50),
+                  topRight: Radius.circular(50),
+                ),
+              ),
+              child: Stack(
                 children: [
-                  // Welcome message and overview intro
-                  if (_showAnalysisButton || _aiParsedResponse == null) ...[
-                    Text(
-                      "Hello, ${_userName ?? 'User'}!",
-                      style: GoogleFonts.barlow(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue[900],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Here's your financial overview",
-                      style: GoogleFonts.barlow(
-                        fontSize: 16,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                  ],
-                  
-                  // Stats Row
                   SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildStatCard(
-                          "Balance",
-                          "\$${_currentBalance.toStringAsFixed(2)}",
-                          Icons.account_balance_wallet,
-                          Colors.green,
+                        // Transactions Box at the top
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          margin: const EdgeInsets.only(bottom: 18),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                            border: Border.all(
+                              color: primaryColor.withOpacity(0.08),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.list_alt, color: secondaryColor, size: 28),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    "Transactions",
+                                    style: GoogleFonts.barlow(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: secondaryColor,
+                                    ),
+                                  ),
+                                  Spacer(),
+                                  Text(
+                                    "${_transactions.length}",
+                                    style: GoogleFonts.barlow(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              if (_transactions.isNotEmpty)
+                                SizedBox(
+                                  height: 38,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _transactions.length > 6 ? 6 : _transactions.length,
+                                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                                    itemBuilder: (context, i) {
+                                      final tx = _transactions[i];
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                        decoration: BoxDecoration(
+                                          color: tx['type'] == 'Income'
+                                              ? Colors.green.withOpacity(0.13)
+                                              : Colors.red.withOpacity(0.13),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              tx['type'] == 'Income' ? Icons.arrow_downward : Icons.arrow_upward,
+                                              color: tx['type'] == 'Income' ? Colors.green : Colors.red,
+                                              size: 18,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              "\$${tx['amount'].toStringAsFixed(2)}",
+                                              style: GoogleFonts.barlow(
+                                                fontWeight: FontWeight.bold,
+                                                color: tx['type'] == 'Income' ? Colors.green : Colors.red,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              tx['category'] ?? '',
+                                              style: GoogleFonts.barlow(
+                                                fontSize: 13,
+                                                color: Colors.grey[700],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              if (_transactions.isEmpty)
+                                Text(
+                                  "No transactions found.",
+                                  style: GoogleFonts.barlow(
+                                    fontSize: 14,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        _buildStatCard(
-                          "Transactions",
-                          _transactions.length.toString(),
-                          Icons.list_alt,
-                          Colors.blue,
+                        if (_showAnalysisButton || _aiParsedResponse == null) ...[
+                          Text(
+                            "Hello, ${_userName ?? 'User'}!",
+                            style: GoogleFonts.barlow(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: secondaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Here's your financial overview",
+                            style: GoogleFonts.barlow(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                        // Stats Row
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildStatCard(
+                                "Balance",
+                                "\$${_currentBalance.toStringAsFixed(2)}",
+                                Icons.account_balance_wallet,
+                                Colors.green,
+                              ),
+                              const SizedBox(width: 12),
+                              _buildStatCard(
+                                "Transactions",
+                                _transactions.length.toString(),
+                                Icons.list_alt,
+                                secondaryColor,
+                              ),
+                              const SizedBox(width: 12),
+                              _buildStatCard(
+                                "Savings Goals",
+                                _savingsGoals.length.toString(),
+                                Icons.savings,
+                                Colors.purple,
+                              ),
+                              const SizedBox(width: 12),
+                              _buildStatCard(
+                                "Budgets",
+                                _budgets.length.toString(),
+                                Icons.pie_chart,
+                                Colors.orange,
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(width: 12), 
-                        _buildStatCard( 
-                          "Savings Goals",
-                          _savingsGoals.length.toString(),
-                          Icons.savings,
-                          Colors.purple,
-                        ),
-                        const SizedBox(width: 12), 
-                        _buildStatCard( 
-                          "Budgets",
-                          _budgets.length.toString(),
-                          Icons.pie_chart,
-                          Colors.orange,
-                        ),
+                        const SizedBox(height: 24),
+                        // Spending by Category section
+                        _buildCategorySpending(),
+                        const SizedBox(height: 24),
+                        // "Get AI Analysis" button, styled like spending habits, but darker
+                        if (_showAnalysisButton) ...[
+                          Center(
+                            child: AnimatedContainer(
+                              duration: Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [secondaryColor.withOpacity(0.95), primaryColor],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(22),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: secondaryColor.withOpacity(0.18),
+                                    blurRadius: 8,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: secondaryColor,
+                                  width: 2,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(22),
+                                  onTap: _runAnalysis,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.insights, color: Colors.white, size: 24),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          "Get AI Analysis",
+                                          style: GoogleFonts.barlow(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                        // AI Analysis Response section, conditional visibility with animation
+                        if (_aiParsedResponse != null) _buildAnalysisResponse(),
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  
-                  // Spending by Category section
-                  _buildCategorySpending(),
-                  const SizedBox(height: 24), 
-
-                  // "Get AI Analysis" button, conditional visibility
-                  if (_showAnalysisButton) ...[
-                    Center(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.insights, size: 24),
-                        label: Text(
-                          "Get AI Analysis",
-                          style: GoogleFonts.barlow(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  if (_loading)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.85),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(50),
+                          topRight: Radius.circular(50),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue[900],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 16,
-                            horizontal: 32,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                        onPressed: _runAnalysis,
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                  ],
-                  
-                  // AI Analysis Response section, conditional visibility with animation
-                  if (_aiParsedResponse != null) _buildAnalysisResponse(),
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
+          ),
+        ],
+      ),
     );
   }
 }

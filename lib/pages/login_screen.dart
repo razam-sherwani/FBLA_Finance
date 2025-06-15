@@ -104,6 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           'Forgot Password?',
                           style: GoogleFonts.barlow(
+                            fontSize: 14,
                             color: deepBlue,
                             fontWeight: FontWeight.w600,
                           ),
@@ -165,7 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
-                            height: 50,
+                            height: 60,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: deepBlue,
@@ -184,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: GoogleFonts.barlow(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 24,
                                 ),
                               ),
                             ),
@@ -222,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildGradientButton(String label, VoidCallback onTap) {
     return Container(
       width: double.infinity,
-      height: 50,
+      height: 60,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xff55e6c1), Color(0xff39baf9)],
@@ -236,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: GoogleFonts.barlow(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 30,
           ),
         ),
       ),
@@ -253,7 +254,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 60,
       child: OutlinedButton.icon(
         icon: Icon(icon, color: textColor, size: 24),
         label: Text(
@@ -261,7 +262,7 @@ class _LoginScreenState extends State<LoginScreen> {
           style: GoogleFonts.barlow(
             color: textColor,
             fontWeight: FontWeight.w600,
-            fontSize: 16,
+            fontSize: 20,
           ),
         ),
         style: OutlinedButton.styleFrom(
@@ -286,7 +287,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 50,
+      height: 60,
       child: OutlinedButton(
         style: OutlinedButton.styleFrom(
           backgroundColor: color,
@@ -306,7 +307,7 @@ class _LoginScreenState extends State<LoginScreen> {
               style: GoogleFonts.barlow(
                 color: textColor,
                 fontWeight: FontWeight.w600,
-                fontSize: 16,
+                fontSize: 20,
               ),
             ),
           ],

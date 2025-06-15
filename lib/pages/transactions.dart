@@ -1143,47 +1143,51 @@ class _TransactionsPageState extends State<Transactions> {
           );
         },
         child: Container(
-          margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          margin: EdgeInsets.symmetric(vertical: 10, horizontal: 10),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.white.withOpacity(0.7),
-                colors[0].withOpacity(0.85),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: colors[1].withOpacity(0.25),
-                blurRadius: 8,
-                offset: Offset(0, 4),
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+              ),
+              BoxShadow(
+                color: colors[0].withOpacity(0.10),
+                blurRadius: 4,
+                offset: Offset(0, 2),
               ),
             ],
+            border: Border.all(
+              color: colors[0].withOpacity(0.25),
+              width: 1.5,
+            ),
           ),
           child: Card(
             color: Colors.transparent,
             elevation: 0,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
             ),
             child: ListTile(
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               leading: Container(
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   boxShadow: [
                     BoxShadow(
-                      color: colors[1].withOpacity(0.5),
+                      color: colors[1].withOpacity(0.18),
                       blurRadius: 8,
                       offset: Offset(0, 4),
                     ),
                   ],
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
+                  color: transaction['type'] != 'Income'
+                      ? Colors.red.withOpacity(0.12)
+                      : Colors.green.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
                   child: Icon(
@@ -1193,7 +1197,7 @@ class _TransactionsPageState extends State<Transactions> {
                     color: transaction['type'] != 'Income'
                         ? Colors.red
                         : Colors.green,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
               ),
@@ -1202,9 +1206,10 @@ class _TransactionsPageState extends State<Transactions> {
                 children: [
                   Text(
                     transaction['category'] ?? 'Uncategorized',
-                    style: GoogleFonts.ibmPlexSans(
-                      fontSize: 16,
+                    style: GoogleFonts.barlow(
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -1212,9 +1217,9 @@ class _TransactionsPageState extends State<Transactions> {
                   SizedBox(height: 4),
                   Text(
                     "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
-                    style: GoogleFonts.ibmPlexSans(
-                      fontSize: 10,
-                      color: Colors.black,
+                    style: GoogleFonts.barlow(
+                      fontSize: 12,
+                      color: Colors.grey[700],
                       fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -1231,8 +1236,8 @@ class _TransactionsPageState extends State<Transactions> {
                       NumberFormat.simpleCurrency(
                               locale: 'en_US', decimalDigits: 2)
                           .format(transaction['amount'] ?? 0.0),
-                      style: GoogleFonts.ibmPlexSans(
-                        fontSize: 16,
+                      style: GoogleFonts.barlow(
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                         color: transaction['type'] != 'Income'
                             ? Colors.red
@@ -1244,8 +1249,8 @@ class _TransactionsPageState extends State<Transactions> {
                   IconButton(
                     icon: Icon(
                       Icons.edit,
-                      color: Colors.black,
-                      size: 30,
+                      color: Colors.grey[800],
+                      size: 28,
                     ),
                     onPressed: () {
                       _promptEditTransaction(transaction, index);
@@ -1321,70 +1326,74 @@ class _TransactionsPageState extends State<Transactions> {
 
   @override
   Widget build(BuildContext context) {
+    final Color primaryColor = const Color(0xFF2A4288);
+    final Color secondaryColor = colors.length > 1 ? colors[1] : Colors.blue.shade900;
+    final Color bgColor = Colors.white;
+
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: Colors.white,
-      body: Stack(
+      backgroundColor: primaryColor,
+      extendBodyBehindAppBar: false,
+      appBar: AppBar(
+        toolbarHeight: 75,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0),
+          child: Text(
+            "Transactions",
+            style: GoogleFonts.barlow(
+              fontWeight: FontWeight.bold,
+              fontSize: 28,
+              color: Colors.white,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: primaryColor,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Column(
         children: [
-          IgnorePointer(
+          Expanded(
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xffB8E8FF), Colors.white],
+                color: bgColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(50),
+                  topRight: Radius.circular(50),
                 ),
               ),
-            ),
-          ),
-          IgnorePointer(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(color: Colors.white.withOpacity(0.05)),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              children: [
-                SizedBox(height: 20),
-                Row(
-                  children: [
-                    SizedBox(width: 25),
-                    Text(
-                      'Transactions',
-                      style: GoogleFonts.ibmPlexSans(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withOpacity(0.30),
-                            offset: Offset(2, 2),
-                            blurRadius: 6,
+              child: Column(
+                children: [
+                  const SizedBox(height: 18),
+                  _buildSearchAndFilterBar(),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Total Balance:',
+                          style: GoogleFonts.barlow(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: secondaryColor,
                           ),
-                        ],
-                      ),
-                      textAlign: TextAlign.left,
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                _buildSearchAndFilterBar(),
-                SizedBox(height: 20),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Text(
-                    '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                    style: GoogleFonts.ibmPlexSans(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                          style: GoogleFonts.barlow(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                SizedBox(height: 10),
-                Expanded(child: _buildTransactionList()),
-              ],
+                  Expanded(child: _buildTransactionList()),
+                ],
+              ),
             ),
           ),
         ],
@@ -1399,73 +1408,189 @@ class _TransactionsPageState extends State<Transactions> {
         ),
         openButtonBuilder: DefaultFloatingActionButtonBuilder(
           child: Icon(Icons.add),
-          backgroundColor: Colors.red,
+          backgroundColor: primaryColor, // Changed to match appbar color
           foregroundColor: Colors.white,
         ),
         closeButtonBuilder: DefaultFloatingActionButtonBuilder(
           child: Icon(Icons.close),
-          backgroundColor: Colors.blue,
+          backgroundColor: Colors.red,
           foregroundColor: Colors.white,
         ),
         children: [
-          Row(
-            children: [
-              const Text('Manual Entry'),
-              const SizedBox(width: 20),
-              FloatingActionButton.small(
-                heroTag: 'manual',
-                backgroundColor: colors[0],
-                child: const Icon(Icons.edit, color: Colors.black),
-                onPressed: _showModalManualEntry,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: Text(
+                      'Manual Entry',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FloatingActionButton.small(
+                    heroTag: 'manual',
+                    backgroundColor: primaryColor,
+                    child: const Icon(Icons.edit, color: Colors.white),
+                    onPressed: _showModalManualEntry,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
           ),
-          Row(
-            children: [
-              const Text('Scan Receipt'),
-              const SizedBox(width: 20),
-              FloatingActionButton.small(
-                heroTag: 'scan',
-                backgroundColor: colors[0],
-                child: const Icon(Icons.receipt, color: Colors.black),
-                onPressed: _showModalScanReceipt,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: Text(
+                      'Scan Receipt',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FloatingActionButton.small(
+                    heroTag: 'scan',
+                    backgroundColor: primaryColor,
+                    child: const Icon(Icons.receipt, color: Colors.white),
+                    onPressed: _showModalScanReceipt,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
           ),
-          Row(
-            children: [
-              const Text('Get From Bank'),
-              const SizedBox(width: 20),
-              FloatingActionButton.small(
-                heroTag: 'plaid',
-                backgroundColor: colors[0],
-                child: const Icon(Icons.account_balance, color: Colors.black),
-                onPressed: () async {
-                  final doc = await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(docID)
-                      .get();
-                  final accessToken = doc.data()?['plaidAccessToken'];
-                  if (accessToken != null) {
-                    await fetchTransactions(accessToken);
-                  } else {
-                    await _launchPlaidFlow();
-                  }
-                },
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: Text(
+                      'Get From Bank',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FloatingActionButton.small(
+                    heroTag: 'plaid',
+                    backgroundColor: primaryColor,
+                    child: const Icon(Icons.account_balance, color: Colors.white),
+                    onPressed: () async {
+                      final doc = await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(docID)
+                          .get();
+                      final accessToken = doc.data()?['plaidAccessToken'];
+                      if (accessToken != null) {
+                        await fetchTransactions(accessToken);
+                      } else {
+                        await _launchPlaidFlow();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
           ),
-          Row(
-            children: [
-              const Text('Generate Report'),
-              const SizedBox(width: 20),
-              FloatingActionButton.small(
-                heroTag: 'share',
-                backgroundColor: colors[0],
-                child: const Icon(Icons.share, color: Colors.black),
-                onPressed: sharePdfLink,
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2.0),
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: primaryColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 6,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10.0),
+                    child: Text(
+                      'Generate Report',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  FloatingActionButton.small(
+                    heroTag: 'share',
+                    backgroundColor: primaryColor,
+                    child: const Icon(Icons.share, color: Colors.white),
+                    onPressed: sharePdfLink,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
           ),
         ],
       ),

@@ -815,6 +815,7 @@ void _promptUpdateBudget() {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF2A4288),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -832,13 +833,19 @@ void _promptUpdateBudget() {
         backgroundColor: colors[0],
       ),
       appBar: AppBar(
-        title: Text(
-          'Transaction Analysis',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        toolbarHeight: 75,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0), // Move title up
+          child: Text(
+            'Transaction Analysis',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF2A4288),
       ),
+      
       body: StreamBuilder<List<Color>>(
         stream: docID.isNotEmpty
             ? GradientService(userId: docID).getGradientStream()
@@ -850,574 +857,643 @@ void _promptUpdateBudget() {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
-                child: Text(
-                  'Please select a start and end date to view custom data.',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Please select a start and end date to view custom data.',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 20),
+                    MaterialButton(
+                      minWidth: 150,
+                      height: 50,
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      onPressed: _pickCustomDates,
+                      color: colors[1],
+                      textColor: Colors.white,
+                      child: Text('Select Dates', style: TextStyle(fontSize: 20)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );
           }
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                // PERIOD SELECTION BAR
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12.0),
-                  child: Wrap(
-                    spacing: 8,
-                    children: [
-                      _periodButton('Month', PeriodType.monthly),
-                      _periodButton('Quarter', PeriodType.quarterly),
-                      _periodButton('Year', PeriodType.yearly),
-                      _periodButton('Custom', PeriodType.custom),
-                    ],
-                  ),
-                ),
-                // PERIOD NAVIGATION & LABEL
-                if (_selectedPeriod != PeriodType.custom)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.chevron_left),
-                        onPressed: (_selectedPeriod == PeriodType.monthly && (_sharedScrollIndex > 0 || _selectedYear > 2020)) ||
-                                  (_selectedPeriod == PeriodType.quarterly && (_sharedScrollIndex > 0 || _selectedYear > 2020)) ||
-                                  (_selectedPeriod == PeriodType.yearly && _selectedYear > 2020)
-                            ? _previousPeriod
-                            : null,
-                      ),
-                      Flexible(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            _selectedPeriod == PeriodType.monthly
-                                ? '${_selectedYear} ${monthsNames[_sharedScrollIndex]}'
-                                : _selectedPeriod == PeriodType.quarterly
-                                    ? '${_selectedYear} ${quarterNames[_sharedScrollIndex]}'
-                                    : _selectedPeriod == PeriodType.yearly
-                                        ? '${_selectedYear}'
-                                        : '',
-                            style: TextStyle(
-                              color: AppColors.contentColorBlue,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.chevron_right),
-                        onPressed: (_selectedPeriod == PeriodType.monthly) ||
-                                  (_selectedPeriod == PeriodType.quarterly) ||
-                                  (_selectedPeriod == PeriodType.yearly)
-                            ? _nextPeriod
-                            : null,
-                      ),
-                    ],
-                  ),
-                if (_selectedPeriod == PeriodType.custom)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Flexible(
-                          child: ElevatedButton(
-                            onPressed: _pickCustomDates,
-                            child: Text(
-                              _customStart == null || _customEnd == null
-                                  ? 'Select Date Range'
-                                  : '${DateFormat.yMMMd().format(_customStart!)} - ${DateFormat.yMMMd().format(_customEnd!)}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      ],
+          return Column(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(50),
+                      topRight: Radius.circular(50),
                     ),
                   ),
-                // INFLOW/OUTFLOW BOXES
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Expanded(child: _summaryBox('Inflow', _periodInflow, Colors.green)),
-                      SizedBox(width: 8),
-                      Expanded(child: _summaryBox('Outflow', _periodOutflow, Colors.red)),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 24),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Flexible(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            _selectedPeriod == PeriodType.monthly
-                                ? 'Expenses Per Month'
-                                : _selectedPeriod == PeriodType.yearly
-                                    ? 'Expenses Per Year'
-                                    : 'Expenses (Custom)',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        SizedBox(height: 32),
+                        // PERIOD SELECTION BAR
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6.0),
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              _periodButton('Month', PeriodType.monthly),
+                              _periodButton('Quarter', PeriodType.quarterly),
+                              _periodButton('Year', PeriodType.yearly),
+                              _periodButton('Custom', PeriodType.custom),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                // EXPENSE LINE GRAPH
-                RepaintBoundary(
-                  key: _expenseGraphKey,
-                  child: AspectRatio(
-                    aspectRatio: 1.5,
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 18.0, top: 7.0),
-                      child: LineChart(
-                        LineChartData(
-                          lineBarsData: [
-                            LineChartBarData(
-                              spots: _getExpenseSpots(),
-                              isCurved: true,
-                              dotData: const FlDotData(show: true),
-                              color: Colors.lightBlue,
-                              gradient: const LinearGradient(
-                                colors: [Colors.red, Colors.purple],
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
+                        // PERIOD NAVIGATION & LABEL
+                        if (_selectedPeriod != PeriodType.custom)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.chevron_left),
+                                onPressed: (_selectedPeriod == PeriodType.monthly && (_sharedScrollIndex > 0 || _selectedYear > 2020)) ||
+                                          (_selectedPeriod == PeriodType.quarterly && (_sharedScrollIndex > 0 || _selectedYear > 2020)) ||
+                                          (_selectedPeriod == PeriodType.yearly && _selectedYear > 2020)
+                                    ? _previousPeriod
+                                    : null,
                               ),
-                              barWidth: 4,
-                              curveSmoothness: 0.5,
-                              preventCurveOverShooting: true,
-                              belowBarData: BarAreaData(
-                                show: true,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.red.withOpacity(0.25),
-                                    Colors.purple.withOpacity(0.10),
-                                  ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                              ),
-                            ),
-                          ],
-                          titlesData: FlTitlesData(
-                            show: true,
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              axisNameWidget: Container(
-                                margin: const EdgeInsets.only(left: 25, bottom: 20),
-                                child: Text(
-                                  _selectedPeriod == PeriodType.monthly
-                                      ? 'Day of Month'
-                                      : _selectedPeriod == PeriodType.yearly
-                                          ? 'Month'
-                                          : 'Day',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    _selectedPeriod == PeriodType.monthly
+                                        ? '${_selectedYear} ${monthsNames[_sharedScrollIndex]}'
+                                        : _selectedPeriod == PeriodType.quarterly
+                                            ? '${_selectedYear} ${quarterNames[_sharedScrollIndex]}'
+                                            : _selectedPeriod == PeriodType.yearly
+                                                ? '${_selectedYear}'
+                                                : '',
+                                    style: TextStyle(
+                                      color: AppColors.contentColorBlue,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
-                              axisNameSize: 40,
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 38,
-                                maxIncluded: false,
-                                interval: 1,
-                                getTitlesWidget: (value, meta) {
-                                  if (_selectedPeriod == PeriodType.monthly) {
-                                    int day = value.toInt() + 1;
-                                    int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
-                                    // Only show first, last, every 5th day
-                                    if (day == 1 || day == daysInMonth || day % 5 == 0) {
-                                      return SideTitleWidget(
-                                        meta: meta,
-                                        child: Transform.rotate(
-                                          angle: -0.7,
+                              IconButton(
+                                icon: Icon(Icons.chevron_right),
+                                onPressed: (_selectedPeriod == PeriodType.monthly) ||
+                                          (_selectedPeriod == PeriodType.quarterly) ||
+                                          (_selectedPeriod == PeriodType.yearly)
+                                    ? _nextPeriod
+                                    : null,
+                              ),
+                            ],
+                          ),
+                        if (_selectedPeriod == PeriodType.custom)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: AnimatedContainer(
+                                    duration: Duration(milliseconds: 200),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [colors[1], colors[0]],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(22),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: colors[1].withOpacity(0.18),
+                                          blurRadius: 8,
+                                          offset: Offset(0, 2),
+                                        ),
+                                      ],
+                                      border: Border.all(
+                                        color: colors[1],
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Material(
+                                      color: Colors.transparent,
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(22),
+                                        onTap: _pickCustomDates,
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                                           child: Text(
-                                            '$day',
+                                            _customStart == null || _customEnd == null
+                                                ? 'Select Date Range'
+                                                : '${DateFormat.yMMMd().format(_customStart!)} - ${DateFormat.yMMMd().format(_customEnd!)}',
+                                            overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              fontSize: 11,
+                                              color: Colors.white,
+                                              fontSize: 15,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.black,
+                                              letterSpacing: 0.5,
                                             ),
                                           ),
                                         ),
-                                      );
-                                    } else {
-                                      return const SizedBox.shrink();
-                                    }
-                                  } else if (_selectedPeriod == PeriodType.quarterly) {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        quarterNames[value.toInt().clamp(0, 3)],
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
-                                    );
-                                  } else if (_selectedPeriod == PeriodType.yearly) {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        monthsNames[value.toInt().clamp(0, 11)].substring(0, 3),
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                      ),
-                                    );
-                                  } else {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        '${value.toInt() + 1}',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          lineTouchData: LineTouchData(
-                            enabled: true,
-                            handleBuiltInTouches: true,
-                            touchTooltipData: LineTouchTooltipData(
-                              getTooltipColor: (LineBarSpot touchedSpot) => colors[0], // <-- Blue background for tooltip
-                              getTooltipItems: (touchedSpots) {
-                                // Only show one tooltip per x value (day), and skip if at intersection (start/end of segment)
-                                final seen = <double>{};
-                                return touchedSpots
-                                    .where((spot) {
-                                      // Prevent hover at intersection points (where x is not an integer)
-                                      // Only allow hover if x is a whole number (i.e., a real day)
-                                      return seen.add(spot.x) && spot.x == spot.x.roundToDouble();
-                                    })
-                                    .map((spot) {
-                                      final value = spot.y;
-                                      final day = spot.x.toInt() + 1;
-                                      return LineTooltipItem(
-                                        'Day $day\n${value.toStringAsFixed(2)}',
-                                        const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      );
-                                    }).toList();
-                              },
-                            ),
-                            touchCallback: (event, touchResponse) {
-                              // Prevent interaction at intersection points (non-integer x)
-                              if (!event.isInterestedForInteractions ||
-                                  touchResponse?.lineBarSpots == null ||
-                                  touchResponse!.lineBarSpots!.isEmpty ||
-                                  touchResponse.lineBarSpots!.first.x != touchResponse.lineBarSpots!.first.x.roundToDouble()) {
-                                setState(() {
-                                  _interactedSpotIndexBalance = -1;
-                                });
-                                return;
-                              }
-                              setState(() {
-                                _interactedSpotIndexBalance = touchResponse.lineBarSpots!.first.spotIndex;
-                              });
-                            },
+                        // INFLOW/OUTFLOW BOXES
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Expanded(child: _summaryBox('Inflow', _periodInflow, Colors.green)),
+                              SizedBox(width: 8),
+                              Expanded(child: _summaryBox('Outflow', _periodOutflow, Colors.red)),
+                            ],
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-                // BALANCE GRAPH
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    _selectedPeriod == PeriodType.monthly
-                        ? 'Balance Per Day (Month)'
-                        : _selectedPeriod == PeriodType.yearly
-                            ? 'Balance Per Month (Year)'
-                            : 'Balance (Custom)',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                RepaintBoundary(
-                  key: _balanceGraphKey,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 18, top: 7),
-                    child: AspectRatio(
-                      aspectRatio: 1.5,
-                      child: LineChart(
-                        curve: Curves.linear,
-                        LineChartData(
-                          lineBarsData: [
-                            // Robust split: above 0 segments
-                            ...splitSpotsByCutoff(_getBalanceSpots(), 0)[0].map((segment) =>
-                              LineChartBarData(
-                                spots: segment,
-                                isCurved: true,
-                                dotData: const FlDotData(show: false),
-                                barWidth: 4,
-                                curveSmoothness: 0.5,
-                                preventCurveOverShooting: true,
-                                gradient: const LinearGradient(
-                                  colors: [Colors.green, Colors.blue],
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
+                        Padding(
+                          padding: const EdgeInsets.only(top: 24),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    _selectedPeriod == PeriodType.monthly
+                                        ? 'Expenses Per Month'
+                                        : _selectedPeriod == PeriodType.yearly
+                                            ? 'Expenses Per Year'
+                                            : 'Expenses (Custom)',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
-                                aboveBarData: BarAreaData(
-                                  show: true,
-                                  color: Colors.red.withOpacity(0.18),
-                                  cutOffY: 0,
-                                  applyCutOffY: true,
-                                ),
-                                belowBarData: BarAreaData(
-                                  show: true,
-                                  color: Colors.green.withOpacity(0.18),
-                                  cutOffY: 0,
-                                  applyCutOffY: true,
-                                ),
-                              )
-                            ),
-                            // Robust split: below 0 segments
-                            ...splitSpotsByCutoff(_getBalanceSpots(), 0)[1].map((segment) =>
-                              LineChartBarData(
-                                spots: segment,
-                                isCurved: true,
-                                dotData: const FlDotData(show: false),
-                                barWidth: 4,
-                                curveSmoothness: 0.5,
-                                preventCurveOverShooting: true,
-                                gradient: const LinearGradient(
-                                  colors: [Colors.red, Colors.orange],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                                aboveBarData: BarAreaData(
-                                  show: true,
-                                  color: Colors.red.withOpacity(0.18),
-                                  cutOffY: 0,
-                                  applyCutOffY: true,
-                                ),
-                                belowBarData: BarAreaData(
-                                  show: true,
-                                  color: Colors.green.withOpacity(0.18),
-                                  cutOffY: 0,
-                                  applyCutOffY: true,
-                                ),
-                              )
-                            ),
-                          ],
-                          titlesData: FlTitlesData(
-                            show: true,
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            bottomTitles: AxisTitles(
-                              axisNameSize: 40,
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 38,
-                                maxIncluded: false,
-                                interval: 1,
-                                getTitlesWidget: (value, meta) {
-                                  if (_selectedPeriod == PeriodType.monthly) {
-                                    int day = value.toInt() + 1;
-                                    int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
-                                    // Only show first, last, every 5th day
-                                    if (day == 1 || day == daysInMonth || day % 5 == 0) {
-                                      return SideTitleWidget(
-                                        meta: meta,
-                                        child: Transform.rotate(
-                                          angle: -0.7,
-                                          child: Text(
-                                            '$day',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black,
-                                            ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // EXPENSE LINE GRAPH
+                        RepaintBoundary(
+                          key: _expenseGraphKey,
+                          child: AspectRatio(
+                            aspectRatio: 1.5,
+                            child: Padding(
+                              padding: const EdgeInsets.only(right: 18.0, top: 7.0),
+                              child: LineChart(
+                                LineChartData(
+                                  lineBarsData: [
+                                    LineChartBarData(
+                                      spots: _getExpenseSpots(),
+                                      isCurved: true,
+                                      dotData: const FlDotData(show: true),
+                                      color: Colors.lightBlue,
+                                      gradient: const LinearGradient(
+                                        colors: [Colors.red, Colors.purple],
+                                        begin: Alignment.bottomCenter,
+                                        end: Alignment.topCenter,
+                                      ),
+                                      barWidth: 4,
+                                      curveSmoothness: 0.5,
+                                      preventCurveOverShooting: true,
+                                      belowBarData: BarAreaData(
+                                        show: true,
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.red.withOpacity(0.25),
+                                            Colors.purple.withOpacity(0.10),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  titlesData: FlTitlesData(
+                                    show: true,
+                                    rightTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    topTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      axisNameWidget: Container(
+                                        margin: const EdgeInsets.only(left: 25, bottom: 20),
+                                        child: Text(
+                                          _selectedPeriod == PeriodType.monthly
+                                              ? 'Day of Month'
+                                              : _selectedPeriod == PeriodType.yearly
+                                                  ? 'Month'
+                                                  : 'Day',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
                                           ),
                                         ),
-                                      );
-                                    } else {
-                                      return const SizedBox.shrink();
-                                    }
-                                  } else if (_selectedPeriod == PeriodType.quarterly) {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        quarterNames[value.toInt().clamp(0, 3)],
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                                       ),
-                                    );
-                                  } else if (_selectedPeriod == PeriodType.yearly) {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        monthsNames[value.toInt().clamp(0, 11)].substring(0, 3),
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                      axisNameSize: 40,
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 38,
+                                        maxIncluded: false,
+                                        interval: 1,
+                                        getTitlesWidget: (value, meta) {
+                                          if (_selectedPeriod == PeriodType.monthly) {
+                                            int day = value.toInt() + 1;
+                                            int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
+                                            // Only show first, last, every 5th day
+                                            if (day == 1 || day == daysInMonth || day % 5 == 0) {
+                                              return SideTitleWidget(
+                                                meta: meta,
+                                                child: Transform.rotate(
+                                                  angle: -0.7,
+                                                  child: Text(
+                                                    '$day',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            } else {
+                                              return const SizedBox.shrink();
+                                            }
+                                          } else if (_selectedPeriod == PeriodType.quarterly) {
+                                            return SideTitleWidget(
+                                              meta: meta,
+                                              child: Text(
+                                                quarterNames[value.toInt().clamp(0, 3)],
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                            );
+                                          } else if (_selectedPeriod == PeriodType.yearly) {
+                                            return SideTitleWidget(
+                                              meta: meta,
+                                              child: Text(
+                                                monthsNames[value.toInt().clamp(0, 11)].substring(0, 3),
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                            );
+                                          } else {
+                                            return SideTitleWidget(
+                                              meta: meta,
+                                              child: Text(
+                                                '${value.toInt() + 1}',
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                            );
+                                          }
+                                        },
                                       ),
-                                    );
-                                  } else {
-                                    return SideTitleWidget(
-                                      meta: meta,
-                                      child: Text(
-                                        '${value.toInt() + 1}',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                          ),
-                          lineTouchData: LineTouchData(
-                            enabled: true,
-                            handleBuiltInTouches: true,
-                            touchTooltipData: LineTouchTooltipData(
-                              getTooltipColor: (LineBarSpot touchedSpot) => colors[0],
-                              getTooltipItems: (touchedSpots) {
-                                // Only show one tooltip per x value (day), and skip if at intersection (start/end of segment)
-                                final seen = <double>{};
-                                return touchedSpots
-                                    .where((spot) {
-                                      // Prevent hover at intersection points (where x is not an integer)
-                                      // Only allow hover if x is a whole number (i.e., a real day)
-                                      return seen.add(spot.x) && spot.x == spot.x.roundToDouble();
-                                    })
-                                    .map((spot) {
-                                      final value = spot.y;
-                                      final day = spot.x.toInt() + 1;
-                                      return LineTooltipItem(
-                                        'Day $day\n${value.toStringAsFixed(2)}',
-                                        const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      );
-                                    }).toList();
-                              },
-                            ),
-                            touchCallback: (event, touchResponse) {
-                              // Prevent interaction at intersection points (non-integer x)
-                              if (!event.isInterestedForInteractions ||
-                                  touchResponse?.lineBarSpots == null ||
-                                  touchResponse!.lineBarSpots!.isEmpty ||
-                                  touchResponse.lineBarSpots!.first.x != touchResponse.lineBarSpots!.first.x.roundToDouble()) {
-                                setState(() {
-                                  _interactedSpotIndexBalance = -1;
-                                });
-                                return;
-                              }
-                              setState(() {
-                                _interactedSpotIndexBalance = touchResponse.lineBarSpots!.first.spotIndex;
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // PIE CHART
-                SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text('Expenses By Category',
-                      style: TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: RepaintBoundary(
-                    key: _pieChartKey,
-                    child: AspectRatio(
-                      aspectRatio: 2,
-                      child: Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: AspectRatio(
-                              aspectRatio: 1,
-                              child: PieChart(
-                                PieChartData(
-                                  pieTouchData: PieTouchData(
-                                    touchCallback: (FlTouchEvent event,
-                                        pieTouchResponse) {
+                                    ),
+                                  ),
+                                  lineTouchData: LineTouchData(
+                                    enabled: true,
+                                    handleBuiltInTouches: true,
+                                    touchTooltipData: LineTouchTooltipData(
+                                      getTooltipColor: (LineBarSpot touchedSpot) => colors[0], // <-- Blue background for tooltip
+                                      getTooltipItems: (touchedSpots) {
+                                        // Only show one tooltip per x value (day), and skip if at intersection (start/end of segment)
+                                        final seen = <double>{};
+                                        return touchedSpots
+                                            .where((spot) {
+                                              // Prevent hover at intersection points (where x is not an integer)
+                                              // Only allow hover if x is a whole number (i.e., a real day)
+                                              return seen.add(spot.x) && spot.x == spot.x.roundToDouble();
+                                            })
+                                            .map((spot) {
+                                              final value = spot.y;
+                                              final day = spot.x.toInt() + 1;
+                                              return LineTooltipItem(
+                                                'Day $day\n${value.toStringAsFixed(2)}',
+                                                const TextStyle(
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              );
+                                            }).toList();
+                                      },
+                                    ),
+                                    touchCallback: (event, touchResponse) {
+                                      // Prevent interaction at intersection points (non-integer x)
+                                      if (!event.isInterestedForInteractions ||
+                                          touchResponse?.lineBarSpots == null ||
+                                          touchResponse!.lineBarSpots!.isEmpty ||
+                                          touchResponse.lineBarSpots!.first.x != touchResponse.lineBarSpots!.first.x.roundToDouble()) {
+                                        setState(() {
+                                          _interactedSpotIndexBalance = -1;
+                                        });
+                                        return;
+                                      }
                                       setState(() {
-                                        if (!event
-                                                .isInterestedForInteractions ||
-                                            pieTouchResponse == null ||
-                                            pieTouchResponse.touchedSection ==
-                                                null) {
-                                          touchedIndex = -1;
-                                          return;
-                                        }
-                                        touchedIndex = pieTouchResponse
-                                            .touchedSection!
-                                            .touchedSectionIndex;
+                                        _interactedSpotIndexBalance = touchResponse.lineBarSpots!.first.spotIndex;
                                       });
                                     },
                                   ),
-                                  borderData: FlBorderData(
-                                    show: false,
-                                  ),
-                                  sectionsSpace: 0,
-                                  centerSpaceRadius: 40,
-                                  sections: showingSections(),
                                 ),
                               ),
                             ),
                           ),
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: List.generate(
-                                    _categoryTotals.keys.length, (index) {
-                                  final category =
-                                      _categoryTotals.keys.elementAt(index);
-                                  final color =
-                                      pieColors[index % pieColors.length];
-
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 2.0),
-                                    child: Indicator(
-                                      color: color,
-                                      text: category,
-                                      isSquare: true,
+                        ),
+                        // BALANCE GRAPH
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            _selectedPeriod == PeriodType.monthly
+                                ? 'Balance Per Day (Month)'
+                                : _selectedPeriod == PeriodType.yearly
+                                    ? 'Balance Per Month (Year)'
+                                    : 'Balance (Custom)',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        RepaintBoundary(
+                          key: _balanceGraphKey,
+                          child: Padding(
+                            padding: const EdgeInsets.only(right: 18, top: 7),
+                            child: AspectRatio(
+                              aspectRatio: 1.5,
+                              child: LineChart(
+                                curve: Curves.linear,
+                                LineChartData(
+                                  lineBarsData: [
+                                    // Robust split: above 0 segments
+                                    ...splitSpotsByCutoff(_getBalanceSpots(), 0)[0].map((segment) =>
+                                      LineChartBarData(
+                                        spots: segment,
+                                        isCurved: true,
+                                        dotData: const FlDotData(show: false),
+                                        barWidth: 4,
+                                        curveSmoothness: 0.5,
+                                        preventCurveOverShooting: true,
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.green, Colors.blue],
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                        ),
+                                        aboveBarData: BarAreaData(
+                                          show: true,
+                                          color: Colors.red.withOpacity(0.18),
+                                          cutOffY: 0,
+                                          applyCutOffY: true,
+                                        ),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          color: Colors.green.withOpacity(0.18),
+                                          cutOffY: 0,
+                                          applyCutOffY: true,
+                                        ),
+                                      )
                                     ),
-                                  );
-                                }),
+                                    // Robust split: below 0 segments
+                                    ...splitSpotsByCutoff(_getBalanceSpots(), 0)[1].map((segment) =>
+                                      LineChartBarData(
+                                        spots: segment,
+                                        isCurved: true,
+                                        dotData: const FlDotData(show: false),
+                                        barWidth: 4,
+                                        curveSmoothness: 0.5,
+                                        preventCurveOverShooting: true,
+                                        gradient: const LinearGradient(
+                                          colors: [Colors.red, Colors.orange],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ),
+                                        aboveBarData: BarAreaData(
+                                          show: true,
+                                          color: Colors.red.withOpacity(0.18),
+                                          cutOffY: 0,
+                                          applyCutOffY: true,
+                                        ),
+                                        belowBarData: BarAreaData(
+                                          show: true,
+                                          color: Colors.green.withOpacity(0.18),
+                                          cutOffY: 0,
+                                          applyCutOffY: true,
+                                        ),
+                                      )
+                                    ),
+                                  ],
+                                  titlesData: FlTitlesData(
+                                    show: true,
+                                    rightTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    topTitles: const AxisTitles(
+                                      sideTitles: SideTitles(showTitles: false),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      axisNameSize: 40,
+                                      sideTitles: SideTitles(
+                                        showTitles: true,
+                                        reservedSize: 38,
+                                        maxIncluded: false,
+                                        interval: 1,
+                                        getTitlesWidget: (value, meta) {
+                                          if (_selectedPeriod == PeriodType.monthly) {
+                                            int day = value.toInt() + 1;
+                                            int daysInMonth = DateTime(DateTime.now().year, _sharedScrollIndex + 2, 0).day;
+                                            // Only show first, last, every 5th day
+                                            if (day == 1 || day == daysInMonth || day % 5 == 0) {
+                                              return SideTitleWidget(
+                                                meta: meta,
+                                                child: Transform.rotate(
+                                                  angle: -0.7,
+                                                  child: Text(
+                                                    '$day',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.black,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            } else {
+                                              return const SizedBox.shrink();
+                                            }
+                                          } else if (_selectedPeriod == PeriodType.quarterly) {
+                                            return SideTitleWidget(
+                                              meta: meta,
+                                              child: Text(
+                                                quarterNames[value.toInt().clamp(0, 3)],
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                            );
+                                          } else if (_selectedPeriod == PeriodType.yearly) {
+                                            return SideTitleWidget(
+                                              meta: meta,
+                                              child: Text(
+                                                monthsNames[value.toInt().clamp(0, 11)].substring(0, 3),
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                            );
+                                          } else {
+                                            return SideTitleWidget(
+                                              meta: meta,
+                                              child: Text(
+                                                '${value.toInt() + 1}',
+                                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                  lineTouchData: LineTouchData(
+                                    enabled: true,
+                                    handleBuiltInTouches: true,
+                                    touchTooltipData: LineTouchTooltipData(
+                                      getTooltipColor: (LineBarSpot touchedSpot) => colors[0],
+                                      getTooltipItems: (touchedSpots) {
+                                        // Only show one tooltip per x value (day), and skip if at intersection (start/end of segment)
+                                        final seen = <double>{};
+                                        return touchedSpots
+                                            .where((spot) {
+                                              // Prevent hover at intersection points (where x is not an integer)
+                                              // Only allow hover if x is a whole number (i.e., a real day)
+                                              return seen.add(spot.x) && spot.x == spot.x.roundToDouble();
+                                            })
+                                            .map((spot) {
+                                              final value = spot.y;
+                                              final day = spot.x.toInt() + 1;
+                                              return LineTooltipItem(
+                                                'Day $day\n${value.toStringAsFixed(2)}',
+                                                const TextStyle(
+                                                  color: Colors.black,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              );
+                                            }).toList();
+                                      },
+                                    ),
+                                    touchCallback: (event, touchResponse) {
+                                      // Prevent interaction at intersection points (non-integer x)
+                                      if (!event.isInterestedForInteractions ||
+                                          touchResponse?.lineBarSpots == null ||
+                                          touchResponse!.lineBarSpots!.isEmpty ||
+                                          touchResponse.lineBarSpots!.first.x != touchResponse.lineBarSpots!.first.x.roundToDouble()) {
+                                        setState(() {
+                                          _interactedSpotIndexBalance = -1;
+                                        });
+                                        return;
+                                      }
+                                      setState(() {
+                                        _interactedSpotIndexBalance = touchResponse.lineBarSpots!.first.spotIndex;
+                                      });
+                                    },
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                          const SizedBox(
-                            width: 28,
+                        ),
+                        // PIE CHART
+                        SizedBox(height: 24),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text('Expenses By Category',
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: RepaintBoundary(
+                            key: _pieChartKey,
+                            child: AspectRatio(
+                              aspectRatio: 2,
+                              child: Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: AspectRatio(
+                                      aspectRatio: 1,
+                                      child: PieChart(
+                                        PieChartData(
+                                          pieTouchData: PieTouchData(
+                                            touchCallback: (FlTouchEvent event,
+                                                pieTouchResponse) {
+                                              setState(() {
+                                                if (!event
+                                                        .isInterestedForInteractions ||
+                                                    pieTouchResponse == null ||
+                                                    pieTouchResponse.touchedSection ==
+                                                        null) {
+                                                  touchedIndex = -1;
+                                                  return;
+                                                }
+                                                touchedIndex = pieTouchResponse
+                                                    .touchedSection!
+                                                    .touchedSectionIndex;
+                                              });
+                                            },
+                                          ),
+                                          borderData: FlBorderData(
+                                            show: false,
+                                          ),
+                                          sectionsSpace: 0,
+                                          centerSpaceRadius: 40,
+                                          sections: showingSections(),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: List.generate(
+                                            _categoryTotals.keys.length, (index) {
+                                          final category =
+                                              _categoryTotals.keys.elementAt(index);
+                                          final color =
+                                              pieColors[index % pieColors.length];
+              
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 2.0),
+                                            child: Indicator(
+                                              color: color,
+                                              text: category,
+                                              isSquare: true,
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    width: 28,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                        SizedBox(height: 75)
+                      ],
                     ),
                   ),
                 ),
-                SizedBox(height: 75)
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),
@@ -1530,38 +1606,77 @@ void _promptUpdateBudget() {
 
   Widget _periodButton(String label, PeriodType type) {
     final selected = _selectedPeriod == type;
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        fixedSize: Size(100, 50),
-        backgroundColor: selected ? colors[1] : colors[0],
-        foregroundColor: selected ? Colors.white : Colors.black,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? LinearGradient(
+                  colors: [colors[1], colors[0]],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: selected ? null : Colors.grey[100],
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: colors[1].withOpacity(0.18),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ]
+              : [],
+          border: Border.all(
+            color: selected ? colors[1] : Colors.grey.shade300,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(22),
+            onTap: () async {
+              if (type == PeriodType.custom) {
+                setState(() {
+                  _selectedPeriod = type;
+                });
+                final picked = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2020),
+                  lastDate: DateTime.now(),
+                  initialDateRange: _customStart != null && _customEnd != null
+                      ? DateTimeRange(start: _customStart!, end: _customEnd!)
+                      : null,
+                );
+                if (picked != null) {
+                  setState(() {
+                    _customStart = picked.start;
+                    _customEnd = picked.end;
+                  });
+                  _fetchPeriodData();
+                }
+              } else {
+                _onPeriodChanged(type);
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  color: selected ? Colors.white : colors[1],
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      onPressed: () async {
-        if (type == PeriodType.custom) {
-          setState(() {
-            _selectedPeriod = type;
-          });
-          final picked = await showDateRangePicker(
-            context: context,
-            firstDate: DateTime(2020),
-            lastDate: DateTime.now(),
-            initialDateRange: _customStart != null && _customEnd != null
-                ? DateTimeRange(start: _customStart!, end: _customEnd!)
-                : null,
-          );
-          if (picked != null) {
-            setState(() {
-              _customStart = picked.start;
-              _customEnd = picked.end;
-            });
-            _fetchPeriodData();
-          }
-        } else {
-          _onPeriodChanged(type);
-        }
-      },
-      child: Text(label),
     );
   }
 
@@ -1576,9 +1691,9 @@ void _promptUpdateBudget() {
       ),
       child: Column(
         children: [
-          Text(label, style: TextStyle(fontWeight: FontWeight.bold, color: color)),
+          Text(label, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: color)),
           SizedBox(height: 4),
-          Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 16, color: color)),
+          Text('\$${value.toStringAsFixed(2)}', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: color)),
         ],
       ),
     );
