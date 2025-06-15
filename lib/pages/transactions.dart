@@ -322,82 +322,109 @@ class _TransactionsPageState extends State<Transactions> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            top: 20,
-            left: 20,
-            right: 20,
-          ),
-          child: Wrap(
-            children: [
-              Center(
-                child: Text("New Transaction",
+        final double height = MediaQuery.of(context).size.height * 0.5;
+        return SizedBox(
+          height: height,
+          child: Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              top: 28,
+              left: 24,
+              right: 24,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Text(
+                    "New Transaction",
                     style: GoogleFonts.ibmPlexSans(
                       fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    )),
-              ),
-              SizedBox(height: 16),
-              ToggleButtons(
-                borderRadius: BorderRadius.circular(10),
-                fillColor: colors[0],
-                isSelected: [type1 == 'Expense', type1 == 'Income'],
-                onPressed: (index) {
-                  setState(() => type1 = index == 0 ? 'Expense' : 'Income');
-                },
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text('Expense'),
+                      fontSize: 22,
+                    ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Text('Income'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
-              TextField(
-                keyboardType: TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(labelText: 'Amount'),
-                onChanged: (val) => amt = double.tryParse(val) ?? 0,
-              ),
-              TextField(
-                decoration: InputDecoration(labelText: 'Category'),
-                onChanged: (val) => categ = val,
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text("Date: ${DateFormat('yyyy-MM-dd').format(date)}"),
-                trailing: Icon(Icons.calendar_today),
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: date,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) setState(() => date = picked);
-                },
-              ),
-              SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _addTransaction(amt, type1, categ, date);
-                },
-                child: Text("Add Transaction"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors[0],
-                  foregroundColor: Colors.black,
-                  minimumSize: Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
                 ),
-              ),
-              SizedBox(height: 20),
-            ],
+                const SizedBox(height: 24),
+                Center(
+                  child: ToggleButtons(
+                    borderRadius: BorderRadius.circular(12),
+                    fillColor: colors[0],
+                    selectedColor: Colors.white,
+                    color: Colors.black87,
+                    constraints: BoxConstraints(minHeight: 40, minWidth: 110),
+                    isSelected: [type1 == 'Expense', type1 == 'Income'],
+                    onPressed: (index) {
+                      setState(() => type1 = index == 0 ? 'Expense' : 'Income');
+                    },
+                    children: [
+                      Text('Expense', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Income', style: TextStyle(fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Amount',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  ),
+                  onChanged: (val) => amt = double.tryParse(val) ?? 0,
+                ),
+                const SizedBox(height: 18),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  ),
+                  onChanged: (val) => categ = val,
+                ),
+                const SizedBox(height: 18),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    "Date: ${DateFormat('yyyy-MM-dd').format(date)}",
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: date,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                    );
+                    if (picked != null) setState(() => date = picked);
+                  },
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _addTransaction(amt, type1, categ, date);
+                    },
+                    child: Text(
+                      "Add Transaction",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Color(0xFF2A4288),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ),
           ),
         );
       },
@@ -891,7 +918,7 @@ class _TransactionsPageState extends State<Transactions> {
           'date': date
         };
         // Recalculate total balance
-        _totalBalance = 0.0;
+        _totalBalance = 0;
         _transactionsList.forEach((transaction) {
           if (transaction['type'] == 'Income') {
             _totalBalance += transaction['amount'];
