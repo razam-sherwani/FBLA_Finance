@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -599,130 +601,26 @@ $budgetList
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Transactions Box at the top
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(18),
-                          margin: const EdgeInsets.only(bottom: 18),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                            border: Border.all(
-                              color: primaryColor.withOpacity(0.08),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.list_alt, color: secondaryColor, size: 28),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    "Transactions",
-                                    style: GoogleFonts.barlow(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                      color: secondaryColor,
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Text(
-                                    "${_transactions.length}",
-                                    style: GoogleFonts.barlow(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              if (_transactions.isNotEmpty)
-                                SizedBox(
-                                  height: 38,
-                                  child: ListView.separated(
-                                    scrollDirection: Axis.horizontal,
-                                    itemCount: _transactions.length > 6 ? 6 : _transactions.length,
-                                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                                    itemBuilder: (context, i) {
-                                      final tx = _transactions[i];
-                                      return Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                        decoration: BoxDecoration(
-                                          color: tx['type'] == 'Income'
-                                              ? Colors.green.withOpacity(0.13)
-                                              : Colors.red.withOpacity(0.13),
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              tx['type'] == 'Income' ? Icons.arrow_downward : Icons.arrow_upward,
-                                              color: tx['type'] == 'Income' ? Colors.green : Colors.red,
-                                              size: 18,
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              "\$${tx['amount'].toStringAsFixed(2)}",
-                                              style: GoogleFonts.barlow(
-                                                fontWeight: FontWeight.bold,
-                                                color: tx['type'] == 'Income' ? Colors.green : Colors.red,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Text(
-                                              tx['category'] ?? '',
-                                              style: GoogleFonts.barlow(
-                                                fontSize: 13,
-                                                color: Colors.grey[700],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              if (_transactions.isEmpty)
-                                Text(
-                                  "No transactions found.",
-                                  style: GoogleFonts.barlow(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
-                                  ),
-                                ),
-                            ],
+                        // Always show greeting and subtitle
+                        Text(
+                          "Hello, ${_userName ?? 'User'}!",
+                          style: GoogleFonts.barlow(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: secondaryColor,
                           ),
                         ),
-                        if (_showAnalysisButton || _aiParsedResponse == null) ...[
-                          Text(
-                            "Hello, ${_userName ?? 'User'}!",
-                            style: GoogleFonts.barlow(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: secondaryColor,
-                            ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Here's your financial overview",
+                          style: GoogleFonts.barlow(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey[600],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Here's your financial overview",
-                            style: GoogleFonts.barlow(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
-                        // Stats Row
+                        ),
+                        const SizedBox(height: 24),
+                        // Stats Row (now includes Transactions)
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
@@ -738,7 +636,7 @@ $budgetList
                                 "Transactions",
                                 _transactions.length.toString(),
                                 Icons.list_alt,
-                                secondaryColor,
+                                Colors.redAccent,
                               ),
                               const SizedBox(width: 12),
                               _buildStatCard(
@@ -764,48 +662,51 @@ $budgetList
                         // "Get AI Analysis" button, styled like spending habits, but darker
                         if (_showAnalysisButton) ...[
                           Center(
-                            child: AnimatedContainer(
-                              duration: Duration(milliseconds: 200),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [secondaryColor.withOpacity(0.95), primaryColor],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(22),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: secondaryColor.withOpacity(0.18),
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(22),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                                child: AnimatedContainer(
+                                  duration: Duration(milliseconds: 200),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.22),
+                                    borderRadius: BorderRadius.circular(22),
+                                    border: Border.all(
+                                      color: Colors.white.withOpacity(0.35),
+                                      width: 1.8,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.10),
+                                        blurRadius: 16,
+                                        offset: Offset(0, 6),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                                border: Border.all(
-                                  color: secondaryColor,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(22),
-                                  onTap: _runAnalysis,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.insights, color: Colors.white, size: 24),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          "Get AI Analysis",
-                                          style: GoogleFonts.barlow(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(22),
+                                      onTap: _runAnalysis,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.insights, color: primaryColor, size: 26),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              "Get AI Analysis",
+                                              style: GoogleFonts.barlow(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: primaryColor,
+                                                letterSpacing: 0.2,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
                                     ),
                                   ),
                                 ),
