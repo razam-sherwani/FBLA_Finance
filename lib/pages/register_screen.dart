@@ -182,178 +182,221 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xffe6f0fb), // Soft blue background
-      body: Center(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 42, horizontal: 16),
-            child: Container(
-              width: 400,
-              padding: const EdgeInsets.symmetric(vertical: 38, horizontal: 22),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(36),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blueGrey.withOpacity(0.06),
-                    spreadRadius: 8,
-                    blurRadius: 26,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // FinSafe title
-                  Text(
-                    "FinSafe",
-                    style: GoogleFonts.barlow(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.blueGrey[900],
-                      letterSpacing: -1.3,
+      backgroundColor: Colors.white,
+      body: Stack(
+        children: [
+          // Blue curved header using ClipPath
+          SizedBox(
+            width: double.infinity,
+            height: 220,
+            child: ClipPath(
+              clipper: _HeaderCurveClipper(),
+              child: Container(
+                color: const Color(0xFF2A4288),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    Text(
+                      "FinSafe",
+                      style: GoogleFonts.barlow(
+                        fontSize: 38,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: -1.3,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    "Sign Up",
-                    style: GoogleFonts.barlow(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.blueGrey[800],
+                    const SizedBox(height: 8),
+                    Text(
+                      "Sign Up",
+                      style: GoogleFonts.barlow(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
-                  buildInputField(_controllerFirstName, "First Name"),
-                  const SizedBox(height: 16),
-                  buildInputField(_controllerLastName, "Last Name"),
-                  const SizedBox(height: 16),
-                  buildInputField(_controllerEmail, "Email", keyboardType: TextInputType.emailAddress),
-                  const SizedBox(height: 16),
-                  buildInputField(
-                    _controllerPassword,
-                    "Password",
-                    obscure: true,
-                    onToggle: () {
-                      setState(() {
-                        isPasswordObscure = !isPasswordObscure;
-                      });
-                    },
-                    isObscure: isPasswordObscure,
-                  ),
-                  const SizedBox(height: 16),
-                  buildInputField(
-                    _controllerConfirmPassword,
-                    "Confirm Password",
-                    obscure: true,
-                    onToggle: () {
-                      setState(() {
-                        isConfirmObscure = !isConfirmObscure;
-                      });
-                    },
-                    isObscure: isConfirmObscure,
-                  ),
-                  const SizedBox(height: 22),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.cyan.shade300,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        elevation: 0,
-                      ),
-                      onPressed: isLoading ? null : createUserWithEmailAndPassword,
-                      child: isLoading
-                          ? const CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            )
-                          : Text(
-                              'Sign Up',
-                              style: GoogleFonts.barlow(
-                                fontSize: 19,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      const Expanded(child: Divider(thickness: 1.1)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'or',
-                          style: GoogleFonts.barlow(
-                            color: Colors.blueGrey[200],
-                            fontSize: 15,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      const Expanded(child: Divider(thickness: 1.1)),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  buildSocialButton(
-                    label: "Continue with Google",
-                    asset: 'assets/google.png',
-                    onTap: () {
-                      // TODO: Add your Google sign-in logic here
-                    },
-                  ),
-                  buildSocialButton(
-                    label: "Continue with Apple",
-                    asset: 'assets/apple.png',
-                    onTap: () {
-                      // TODO: Add your Apple sign-in logic here
-                    },
-                    bgColor: Colors.black,
-                    textColor: Colors.white,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        "Already have an account? ",
-                        style: GoogleFonts.barlow(
-                          fontSize: 15,
-                          color: Colors.blueGrey[400],
-                        ),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginScreen(),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          'Log in',
-                          style: GoogleFonts.barlow(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.cyan.shade700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
+          // White card content
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 140, bottom: 0),
+                child: Center(
+                  child: Container(
+                    width: 400,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(36),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blueGrey.withOpacity(0.06),
+                          spreadRadius: 8,
+                          blurRadius: 26,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 22),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          buildInputField(_controllerFirstName, "First Name"),
+                          const SizedBox(height: 16),
+                          buildInputField(_controllerLastName, "Last Name"),
+                          const SizedBox(height: 16),
+                          buildInputField(_controllerEmail, "Email", keyboardType: TextInputType.emailAddress),
+                          const SizedBox(height: 16),
+                          buildInputField(
+                            _controllerPassword,
+                            "Password",
+                            obscure: true,
+                            onToggle: () {
+                              setState(() {
+                                isPasswordObscure = !isPasswordObscure;
+                              });
+                            },
+                            isObscure: isPasswordObscure,
+                          ),
+                          const SizedBox(height: 16),
+                          buildInputField(
+                            _controllerConfirmPassword,
+                            "Confirm Password",
+                            obscure: true,
+                            onToggle: () {
+                              setState(() {
+                                isConfirmObscure = !isConfirmObscure;
+                              });
+                            },
+                            isObscure: isConfirmObscure,
+                          ),
+                          const SizedBox(height: 22),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2A4288),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                                elevation: 2,
+                              ),
+                              onPressed: isLoading ? null : createUserWithEmailAndPassword,
+                              child: isLoading
+                                  ? const CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    )
+                                  : Text(
+                                      'Sign Up',
+                                      style: GoogleFonts.barlow(
+                                        fontSize: 19,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.2,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              const Expanded(child: Divider(thickness: 1.1)),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                child: Text(
+                                  'or',
+                                  style: GoogleFonts.barlow(
+                                    color: Colors.blueGrey[200],
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const Expanded(child: Divider(thickness: 1.1)),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          buildSocialButton(
+                            label: "Continue with Google",
+                            asset: 'assets/google.png',
+                            onTap: () {
+                              // TODO: Add your Google sign-in logic here
+                            },
+                          ),
+                          buildSocialButton(
+                            label: "Continue with Apple",
+                            asset: 'assets/apple.png',
+                            onTap: () {
+                              // TODO: Add your Apple sign-in logic here
+                            },
+                            bgColor: Colors.black,
+                            textColor: Colors.white,
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                "Already have an account? ",
+                                style: GoogleFonts.barlow(
+                                  fontSize: 15,
+                                  color: Colors.blueGrey[400],
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const LoginScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(
+                                  'Log in',
+                                  style: GoogleFonts.barlow(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF2A4288),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// Custom clipper for the blue header curve
+class _HeaderCurveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.lineTo(0, size.height - 60);
+    path.quadraticBezierTo(
+      size.width / 2, size.height,
+      size.width, size.height - 60,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

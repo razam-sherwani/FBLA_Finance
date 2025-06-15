@@ -50,9 +50,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               height: double.infinity,
               width: double.infinity,
               decoration: const BoxDecoration(
-                  color: Color.fromARGB(255, 14, 78, 174)),
+                  color: Color(0xFF2A4288)),
               child: Padding(
-                padding: EdgeInsets.only(top: 60.0, left: 22),
+                padding: EdgeInsets.only(top: 40.0, left: 22),
                 child: Text(
                   'Forgot Your\nPassword?',
                   style: TextStyle(
@@ -63,56 +63,77 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 200.0),
+              padding: const EdgeInsets.only(top: 150.0),
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color.fromARGB(255, 190, 190, 190), width: 4),
+                  // Removed border, added subtle shadow and rounded corners
                   borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(40),
                       topRight: Radius.circular(40)),
-                  color: Colors.white  ,
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 16,
+                      offset: Offset(0, -4),
+                    ),
+                  ],
                 ),
                 height: double.infinity,
                 width: double.infinity,
                 child: Padding(
                   padding: const EdgeInsets.only(left: 18.0, right: 18.0),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      SizedBox(height: 60), // Move content down from the top
                       Text(
-                              'Enter your email below and we will send you a reset link',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black),
-                            ),
+                        'Enter your email below and we will send you a reset link',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            fontSize: 24),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 44),
                       TextField(
                         controller: _controllerEmail,
                         decoration: InputDecoration(
-                            suffixIcon: Icon(Icons.check, color: Colors.grey),
-                            label: Text(
-                              'Email',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black),
-                            )),
+                          prefixIcon: Icon(Icons.email_outlined, color: Colors.blueGrey),
+                          labelText: 'Email',
+                          labelStyle: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blueGrey),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                        ),
+                        keyboardType: TextInputType.emailAddress,
                       ),
-                      SizedBox(height: 30,),
-                      GestureDetector(
-                        onTap: passwordReset,
-                        child: Container(
-                          height: 55,
-                          width: 300,
-                          decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              color: Colors.blue.shade400),
-                          child: Center(
-                            child: Text('SEND EMAIL',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                )),
+                      SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: passwordReset,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF2A4288),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Text(
+                            'SEND EMAIL',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: Colors.white,
+                              letterSpacing: 1.2,
+                            ),
                           ),
                         ),
                       ),

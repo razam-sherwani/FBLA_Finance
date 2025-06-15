@@ -144,37 +144,53 @@ class _ClubsPageState extends State<ClubsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Clubs',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            stops: [0.3, 0.6, 0.9],
-            colors: [
-              Color(0xff56018D),
-              Color(0xff8B139C),
-              Colors.pink,
-            ],
+      backgroundColor: const Color(0xFF2A4288),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(top: 60, bottom: 30, left: 24, right: 24),
+            decoration: const BoxDecoration(
+              color: Color(0xFF2A4288),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(36),
+                bottomRight: Radius.circular(36),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                'Clubs',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 32,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: _buildList(),
-        ),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(36),
+                  topRight: Radius.circular(36),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _buildList(),
+              ),
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _promptAddItem,
         tooltip: 'Add task',
-        backgroundColor: Colors.amber,
-        child: Icon(Icons.add),
+        backgroundColor: const Color(0xFF2A4288),
+        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }
