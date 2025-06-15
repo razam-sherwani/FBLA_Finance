@@ -2,21 +2,32 @@ import 'package:fbla_finance/util/edit_item.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/util/profile_picture.dart';
 
+const double kAppBarHeight = 75;
+const Color kAppBarColor = Color(0xFF2A4288);
+const TextStyle kAppBarTextStyle = TextStyle(
+  fontFamily: 'Barlow',
+  fontWeight: FontWeight.bold,
+  fontSize: 28,
+  color: Colors.white,
+);
+
 class ChangeAccountScreen extends StatefulWidget {
   final String docID;
   ChangeAccountScreen({Key? key, required this.docID}) : super(key: key);
-
 
   @override
   State<ChangeAccountScreen> createState() => _EditAccountScreenState();
 }
 
 class _EditAccountScreenState extends State<ChangeAccountScreen> {
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: kAppBarHeight,
+        backgroundColor: kAppBarColor,
+        elevation: 0,
+        centerTitle: true,
         leading: IconButton(
           onPressed: () {
             Navigator.pop(context);
@@ -24,6 +35,13 @@ class _EditAccountScreenState extends State<ChangeAccountScreen> {
           icon: const Icon(Icons.arrow_back),
         ),
         leadingWidth: 80,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0),
+          child: Text(
+            "Edit Account",
+            style: kAppBarTextStyle,
+          ),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 10),

@@ -829,8 +829,8 @@ void _promptUpdateBudget() {
           );
         },
         child: const Icon(Icons.chat),
-        foregroundColor: colors[1],
-        backgroundColor: colors[0],
+        backgroundColor: Colors.blue.shade900,
+        foregroundColor: Colors.white,
       ),
       appBar: AppBar(
         toolbarHeight: 75,
@@ -839,7 +839,7 @@ void _promptUpdateBudget() {
           child: Text(
             'Transaction Analysis',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
           ),
         ),
         centerTitle: true,

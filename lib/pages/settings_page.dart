@@ -11,6 +11,15 @@ import 'package:fbla_finance/util/setting_switch.dart';
 import 'package:fbla_finance/pages/forward_button.dart';
 import 'package:fbla_finance/pages/edit_screen.dart';
 
+const double kAppBarHeight = 75;
+const Color kAppBarColor = Color(0xFF2A4288);
+const TextStyle kAppBarTextStyle = TextStyle(
+  fontFamily: 'Barlow',
+  fontWeight: FontWeight.bold,
+  fontSize: 28,
+  color: Colors.white,
+);
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -70,14 +79,14 @@ class _SettingsPageState extends State<SettingsPage> {
             style: TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,
-              fontSize: 24, // Increased size
+              fontSize: 24,
             ),
           ),
           content: const Text(
             "Are you sure you want to sign out?",
             style: TextStyle(
               color: Colors.black87,
-              fontSize: 18, // Increased size
+              fontSize: 18,
             ),
           ),
           actions: <Widget>[
@@ -86,7 +95,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 "Cancel",
                 style: TextStyle(
                   color: Colors.grey,
-                  fontSize: 18, // Increased size
+                  fontSize: 18,
                 ),
               ),
               onPressed: () {
@@ -99,7 +108,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: TextStyle(
                   color: Color(0xFF2A4288),
                   fontWeight: FontWeight.bold,
-                  fontSize: 18, // Increased size
+                  fontSize: 18,
                 ),
               ),
               onPressed: () {
@@ -116,36 +125,32 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF2A4288),
+      backgroundColor: kAppBarColor,
       appBar: AppBar(
-  backgroundColor: const Color(0xFF2A4288),
-  elevation: 0,
-  automaticallyImplyLeading: false,
-  title: Container(
-    padding: const EdgeInsets.only(top: 10), // Add bottom padding to lower the text
-    child: const Text(
-      "Settings",
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 40,
-        fontWeight: FontWeight.bold,
+        toolbarHeight: 40,
+        backgroundColor: kAppBarColor,
+        elevation: 0,
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Text(
+            "Settings",
+            style: kAppBarTextStyle,
+            textAlign: TextAlign.center,
+          ),
+        ),
       ),
-    ),
-  ),
-  centerTitle: true,
-  toolbarHeight: 80, // Increase toolbar height to accommodate larger text
-),
       body: Column(
         children: [
-          // Added space between header and white box
           const SizedBox(height: 30),
           Expanded(
             child: Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
+                  topLeft: Radius.circular(50),
+                  topRight: Radius.circular(50),
                 ),
               ),
               child: SingleChildScrollView(
@@ -154,25 +159,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Account Section Header
                       const Text(
                         "Account",
                         style: TextStyle(
-                          fontSize: 24, // Increased size
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 25), // Increased spacing
-
-                      // Edit Profile Setting Item
+                      const SizedBox(height: 25),
                       SettingItem(
                         title: "Edit Profile",
                         icon: Icons.person,
                         bgColor: Colors.blue.shade100,
                         iconColor: Colors.blue,
                         textStyle: const TextStyle(
-                          fontSize: 18, // Increased size
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                         onTap: () {
@@ -184,59 +186,51 @@ class _SettingsPageState extends State<SettingsPage> {
                           );
                         },
                       ),
-                      const SizedBox(height: 25), // Increased spacing
-
-                      // Settings Section Header
+                      const SizedBox(height: 25),
                       const Text(
                         "Settings",
                         style: TextStyle(
-                          fontSize: 24, // Increased size
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
                         ),
                       ),
-                      const SizedBox(height: 25), // Increased spacing
-
-                      // Notification Setting Item
+                      const SizedBox(height: 25),
                       SettingItem(
                         title: "Notification",
                         icon: Icons.notifications,
                         bgColor: Colors.purple.shade100,
                         iconColor: Colors.purple,
                         textStyle: const TextStyle(
-                          fontSize: 18, // Increased size
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                         onTap: () {
-                          print("Navigate to Notification settings");
+                          // Implement notification settings navigation
                         },
                       ),
-                      const SizedBox(height: 25), // Increased spacing
-
-                      // Currency Setting Item
+                      const SizedBox(height: 25),
                       SettingItem(
                         title: "Currency",
                         icon: Icons.wallet,
                         bgColor: Colors.green.shade100,
                         iconColor: Colors.green,
                         textStyle: const TextStyle(
-                          fontSize: 18, // Increased size
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                         onTap: () {
-                          print("Navigate to Currency settings");
+                          // Implement currency settings navigation
                         },
                       ),
-                      const SizedBox(height: 25), // Increased spacing
-
-                      // Appearance Setting Item
+                      const SizedBox(height: 25),
                       SettingItem(
                         title: 'Appearance',
                         icon: Icons.color_lens,
                         bgColor: Colors.orange.shade100,
                         iconColor: Colors.orange,
                         textStyle: const TextStyle(
-                          fontSize: 18, // Increased size
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                         onTap: () {
@@ -246,16 +240,14 @@ class _SettingsPageState extends State<SettingsPage> {
                           );
                         },
                       ),
-                      const SizedBox(height: 25), // Increased spacing
-
-                      // Help & Feedback Setting Item
+                      const SizedBox(height: 25),
                       SettingItem(
                         title: "Help & Feedback",
                         icon: Icons.help_outline,
                         bgColor: Colors.red.shade100,
                         iconColor: Colors.red,
                         textStyle: const TextStyle(
-                          fontSize: 18, // Increased size
+                          fontSize: 18,
                           fontWeight: FontWeight.w500,
                         ),
                         onTap: () {
@@ -265,9 +257,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           );
                         },
                       ),
-                      const SizedBox(height: 40), // Increased spacing
-
-                      // Sign Out Button
+                      const SizedBox(height: 40),
                       Center(
                         child: ElevatedButton(
                           onPressed: _showSignOutDialog,
@@ -277,19 +267,19 @@ class _SettingsPageState extends State<SettingsPage> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18), // Increased padding
+                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 18),
                             elevation: 0,
                           ),
                           child: const Text(
                             "Sign Out",
                             style: TextStyle(
-                              fontSize: 20, // Increased size
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 30), // Increased spacing
+                      const SizedBox(height: 30),
                     ],
                   ),
                 ),

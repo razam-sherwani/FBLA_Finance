@@ -214,35 +214,106 @@ class _TransactionsPageState extends State<Transactions> {
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(builder: (context, setStateInDialog) {
-          return AlertDialog(
-            title: Text("Filter Transactions"),
-            content: SingleChildScrollView(
-              child: Column(
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.13),
+                  blurRadius: 28,
+                  offset: Offset(0, 12),
+                  spreadRadius: 2,
+                ),
+                BoxShadow(
+                  color: Colors.blueAccent.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: StatefulBuilder(builder: (context, setStateInDialog) {
+              return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedType,
-                    hint: Text("Select Type"),
-                    items: ['Income', 'Expense']
-                        .map((type) => DropdownMenuItem(
-                              value: type,
-                              child: Text(type),
-                            ))
-                        .toList(),
-                    onChanged: (val) =>
-                        setStateInDialog(() => _selectedType = val),
+                  Text(
+                    "Filter Transactions",
+                    style: GoogleFonts.ibmPlexSans(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 22,
+                      color: Color(0xFF2A4288),
+                    ),
                   ),
+                  const SizedBox(height: 22),
+                  // Improved Select Type Dropdown
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white, // Make the field white
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Color(0xFF2A4288).withOpacity(0.18), width: 1.2),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _selectedType,
+                        hint: Text("Select Type", style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                        isExpanded: true,
+                        icon: Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF2A4288)),
+                        style: GoogleFonts.ibmPlexSans(
+                          fontSize: 16,
+                          color: Color(0xFF2A4288),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        dropdownColor: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        items: ['Income', 'Expense']
+                            .map((type) => DropdownMenuItem(
+                                  value: type,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        type == 'Income' ? Icons.arrow_upward : Icons.arrow_downward,
+                                        color: type == 'Income' ? Colors.green : Colors.red,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(type,
+                                          style: TextStyle(
+                                            color: type == 'Income' ? Colors.green : Colors.red,
+                                            fontWeight: FontWeight.w600,
+                                          )),
+                                    ],
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (val) => setStateInDialog(() => _selectedType = val),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
-                    decoration: InputDecoration(labelText: 'Category'),
+                    decoration: InputDecoration(
+                      labelText: 'Name',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    ),
                     onChanged: (val) =>
                         _selectedCategory = val.isEmpty ? null : val,
                   ),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: TextField(
-                          decoration: InputDecoration(labelText: 'Min Amount'),
+                          decoration: InputDecoration(
+                            labelText: 'Min Amount',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                            contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                          ),
                           keyboardType: TextInputType.number,
                           onChanged: (val) => _minAmount = double.tryParse(val),
                         ),
@@ -250,53 +321,90 @@ class _TransactionsPageState extends State<Transactions> {
                       SizedBox(width: 10),
                       Expanded(
                         child: TextField(
-                          decoration: InputDecoration(labelText: 'Max Amount'),
+                          decoration: InputDecoration(
+                            labelText: 'Max Amount',
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                            contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                          ),
                           keyboardType: TextInputType.number,
                           onChanged: (val) => _maxAmount = double.tryParse(val),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   ListTile(
-                    title: Text("Date Range"),
-                    subtitle: Text(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    tileColor: Colors.grey[100],
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    title: Text(
                       _startDate == null && _endDate == null
-                          ? "Select"
+                          ? "Select Date Range"
                           : "${_startDate != null ? DateFormat('yyyy-MM-dd').format(_startDate!) : ''} - ${_endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : ''}",
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
-                    trailing: Icon(Icons.calendar_today),
+                    trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
                     onTap: () async {
                       await _selectDateRange();
-                      setStateInDialog(
-                          () {}); // Update dialog after date selection
+                      setStateInDialog(() {});
                     },
                   ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            _clearFilters();
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Color(0xFF2A4288), width: 1.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: Text(
+                            "Clear Filters",
+                            style: TextStyle(
+                              color: Color(0xFF2A4288),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _filterTransactions();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF2A4288),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            elevation: 2,
+                          ),
+                          child: Text(
+                            "Apply",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("Cancel"),
-              ),
-              TextButton(
-                onPressed: () {
-                  _clearFilters();
-                  Navigator.pop(context);
-                },
-                child: Text("Clear Filters"),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _filterTransactions();
-                },
-                child: Text("Apply"),
-              )
-            ],
-          );
-        });
+              );
+            }),
+          ),
+        );
       },
     );
   }
@@ -315,115 +423,175 @@ class _TransactionsPageState extends State<Transactions> {
   }
 
   void _showModalManualEntry() {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      barrierDismissible: true,
       builder: (context) {
-        final double height = MediaQuery.of(context).size.height * 0.5;
-        return SizedBox(
-          height: height,
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              top: 28,
-              left: 24,
-              right: 24,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Text(
-                    "New Transaction",
-                    style: GoogleFonts.ibmPlexSans(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 22,
-                    ),
-                  ),
+        final double width = MediaQuery.of(context).size.width * 0.92;
+        final double height = MediaQuery.of(context).size.height * 0.52;
+        // Local state for modal fields
+        double localAmt = 0;
+        String? localType = type1;
+        String? localCateg = categ;
+        DateTime localDate = date;
+
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: width,
+            height: height,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
                 ),
-                const SizedBox(height: 24),
-                Center(
-                  child: ToggleButtons(
-                    borderRadius: BorderRadius.circular(12),
-                    fillColor: colors[0],
-                    selectedColor: Colors.white,
-                    color: Colors.black87,
-                    constraints: BoxConstraints(minHeight: 40, minWidth: 110),
-                    isSelected: [type1 == 'Expense', type1 == 'Income'],
-                    onPressed: (index) {
-                      setState(() => type1 = index == 0 ? 'Expense' : 'Income');
-                    },
-                    children: [
-                      Text('Expense', style: TextStyle(fontWeight: FontWeight.w600)),
-                      Text('Income', style: TextStyle(fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  ),
-                  onChanged: (val) => amt = double.tryParse(val) ?? 0,
-                ),
-                const SizedBox(height: 18),
-                TextField(
-                  decoration: InputDecoration(
-                    labelText: 'Category',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-                  ),
-                  onChanged: (val) => categ = val,
-                ),
-                const SizedBox(height: 18),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(
-                    "Date: ${DateFormat('yyyy-MM-dd').format(date)}",
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: date,
-                      firstDate: DateTime(2000),
-                      lastDate: DateTime(2100),
-                    );
-                    if (picked != null) setState(() => date = picked);
-                  },
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _addTransaction(amt, type1, categ, date);
-                    },
-                    child: Text(
-                      "Add Transaction",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF2A4288),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 2,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
               ],
+            ),
+            child: StatefulBuilder(
+              builder: (context, setStateModal) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "New Transaction",
+                      style: GoogleFonts.ibmPlexSans(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        color: Color(0xFF2A4288),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Center(
+                      child: ToggleButtons(
+                        borderRadius: BorderRadius.circular(14),
+                        fillColor: Colors.blueAccent,
+                        selectedColor: Colors.white,
+                        color: Colors.black,
+                        constraints: const BoxConstraints(minHeight: 44, minWidth: 120),
+                        isSelected: [localType == 'Expense', localType == 'Income'],
+                        onPressed: (index) {
+                          setStateModal(() {
+                            localType = index == 0 ? 'Expense' : 'Income';
+                          });
+                        },
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Expense',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Income',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    TextField(
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Amount',
+                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                      ),
+                      onChanged: (val) {
+                        setStateModal(() {
+                          localAmt = double.tryParse(val) ?? 0;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                      ),
+                      onChanged: (val) {
+                        setStateModal(() {
+                          localCateg = val;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        "Date: ${DateFormat('yyyy-MM-dd').format(localDate)}",
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: localDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setStateModal(() => localDate = picked);
+                        }
+                      },
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Only add if all required fields are filled
+                          if (localAmt > 0 && localType != null && localCateg != null && localCateg!.trim().isNotEmpty) {
+                            Navigator.pop(context);
+                            setState(() {
+                              amt = localAmt;
+                              type1 = localType;
+                              categ = localCateg;
+                              date = localDate;
+                            });
+                            _addTransaction(localAmt, localType, localCateg, localDate);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Please fill all fields')),
+                            );
+                          }
+                        },
+                        child: Text(
+                          "Add Transaction",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF2A4288),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -495,64 +663,109 @@ class _TransactionsPageState extends State<Transactions> {
   }
 
   Future<void> sharePdfLink() async {
-    final RenderBox button = context.findRenderObject() as RenderBox;
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-    final Offset offset = button.localToGlobal(Offset.zero, ancestor: overlay);
-
-    String? selected = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        offset.dx + 10,
-        offset.dy - 10,
-        overlay.size.width - offset.dx,
-        overlay.size.height - offset.dy,
-      ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      items: ['General', 'Weekly', 'Monthly'].map((option) {
-        return PopupMenuItem<String>(
-          value: option,
-          child: Text(option),
-        );
-      }).toList(),
-    );
-
-    selected ??= 'General';
-
-    var paragraphPdf;
-    if (selected == 'General') {
-      paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-    } else if (selected == 'Weekly') {
-      paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-    } else {
-      paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
-    }
-
-    final pdfFileName = '$selected-Report.pdf';
-    final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(
-        paragraphPdf, pdfFileName);
-
-    if (downloadUrl != null) {
-      SaveAndOpenDocument.copyToClipboard(downloadUrl);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$selected PDF link copied to clipboard!'),
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  String? selected = await showModalBottomSheet<String>(
+    context: context,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    backgroundColor: Colors.white,
+    builder: (context) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select the type of report to share',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              SizedBox(height: 16),
+              ...['General', 'Weekly', 'Monthly'].map((option) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context, option),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 6,
+                            offset: Offset(0, 3),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.picture_as_pdf_outlined, color: Colors.blue.shade700),
+                          SizedBox(width: 12),
+                          Text(
+                            option,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
         ),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to upload $selected report.'),
-          behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-    }
+    },
+  );
+
+  selected ??= 'General';
+
+  var paragraphPdf;
+  if (selected == 'General') {
+    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+  } else if (selected == 'Weekly') {
+    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+  } else {
+    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
   }
+
+  final pdfFileName = '$selected-Report.pdf';
+  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(paragraphPdf, pdfFileName);
+
+  if (downloadUrl != null) {
+    SaveAndOpenDocument.copyToClipboard(downloadUrl);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$selected PDF link copied to clipboard!'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to upload $selected report.'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+}
+
+
+
 
   void _searchTransactions(String query) {
     setState(() {
@@ -721,7 +934,7 @@ class _TransactionsPageState extends State<Transactions> {
                     onChanged: (val) => type1 = val,
                   ),
                   TextField(
-                    decoration: InputDecoration(labelText: 'Category'),
+                    decoration: InputDecoration(labelText: 'Name'),
                     controller: TextEditingController(text: scannedCategory),
                     onChanged: (val) => scannedCategory = val,
                   ),
@@ -939,11 +1152,26 @@ class _TransactionsPageState extends State<Transactions> {
   }
 
   Widget _buildSearchAndFilterBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      child: Row(
-        children: [
-          Expanded(
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+    child: Row(
+      children: [
+        Expanded(
+          // 1. Wrap the TextField with a Container
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              // 2. Add the boxShadow property
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: TextField(
               controller: TextEditingController.fromValue(
                 TextEditingValue(
@@ -958,20 +1186,22 @@ class _TransactionsPageState extends State<Transactions> {
                 });
                 _searchTransactions(query);
               },
-              style: TextStyle(color: Colors.black87),
+              style: const TextStyle(color: Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Search transactions...',
-                filled: true,
-                fillColor: Colors.white,
+                // 3. Remove fill properties from InputDecoration as the Container handles it
+                // filled: true,
+                // fillColor: Colors.white,
                 contentPadding:
-                    EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                // 4. Ensure the TextField's border is transparent to see the container's shape
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: Icon(Icons.clear, color: Colors.black54),
+                        icon: const Icon(Icons.clear, color: Colors.black54),
                         onPressed: () {
                           setState(() {
                             _searchQuery = '';
@@ -983,175 +1213,192 @@ class _TransactionsPageState extends State<Transactions> {
               ),
             ),
           ),
-          SizedBox(width: 8),
-          IconButton(
-            icon: Icon(Icons.filter_alt_outlined, color: Colors.black87),
-            onPressed: _showFilterDialog,
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.filter_alt_outlined, color: Colors.black87),
+          onPressed: _showFilterDialog,
+        ),
+        IconButton(
+          icon: Icon(
+            _groupByCategory ? Icons.folder_open : Icons.folder,
+            color: Colors.black87,
           ),
-          IconButton(
-            icon: Icon(
-              _groupByCategory ? Icons.folder_open : Icons.folder,
-              color: Colors.black87,
-            ),
-            onPressed: () {
-              setState(() {
-                _groupByCategory = !_groupByCategory;
-                _filterTransactions(); // Ensure this uses the search query
-              });
-            },
-            tooltip: 'Group by Category',
-          ),
-        ],
-      ),
-    );
-  }
+          onPressed: () {
+            setState(() {
+              _groupByCategory = !_groupByCategory;
+              _filterTransactions(); // Ensure this uses the search query
+            });
+          },
+          tooltip: 'Group by Name',
+        ),
+      ],
+    ),
+  );
+}
 
   void _promptEditTransaction(Map<String, dynamic> transaction, int index) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: true,
+      builder: (context) {
+        final double width = MediaQuery.of(context).size.width * 0.92;
+        final double height = MediaQuery.of(context).size.height * 0.52;
         String updatedCategory = transaction['category'];
         double updatedAmount = transaction['amount'];
         String updatedType = transaction['type'];
         DateTime updatedDate = transaction['date'];
 
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('Edit Transaction'),
-              content: Container(
-                height: 250,
-                width: 250,
-                child: Column(
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          backgroundColor: Colors.white,
+          child: Container(
+            width: width,
+            height: height,
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.10),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: StatefulBuilder(
+              builder: (context, setState) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      child: Center(
-                        child: ToggleButtons(
-                          selectedBorderColor: colors[0],
-                          borderRadius: BorderRadius.circular(5),
-                          fillColor: colors[0],
-                          isSelected: [
-                            updatedType == 'Expense',
-                            updatedType == 'Income'
-                          ],
-                          onPressed: (int index) {
-                            setState(() {
-                              updatedType = index == 0 ? 'Expense' : 'Income';
-                            });
-                          },
-                          children: <Widget>[
-                            Container(
-                              width: 110, // Adjust width as needed
-                              child: Center(
-                                  child: Text('Expense',
-                                      style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500))),
-                            ),
-                            Container(
-                              width: 110, // Adjust width as needed
-                              child: Center(
-                                  child: Text('Income',
-                                      style: TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.w500))),
-                            ),
-                          ],
-                        ),
+                    Text(
+                      "Edit Transaction",
+                      style: GoogleFonts.ibmPlexSans(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        color: Color(0xFF2A4288),
                       ),
                     ),
-                    Container(
-                      width: 200,
-                      child: TextField(
-                        autofocus: true,
-                        keyboardType:
-                            TextInputType.numberWithOptions(decimal: true),
-                        decoration:
-                            InputDecoration(labelText: 'Enter the amount'),
-                        controller: TextEditingController(
-                            text: updatedAmount.toString()),
-                        onChanged: (String? val) {
-                          if (val != null && val.isNotEmpty) {
-                            try {
-                              updatedAmount = double.parse(val);
-                            } catch (e) {
-                              updatedAmount = 0;
-                            }
-                          } else {
-                            updatedAmount = 0;
-                          }
+                    const SizedBox(height: 22),
+                    Center(
+                      child: ToggleButtons(
+                        borderRadius: BorderRadius.circular(14),
+                        fillColor: Colors.blueAccent,
+                        selectedColor: Colors.white,
+                        color: Colors.black,
+                        constraints: const BoxConstraints(minHeight: 44, minWidth: 120),
+                        isSelected: [updatedType == 'Expense', updatedType == 'Income'],
+                        onPressed: (idx) {
+                          setState(() {
+                            updatedType = idx == 0 ? 'Expense' : 'Income';
+                          });
                         },
-                      ),
-                    ),
-                    SizedBox(height: 10),
-                    Container(
-                      width: 200,
-                      child: TextField(
-                        decoration:
-                            InputDecoration(labelText: 'Enter the category'),
-                        controller:
-                            TextEditingController(text: updatedCategory),
-                        onChanged: (String? val) {
-                          if (val != null) {
-                            updatedCategory = val;
-                          }
-                        },
-                      ),
-                    ),
-                    SizedBox(
-                      width: 200,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.max,
-                        children: <Widget>[
-                          const SizedBox(height: 30.0),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final DateTime? picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: updatedDate,
-                                  firstDate: DateTime(2015, 8),
-                                  lastDate: DateTime(2101));
-                              if (picked != null && picked != updatedDate) {
-                                setState(() {
-                                  updatedDate = picked;
-                                });
-                              }
-                            },
-                            child:
-                                Text("${updatedDate.toLocal()}".split(' ')[0]),
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Expense',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              'Income',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-              actions: <Widget>[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      child: Text('Cancel'),
-                      onPressed: () => Navigator.of(context).pop(),
+                    const SizedBox(height: 22),
+                    TextField(
+                      autofocus: true,
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Amount',
+                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                      ),
+                      controller: TextEditingController(text: updatedAmount.toString()),
+                      onChanged: (val) {
+                        updatedAmount = double.tryParse(val) ?? 0;
+                      },
                     ),
-                    TextButton(
-                      child: Text('Update'),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _updateTransaction(
+                    const SizedBox(height: 16),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                      ),
+                      controller: TextEditingController(text: updatedCategory),
+                      onChanged: (val) {
+                        updatedCategory = val;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        "Date: ${DateFormat('yyyy-MM-dd').format(updatedDate)}",
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: updatedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) setState(() => updatedDate = picked);
+                      },
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _updateTransaction(
                             transaction['transactionId'],
                             updatedAmount,
                             updatedType,
                             updatedCategory,
                             updatedDate,
-                            index);
-                      },
+                            index,
+                          );
+                        },
+                        child: Text(
+                          "Update Transaction",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF2A4288),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
                     ),
                   ],
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
         );
       },
     );
@@ -1311,31 +1558,53 @@ class _TransactionsPageState extends State<Transactions> {
 
           return Card(
             margin: EdgeInsets.symmetric(vertical: 8),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+                bottomLeft: Radius.circular(24),
+                bottomRight: Radius.circular(24),
+              ),
+            ),
             elevation: 2,
-            child: ExpansionTile(
-              title: Text(
-                category,
-                style: GoogleFonts.ibmPlexSans(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+            color: const Color(0xffB8E8FF), // Light blue throughout the card
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                dividerColor: Colors.transparent,
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                unselectedWidgetColor: Colors.black,
+              ),
+              child: ExpansionTile(
+                title: Text(
+                  category,
+                  style: GoogleFonts.ibmPlexSans(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black, // Black text for light blue card
+                  ),
                 ),
+                trailing: Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: Colors.black,
+                ),
+                onExpansionChanged: (bool expanded) {
+                  setState(() {
+                    _expandedSections[category] = expanded;
+                  });
+                },
+                initiallyExpanded: isExpanded,
+                children: transactionsInCategory.map((transaction) {
+                  return Container(
+                    color: Colors.white,
+                    child: _buildTransactionItem(
+                      transaction,
+                      transactionsInCategory.indexOf(transaction),
+                    ),
+                  );
+                }).toList(),
               ),
-              trailing: Icon(
-                isExpanded ? Icons.expand_less : Icons.expand_more,
-                color: colors[1],
-              ),
-              onExpansionChanged: (bool expanded) {
-                setState(() {
-                  _expandedSections[category] = expanded;
-                });
-              },
-              initiallyExpanded: isExpanded,
-              children: transactionsInCategory.map((transaction) {
-                return _buildTransactionItem(
-                    transaction, transactionsInCategory.indexOf(transaction));
-              }).toList(),
             ),
           );
         },
@@ -1379,51 +1648,58 @@ class _TransactionsPageState extends State<Transactions> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(50),
-                  topRight: Radius.circular(50),
-                ),
-              ),
-              child: Column(
+      body: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(50),
+            topRight: Radius.circular(50),
+          ),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 18),
+            _buildSearchAndFilterBar(),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8),
+              child: Row(
                 children: [
-                  const SizedBox(height: 18),
-                  _buildSearchAndFilterBar(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 8),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Total Balance:',
-                          style: GoogleFonts.barlow(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: secondaryColor,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
-                          style: GoogleFonts.barlow(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    'Total Balance:',
+                    style: GoogleFonts.barlow(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: secondaryColor,
                     ),
                   ),
-                  Expanded(child: _buildTransactionList()),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                    style: GoogleFonts.barlow(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: Container(
+                // Add padding and background for better contrast
+                padding: const EdgeInsets.only(top: 0),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.97),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(36),
+                    topRight: Radius.circular(36),
+                  ),
+                ),
+                child: _buildTransactionList(),
+              ),
+            ),
+          ],
+        ),
       ),
       floatingActionButtonLocation: ExpandableFab.location,
       floatingActionButton: ExpandableFab(
@@ -1435,7 +1711,7 @@ class _TransactionsPageState extends State<Transactions> {
         ),
         openButtonBuilder: DefaultFloatingActionButtonBuilder(
           child: Icon(Icons.add),
-          backgroundColor: primaryColor, // Changed to match appbar color
+          backgroundColor: primaryColor,
           foregroundColor: Colors.white,
         ),
         closeButtonBuilder: DefaultFloatingActionButtonBuilder(
@@ -1447,7 +1723,7 @@ class _TransactionsPageState extends State<Transactions> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: Container(
-              height: 50,
+              height: 56,
               decoration: BoxDecoration(
                 color: primaryColor,
                 borderRadius: BorderRadius.circular(16),
@@ -1488,15 +1764,15 @@ class _TransactionsPageState extends State<Transactions> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: Container(
-              height: 50,
+              height: 56,
               decoration: BoxDecoration(
                 color: primaryColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
                   ),
                 ],
               ),
@@ -1504,21 +1780,26 @@ class _TransactionsPageState extends State<Transactions> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 10.0),
-                    child: Text(
-                      'Scan Receipt',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    padding: const EdgeInsets.only(left: 14.0),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 8),
+                        Text(
+                          'Scan Receipt',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 10),
                   FloatingActionButton.small(
                     heroTag: 'scan',
                     backgroundColor: primaryColor,
-                    child: const Icon(Icons.receipt, color: Colors.white),
+                    child: const Icon(Icons.camera_alt, color: Colors.white),
                     onPressed: _showModalScanReceipt,
                   ),
                   const SizedBox(width: 10),
@@ -1529,15 +1810,15 @@ class _TransactionsPageState extends State<Transactions> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: Container(
-              height: 50,
+              height: 56,
               decoration: BoxDecoration(
                 color: primaryColor,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 6,
-                    offset: Offset(0, 2),
+                    color: Colors.black.withOpacity(0.10),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
                   ),
                 ],
               ),
@@ -1545,14 +1826,19 @@ class _TransactionsPageState extends State<Transactions> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(left: 10.0),
-                    child: Text(
-                      'Get From Bank',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    padding: const EdgeInsets.only(left: 14.0),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 8),
+                        Text(
+                          'Get From Bank',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -1581,7 +1867,7 @@ class _TransactionsPageState extends State<Transactions> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: Container(
-              height: 50,
+              height: 56,
               decoration: BoxDecoration(
                 color: primaryColor,
                 borderRadius: BorderRadius.circular(16),

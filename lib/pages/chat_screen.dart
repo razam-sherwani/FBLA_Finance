@@ -301,100 +301,111 @@ Use this inforation to provide personalized financial advice."""
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF2A4288),
       appBar: AppBar(
-        toolbarHeight: 80,
-        shadowColor: Colors.transparent,
-        title: Text(
-          "Fineas",
-          style: GoogleFonts.barlow(
-            fontSize: 40,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        toolbarHeight: 75,
+        backgroundColor: const Color(0xFF2A4288),
+        elevation: 0,
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0),
+          child: Text(
+            "Fineas",
+            style: GoogleFonts.barlow(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFb7e9ff),
-        elevation: 0.5,
         leading: IconButton(
           iconSize: 30,
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              controller: scrollController,
-              itemCount: msgs.length,
-              reverse: true,
-              itemBuilder: (context, index) {
-                final msg = msgs[index];
-                final timestamp = TimeOfDay.now().format(context);
-                final showTime = index % 3 == 0;
-                return Column(
-                  crossAxisAlignment: msg.isSender
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.start,
-                  children: [
-                    _buildMessageBubble(msg, timestamp, showTime),
-                    if (isTyping && index == 0)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16, top: 6),
-                        child: SpinKitThreeBounce(
-                          color: Colors.lightBlueAccent,
-                          size: 18,
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(50),
+            topRight: Radius.circular(50),
+          ),
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                controller: scrollController,
+                itemCount: msgs.length,
+                reverse: true,
+                itemBuilder: (context, index) {
+                  final msg = msgs[index];
+                  final timestamp = TimeOfDay.now().format(context);
+                  final showTime = index % 3 == 0;
+                  return Column(
+                    crossAxisAlignment: msg.isSender
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.start,
+                    children: [
+                      _buildMessageBubble(msg, timestamp, showTime),
+                      if (isTyping && index == 0)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 16, top: 6),
+                          child: SpinKitThreeBounce(
+                            color: Colors.lightBlueAccent,
+                            size: 18,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            _buildSuggestedButtons(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: const Color.fromARGB(255, 165, 165, 165),
+                          width: 1.2,
                         ),
                       ),
-                  ],
-                );
-              },
-            ),
-          ),
-          _buildSuggestedButtons(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: const Color.fromARGB(255, 165, 165, 165),
-                        width: 1.2,
-                      ),
-                    ),
-                    child: TextField(
-                      controller: controller,
-                      onSubmitted: (_) => sendMsg(),
-                      decoration: InputDecoration(
-                        hintText: "Ask Fineas...",
-                        border: InputBorder.none,
-                        hintStyle: TextStyle(color: Colors.grey.shade500),
+                      child: TextField(
+                        controller: controller,
+                        onSubmitted: (_) => sendMsg(),
+                        decoration: InputDecoration(
+                          hintText: "Ask Fineas...",
+                          border: InputBorder.none,
+                          hintStyle: TextStyle(color: Colors.grey.shade500),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: sendMsg,
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color.fromARGB(255, 0, 140, 255),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: sendMsg,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color.fromARGB(255, 0, 140, 255),
+                      ),
+                      child: const Icon(Icons.arrow_upward, color: Colors.white),
                     ),
-                    child: const Icon(Icons.arrow_upward, color: Colors.white),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

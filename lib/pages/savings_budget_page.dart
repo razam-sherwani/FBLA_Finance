@@ -1,8 +1,23 @@
+// Updated Budget & Savings Page with AI Categorization and Smart Budget Assignment
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
+const double kAppBarHeight = 75;
+const Color kAppBarColor = Color(0xFF2A4288);
+const TextStyle kAppBarTextStyle = TextStyle(
+  fontFamily: 'Barlow',
+  fontWeight: FontWeight.bold,
+  fontSize: 28,
+  color: Colors.white,
+);
+
+const Color dangerRed = Color(0xFFD32F2F);
+const Color strongGreen = Color(0xFF388E3C);
+const Color warningOrange = Color(0xFFFFA726);
 
 class BudgetSavingsPage extends StatefulWidget {
   const BudgetSavingsPage({Key? key}) : super(key: key);
@@ -18,34 +33,24 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
   Map<String, double> budgets = {};
   List<String> categories = [];
   double totalIncome = 5000.0;
-  final Map<String, double> categorySplits = {
-    "Rent": 0.30,
-    "Groceries": 0.15,
-    "Transportation": 0.10,
-    "Entertainment": 0.10,
-    "Dining Out": 0.05,
-    "Utilities": 0.05,
-    "Miscellaneous": 0.25,
-  };
   Map<String, double> spentPerCategory = {};
   List<Map<String, dynamic>> savingsGoals = [];
   bool showBudgets = true;
-
   Map<String, bool> _expandedDropdowns = {};
   Map<String, String> aiCategoryCache = {};
   Map<String, List<Map<String, dynamic>>> transactionsByAICategory = {};
-
   final String gptApiKey = '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';
+
+  bool _showContent = true; // Add this flag
 
   @override
   void initState() {
     super.initState();
+    _showContent = true; // Ensure content is visible on startup
     _fetchDocIDAndData();
   }
 
-  // =========== GPT AI Categorizer ===========
-  Future<String> getAICategory(
-      String transactionName, List<String> budgetCategories) async {
+  Future<String> getAICategory(String transactionName, List<String> budgetCategories) async {
     final cacheKey = '$transactionName|${budgetCategories.join(",")}';
     if (aiCategoryCache.containsKey(cacheKey)) {
       return aiCategoryCache[cacheKey]!;
@@ -78,403 +83,91 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
 
       if (resp.statusCode == 200) {
         final decoded = jsonDecode(resp.body);
-        final response =
-            decoded["choices"][0]["message"]["content"].trim().replaceAll('\n', '');
+        final response = decoded["choices"][0]["message"]["content"].trim().replaceAll('\n', '');
         aiCategoryCache[cacheKey] = response;
         return response;
       } else {
-        print("GPT Error: ${resp.body}");
         aiCategoryCache[cacheKey] = "Other";
         return "Other";
       }
-    } catch (e) {
-      print("GPT Exception: $e");
+    } catch (_) {
       aiCategoryCache[cacheKey] = "Other";
       return "Other";
     }
   }
 
-  // =========== DATA FETCH & REBUILD ===========
   Future<void> _fetchDocIDAndData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      setState(() {
-        docID = 'no_user_logged_in';
-      });
-      return;
+    if (user == null) return;
+
+    final snapshot = await _firestore.collection('users').where('email', isEqualTo: user!.email).get();
+    if (snapshot.docs.isEmpty) return;
+    docID = snapshot.docs[0].id;
+
+    final txnSnap = await _firestore.collection('users').doc(docID).collection('Transactions').get();
+
+    double income = 0.0;
+    Map<String, double> spent = {};
+    List<Map<String, dynamic>> allTxns = [];
+
+    for (var doc in txnSnap.docs) {
+      final data = doc.data();
+      final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
+      final type = data['type'];
+      final cat = data['category'];
+      if (type == 'Income') income += amt;
+      if (type == 'Expense' && cat != null) {
+        allTxns.add({...data, 'id': doc.id});
+      }
+    }
+    totalIncome = income > 0 ? income : 5000.0;
+
+    final broadCategories = ["Housing", "Food", "Transportation", "Utilities", "Lifestyle", "Other"];
+    Map<String, List<Map<String, dynamic>>> categorized = {};
+    Map<String, double> allocated = {};
+
+    for (var txn in allTxns) {
+      final name = txn['category'];
+      final amount = (txn['amount'] as num).toDouble();
+      final category = await getAICategory(name, broadCategories);
+      categorized.putIfAbsent(category, () => []).add(txn);
+      allocated[category] = (allocated[category] ?? 0) + amount;
     }
 
-    try {
-      final snapshot = await _firestore
-          .collection('users')
-          .where('email', isEqualTo: user.email)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        setState(() {
-          docID = 'no_user_found';
-        });
-        return;
-      }
-
-      docID = snapshot.docs[0].id;
-
-      // -------- Get budget category list --------
-      final budgetDoc = await _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('Budgets')
-          .doc('budgets')
-          .get();
-      Map<String, dynamic> savedBudgets =
-          budgetDoc.exists ? (budgetDoc.data()?['categories'] ?? {}) : {};
-
-      // Keep the category list ALWAYS in sync with what's in Firestore
-      List<String> currentBudgetCategories = [];
-      if (savedBudgets.isNotEmpty) {
-        currentBudgetCategories =
-            savedBudgets.keys.map((e) => e.toString()).toList();
-      }
-      categories = currentBudgetCategories;
-      budgets = {};
-      for (var cat in categories) {
-        budgets[cat] = (savedBudgets[cat]?.toDouble()) ??
-            (totalIncome * (categorySplits[cat] ?? 0.05));
-      }
-
-      // -------- Get and AI-categorize all transactions (expenses only) --------
-      final transactions = await _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('Transactions')
-          .get();
-
-      Map<String, double> spent = {};
-      Map<String, List<Map<String, dynamic>>> txnsByCategory = {};
-      Map<String, double> savingsMap = {};
-
-      List<Map<String, dynamic>> txnList = [];
-      for (var doc in transactions.docs) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        txnList.add(data);
-      }
-
-      // AI categorize all expense transactions, using latest category list
-      for (var data in txnList) {
-        final txName = data['category'];
-        final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
-        final type = data['type'];
-        if (type == 'Expense' && txName != null && categories.isNotEmpty) {
-          final aiCategory =
-              await getAICategory(txName, categories); // will return actual or 'Other'
-          if (categories.contains(aiCategory) && aiCategory != "Other") {
-            spent[aiCategory] = (spent[aiCategory] ?? 0) + amt;
-            txnsByCategory.putIfAbsent(aiCategory, () => []).add(data);
-          }
-        }
-        // For savings goals (all types)
-        if (txName != null) {
-          savingsMap[txName.toString().toLowerCase()] =
-              (savingsMap[txName.toString().toLowerCase()] ?? 0) + amt;
-        }
-      }
-      spentPerCategory = spent;
-      transactionsByAICategory = txnsByCategory;
-
-      // --------- Savings goals ---------
-      final goalsSnapshot = await _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('SavingsGoals')
-          .get();
-
-      List<Map<String, dynamic>> loadedGoals = [];
-      List<Future<void>> updateFutures = [];
-
-      for (var doc in goalsSnapshot.docs) {
-        final data = doc.data();
-        final goalName = data['name'];
-        final target = (data['target'] as num).toDouble();
-        final saved = savingsMap[goalName.toString().toLowerCase()] ?? 0.0;
-
-        updateFutures.add(_firestore
-            .collection('users')
-            .doc(docID)
-            .collection('SavingsGoals')
-            .doc(doc.id)
-            .update({'saved': saved}));
-
-        loadedGoals
-            .add({'id': doc.id, 'name': goalName, 'target': target, 'saved': saved});
-      }
-      await Future.wait(updateFutures);
-
-      setState(() {
-        savingsGoals = loadedGoals;
-        for (var cat in categories) {
-          _expandedDropdowns.putIfAbsent(cat, () => false);
-        }
-      });
-    } catch (e) {
-      print("Error fetching data: $e");
-    }
-  }
-
-  // =========== CATEGORY ADD / DELETE ===========
-
-  void _showAddCategoryDialog() {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text("Add New Category", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            labelText: "Category Name",
-            hintText: "e.g., Education",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFADD8E6),
-              foregroundColor: Colors.blueGrey[800],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              final categoryName = controller.text.trim();
-              if (categoryName.isEmpty) {
-                _showErrorMessage("Category name cannot be empty.");
-                return;
-              }
-              if (categories.any((cat) =>
-                  cat.toLowerCase() == categoryName.toLowerCase())) {
-                _showErrorMessage("Category '$categoryName' already exists.");
-                return;
-              }
-              budgets[categoryName] = totalIncome * 0.05;
-              categories.add(categoryName);
-
-              // update Firestore
-              await _firestore
-                  .collection('users')
-                  .doc(docID)
-                  .collection('Budgets')
-                  .doc('budgets')
-                  .set({'categories': budgets}, SetOptions(merge: true));
-
-              Navigator.pop(context);
-
-              // re-run fetch to update everything including AI
-              await _fetchDocIDAndData();
-            },
-            child: const Text("Add"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _deleteBudget(String category) async {
-    budgets.remove(category);
-    categories.remove(category);
+    Map<String, double> ruleBasedBudgets = {
+      "Housing": totalIncome * 0.30,
+      "Food": totalIncome * 0.15,
+      "Transportation": totalIncome * 0.10,
+      "Entertainment": totalIncome * 0.10,
+      "Utilities": totalIncome * 0.05,
+      "Health": totalIncome * 0.05,
+      "Other": totalIncome * 0.25,
+    };
 
     await _firestore
         .collection('users')
         .doc(docID)
         .collection('Budgets')
         .doc('budgets')
-        .set({'categories': budgets}, SetOptions(merge: true));
+        .set({'categories': ruleBasedBudgets});
 
-    setState(() {});
-    await _fetchDocIDAndData();
-    _showSuccessMessage("Budget for '$category' deleted.");
-  }
+    final goalsSnap = await _firestore.collection('users').doc(docID).collection('SavingsGoals').get();
+    List<Map<String, dynamic>> loadedGoals = goalsSnap.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'id': doc.id,
+        'name': data['name'],
+        'target': (data['target'] as num?)?.toDouble() ?? 0.0,
+        'saved': (data['saved'] as num?)?.toDouble() ?? 0.0,
+      };
+    }).toList();
 
-  Future<void> _deleteGoal(String goalId) async {
-    await _firestore
-        .collection('users')
-        .doc(docID)
-        .collection('SavingsGoals')
-        .doc(goalId)
-        .delete();
-    await _fetchDocIDAndData();
-    _showSuccessMessage("Savings goal deleted.");
-  }
-
-  void _editBudgetAmount(String category) {
-    final controller = TextEditingController(text: budgets[category]?.toStringAsFixed(2));
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text("Edit Budget Amount", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: "Budget Amount",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            prefixText: "\$",
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFADD8E6),
-              foregroundColor: Colors.blueGrey[800],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              final value = double.tryParse(controller.text) ?? 0.0;
-              if (value < 0) {
-                _showErrorMessage("Budget cannot be negative.");
-                return;
-              }
-              budgets[category] = value;
-              await _firestore
-                  .collection('users')
-                  .doc(docID)
-                  .collection('Budgets')
-                  .doc('budgets')
-                  .set({'categories': budgets}, SetOptions(merge: true));
-              Navigator.pop(context);
-              await _fetchDocIDAndData();
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addGoalDialog() {
-    final nameController = TextEditingController();
-    final targetController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text("Add Savings Goal", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: "Goal Name",
-                hintText: "e.g., New Car Fund",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            const SizedBox(height: 15),
-            TextField(
-              controller: targetController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: "Target Amount",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                prefixText: "\$",
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFADD8E6),
-              foregroundColor: Colors.blueGrey[800],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              final name = nameController.text.trim();
-              final target = double.tryParse(targetController.text) ?? 0.0;
-              if (name.isEmpty) {
-                _showErrorMessage("Goal name cannot be empty.");
-                return;
-              }
-              if (target <= 0) {
-                _showErrorMessage("Target amount must be greater than zero.");
-                return;
-              }
-              await _firestore
-                  .collection('users')
-                  .doc(docID)
-                  .collection('SavingsGoals')
-                  .add({'name': name, 'target': target, 'saved': 0.0});
-              await _fetchDocIDAndData();
-              Navigator.pop(context);
-            },
-            child: const Text("Add"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _editGoalAmount(Map<String, dynamic> goal) {
-    final controller = TextEditingController(text: goal['target'].toStringAsFixed(2));
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: Text("Edit Goal Amount", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: "Target Amount",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            prefixText: "\$",
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(color: Colors.grey.shade700)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFADD8E6),
-              foregroundColor: Colors.blueGrey[800],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              final value = double.tryParse(controller.text) ?? 0.0;
-              if (value <= 0) {
-                _showErrorMessage("Target amount must be greater than zero.");
-                return;
-              }
-              await _firestore
-                  .collection('users')
-                  .doc(docID)
-                  .collection('SavingsGoals')
-                  .doc(goal['id'])
-                  .update({'target': value});
-              await _fetchDocIDAndData();
-              Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
+    setState(() {
+      budgets = ruleBasedBudgets;
+      spentPerCategory = allocated;
+      categories = budgets.keys.toList();
+      savingsGoals = loadedGoals;
+      transactionsByAICategory = categorized;
+    });
   }
 
   void _showErrorMessage(String message) {
@@ -507,569 +200,856 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
     }
   }
 
-  Widget _buildSummaryHeader(String title, String subtitle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: TextStyle(
-                fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueGrey[800])),
-        const SizedBox(height: 4),
-        Text(subtitle, style: TextStyle(fontSize: 15, color: Colors.blueGrey[500])),
-        const SizedBox(height: 16),
-      ],
+  void _showAddCategoryDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Add New Budget Category",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  color: kAppBarColor,
+                ),
+              ),
+              const SizedBox(height: 22),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: "Category Name",
+                  hintText: "e.g., Education",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: kAppBarColor, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: kAppBarColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kAppBarColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2,
+                      ),
+                      onPressed: () async {
+                        final categoryName = controller.text.trim();
+                        if (categoryName.isEmpty) {
+                          _showErrorMessage("Category name cannot be empty.");
+                          return;
+                        }
+                        if (categories.any((cat) =>
+                            cat.toLowerCase() == categoryName.toLowerCase())) {
+                          _showErrorMessage("Category '$categoryName' already exists.");
+                          return;
+                        }
+                        budgets[categoryName] = totalIncome * 0.05;
+                        categories.add(categoryName);
+                        await _firestore
+                            .collection('users')
+                            .doc(docID)
+                            .collection('Budgets')
+                            .doc('budgets')
+                            .set({'categories': budgets}, SetOptions(merge: true));
+                        Navigator.pop(context);
+                        await _fetchDocIDAndData();
+                      },
+                      child: const Text("Add", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  void _showBudgetAlert(String category, double percent) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "Warning: You are within 90% of your budget for \"$category\"!",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-            ),
-            backgroundColor: Colors.deepOrange.shade600,
-            duration: Duration(seconds: 4),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: EdgeInsets.all(10),
+  void _editBudgetAmount(String category) {
+    final controller = TextEditingController(text: budgets[category]?.toStringAsFixed(2));
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Edit Budget Amount",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  color: kAppBarColor,
+                ),
+              ),
+              const SizedBox(height: 22),
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: "Budget Amount",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  prefixText: "\$",
+                  contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: kAppBarColor, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: kAppBarColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kAppBarColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2,
+                      ),
+                      onPressed: () async {
+                        final value = double.tryParse(controller.text) ?? 0.0;
+                        if (value < 0) {
+                          _showErrorMessage("Budget cannot be negative.");
+                          return;
+                        }
+                        budgets[category] = value;
+                        await _firestore
+                            .collection('users')
+                            .doc(docID)
+                            .collection('Budgets')
+                            .doc('budgets')
+                            .set({'categories': budgets}, SetOptions(merge: true));
+                        Navigator.pop(context);
+                        await _fetchDocIDAndData();
+                      },
+                      child: const Text("Save", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      }
-    });
+        ),
+      ),
+    );
+  }
+
+  void _addGoalDialog() {
+    final nameController = TextEditingController();
+    final targetController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.white,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Add Savings Goal",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 24,
+                  color: kAppBarColor,
+                ),
+              ),
+              const SizedBox(height: 22),
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: "Goal Name",
+                  hintText: "e.g., New Car Fund",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                ),
+              ),
+              const SizedBox(height: 15),
+              TextField(
+                controller: targetController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: "Target Amount",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  prefixText: "\$",
+                  contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: kAppBarColor, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        "Cancel",
+                        style: TextStyle(
+                          color: kAppBarColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kAppBarColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2,
+                      ),
+                      onPressed: () async {
+                        final name = nameController.text.trim();
+                        final target = double.tryParse(targetController.text) ?? 0.0;
+                        if (name.isEmpty) {
+                          _showErrorMessage("Goal name cannot be empty.");
+                          return;
+                        }
+                        if (target <= 0) {
+                          _showErrorMessage("Target amount must be greater than zero.");
+                          return;
+                        }
+                        await _firestore
+                            .collection('users')
+                            .doc(docID)
+                            .collection('SavingsGoals')
+                            .add({'name': name, 'target': target, 'saved': 0.0});
+                        await _fetchDocIDAndData();
+                        Navigator.pop(context);
+                      },
+                      child: const Text("Add", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _deleteBudget(String category) {
+    budgets.remove(category);
+    categories.remove(category);
+    _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('Budgets')
+        .doc('budgets')
+        .set({'categories': budgets}, SetOptions(merge: true));
+    setState(() {});
+    _fetchDocIDAndData();
+    _showSuccessMessage("Budget for '$category' deleted.");
+  }
+
+  Future<void> _deleteGoal(String goalId) async {
+    await _firestore
+        .collection('users')
+        .doc(docID)
+        .collection('SavingsGoals')
+        .doc(goalId)
+        .delete();
+    await _fetchDocIDAndData();
+    _showSuccessMessage("Savings goal deleted.");
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryThemeBlue = const Color(0xFFADD8E6);
-    final Color strongGreen = Colors.green.shade700;
-    final Color warningOrange = Colors.orange.shade700;
-    final Color dangerRed = const Color(0xFFFFAB91);
-    final Color lightBackgroundStart = const Color(0xFFF5F5F5);
-    final Color lightBackgroundEnd = Colors.blueGrey.shade50;
-    final Color darkText = Colors.blueGrey[800]!;
+    final Color primaryThemeBlue = kAppBarColor;
+    final Color bgColor = Colors.white;
+    final Color darkText = Colors.blueGrey[900]!;
     final Color mediumText = Colors.blueGrey[600]!;
 
+    // Always show the white container and appbar, even if loading
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: kAppBarColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 2,
-        titleSpacing: 0,
+        toolbarHeight: kAppBarHeight,
+        backgroundColor: kAppBarColor,
+        elevation: 0,
+        centerTitle: true,
         title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Container(
-            decoration: BoxDecoration(
-              color: lightBackgroundStart,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: showBudgets ? primaryThemeBlue : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: showBudgets ? darkText : mediumText,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        textStyle:
-                            const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: () => setState(() => showBudgets = true),
-                      child: const Text("Budgets"),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    decoration: BoxDecoration(
-                      color: !showBudgets ? primaryThemeBlue : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        foregroundColor: !showBudgets ? darkText : mediumText,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        textStyle:
-                            const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      onPressed: () => setState(() => showBudgets = false),
-                      child: const Text("Savings Goals"),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          padding: const EdgeInsets.only(bottom: 15.0),
+          child: Text(
+            "Budgets & Savings",
+            style: kAppBarTextStyle,
           ),
         ),
-        automaticallyImplyLeading: false,
       ),
-      body: docID.isEmpty
-          ? Center(child: CircularProgressIndicator(color: primaryThemeBlue))
-          : Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [lightBackgroundStart, lightBackgroundEnd],
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: showBudgets
-                    ? Column(
+      body: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(50),
+            topRight: Radius.circular(50),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(18.0),
+          child: docID.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Row(
                         children: [
-                          _buildSummaryHeader(
-                              "Your Budgets",
-                              "Track your spending to stay on top of your finances."),
                           Expanded(
-                            child: categories.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      "No budget categories set up yet!\nTap 'Add Category' to get started.",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 16, color: mediumText),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    itemCount: categories.length,
-                                    itemBuilder: (context, index) {
-                                      final category = categories[index];
-                                      final budget = budgets[category] ?? 0.0;
-                                      final spent = spentPerCategory[category] ?? 0.0;
-                                      final percent =
-                                          budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
-                                      final txns = transactionsByAICategory[category]
-                                              ?.where((txn) =>
-                                                  txn['type'] == 'Expense')
-                                              .toList() ??
-                                          [];
-
-                                      if (percent >= 0.9 && percent < 1.0) {
-                                        _showBudgetAlert(category, percent);
-                                      }
-
-                                      return Column(
-                                        children: [
-                                          Dismissible(
-                                            key: Key(category),
-                                            direction: DismissDirection.endToStart,
-                                            background: Container(
-                                              decoration: BoxDecoration(
-                                                color: dangerRed,
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              alignment: Alignment.centerRight,
-                                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                                              margin: const EdgeInsets.symmetric(vertical: 8),
-                                              child: const Icon(Icons.delete_forever,
-                                                  color: Colors.white, size: 30),
-                                            ),
-                                            confirmDismiss: (direction) async {
-                                              return await showDialog(
-                                                context: context,
-                                                builder: (BuildContext context) {
-                                                  return AlertDialog(
-                                                    shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(15)),
-                                                    title: const Text("Confirm Delete",
-                                                        style: TextStyle(
-                                                            fontWeight: FontWeight.bold)),
-                                                    content: Text(
-                                                        "Are you sure you want to delete the budget for '$category'?"),
-                                                    actions: <Widget>[
-                                                      TextButton(
-                                                        onPressed: () =>
-                                                            Navigator.of(context).pop(false),
-                                                        child: Text("Cancel",
-                                                            style: TextStyle(color: mediumText)),
-                                                      ),
-                                                      ElevatedButton(
-                                                        style: ElevatedButton.styleFrom(
-                                                          backgroundColor: dangerRed,
-                                                          foregroundColor: Colors.white,
-                                                          shape: RoundedRectangleBorder(
-                                                              borderRadius:
-                                                                  BorderRadius.circular(10)),
-                                                        ),
-                                                        onPressed: () =>
-                                                            Navigator.of(context).pop(true),
-                                                        child: const Text("Delete"),
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              );
-                                            },
-                                            onDismissed: (_) => _deleteBudget(category),
-                                            child: Card(
-                                              margin: const EdgeInsets.symmetric(vertical: 8),
-                                              elevation: 4,
-                                              shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12)),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(16.0),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment.spaceBetween,
-                                                      children: [
-                                                        Icon(Icons.category,
-                                                            color: primaryThemeBlue, size: 28),
-                                                        const SizedBox(width: 8),
-                                                        Expanded(
-                                                          child: Text(
-                                                            category,
-                                                            style: TextStyle(
-                                                              fontSize: 18,
-                                                              fontWeight: FontWeight.bold,
-                                                              color: darkText,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                        IconButton(
-                                                          icon: Icon(Icons.edit,
-                                                              size: 22, color: mediumText),
-                                                          onPressed: () =>
-                                                              _editBudgetAmount(category),
-                                                          tooltip: "Edit budget",
-                                                        ),
-                                                        IconButton(
-                                                          icon: Icon(
-                                                            _expandedDropdowns[category] ?? false
-                                                                ? Icons.keyboard_arrow_up
-                                                                : Icons.keyboard_arrow_down,
-                                                            color: mediumText,
-                                                            size: 28,
-                                                          ),
-                                                          tooltip: "Show itemized transactions",
-                                                          onPressed: () {
-                                                            setState(() {
-                                                              _expandedDropdowns[category] =
-                                                                  !(_expandedDropdowns[category] ??
-                                                                      false);
-                                                            });
-                                                          },
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 10),
-                                                    LinearProgressIndicator(
-                                                      value: percent,
-                                                      minHeight: 12,
-                                                      backgroundColor: Colors.grey[300],
-                                                      color: _progressColor(percent),
-                                                      borderRadius:
-                                                          BorderRadius.circular(6),
-                                                    ),
-                                                    const SizedBox(height: 10),
-                                                    Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment.spaceBetween,
-                                                      children: [
-                                                        Text(
-                                                          "Budget: \$${budget.toStringAsFixed(2)}",
-                                                          style: TextStyle(
-                                                              fontSize: 15,
-                                                              fontWeight: FontWeight.w600,
-                                                              color: mediumText),
-                                                        ),
-                                                        Text(
-                                                          "Spent: \$${spent.toStringAsFixed(2)}",
-                                                          style: TextStyle(
-                                                              fontSize: 15,
-                                                              fontWeight: FontWeight.w600,
-                                                              color: mediumText),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    const SizedBox(height: 5),
-                                                    Text(
-                                                      "Remaining: \$${(budget - spent).toStringAsFixed(2)}",
-                                                      style: TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight: FontWeight.w500,
-                                                          color: strongGreen),
-                                                    ),
-                                                    if (_expandedDropdowns[category] ?? false)
-                                                      Padding(
-                                                        padding: const EdgeInsets.only(top: 12.0),
-                                                        child: txns.isEmpty
-                                                            ? Text(
-                                                                "No transactions in this category.",
-                                                                style: TextStyle(
-                                                                    fontSize: 14,
-                                                                    color: mediumText),
-                                                              )
-                                                            : Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment.start,
-                                                                children: [
-                                                                  Text(
-                                                                    "Transactions:",
-                                                                    style: TextStyle(
-                                                                        fontSize: 15,
-                                                                        fontWeight: FontWeight.bold,
-                                                                        color: darkText),
-                                                                  ),
-                                                                  const SizedBox(height: 8),
-                                                                  ...txns.map((txn) {
-                                                                    return Container(
-                                                                      margin: const EdgeInsets.only(bottom: 8),
-                                                                      padding: const EdgeInsets.all(12),
-                                                                      decoration: BoxDecoration(
-                                                                        color: Colors.blueGrey[50],
-                                                                        borderRadius: BorderRadius.circular(10),
-                                                                        boxShadow: [
-                                                                          BoxShadow(
-                                                                            color: Colors.grey.withOpacity(0.10),
-                                                                            spreadRadius: 1,
-                                                                            blurRadius: 6,
-                                                                            offset: Offset(0, 3),
-                                                                          ),
-                                                                        ],
-                                                                        border: Border.all(color: Colors.grey.shade200),
-                                                                      ),
-                                                                      child: Row(
-                                                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                                        children: [
-                                                                          Column(
-                                                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                                                            children: [
-                                                                              Text(
-                                                                                txn['category'] ?? '',
-                                                                                style: TextStyle(
-                                                                                  fontSize: 15,
-                                                                                  fontWeight: FontWeight.w600,
-                                                                                  color: darkText,
-                                                                                ),
-                                                                              ),
-                                                                              if (txn.containsKey('date'))
-                                                                                Padding(
-                                                                                  padding: const EdgeInsets.only(top: 2),
-                                                                                  child: Text(
-                                                                                    txn['date'].toString(),
-                                                                                    style: TextStyle(
-                                                                                      fontSize: 13,
-                                                                                      color: mediumText,
-                                                                                    ),
-                                                                                  ),
-                                                                                ),
-                                                                            ],
-                                                                          ),
-                                                                          Text(
-                                                                            "- \$${(txn['amount'] as num?)?.toStringAsFixed(2) ?? ''}",
-                                                                            style: TextStyle(
-                                                                              fontSize: 16,
-                                                                              fontWeight: FontWeight.bold,
-                                                                              color: Colors.red[400],
-                                                                            ),
-                                                                          ),
-                                                                        ],
-                                                                      ),
-                                                                    );
-                                                                  }).toList(),
-                                                                ],
-                                                              ),
-                                                      ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryThemeBlue,
-                                foregroundColor: Colors.blueGrey[900],
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: showBudgets ? kAppBarColor : mediumText,
+                                backgroundColor: showBudgets ? Colors.white : Colors.transparent,
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
                               ),
-                              icon: const Icon(Icons.add),
-                              label: const Text("Add Category",
-                                  style: TextStyle(
-                                      fontSize: 17, fontWeight: FontWeight.w600)),
-                              onPressed: _showAddCategoryDialog,
+                              onPressed: () => setState(() => showBudgets = true),
+                              child: Text(
+                                "Budgets",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: showBudgets ? kAppBarColor : mediumText,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: TextButton(
+                              style: TextButton.styleFrom(
+                                foregroundColor: !showBudgets ? kAppBarColor : mediumText,
+                                backgroundColor: !showBudgets ? Colors.white : Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18),
+                                ),
+                              ),
+                              onPressed: () => setState(() => showBudgets = false),
+                              child: Text(
+                                "Savings Goals",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                  color: !showBudgets ? kAppBarColor : mediumText,
+                                ),
+                              ),
                             ),
                           ),
                         ],
-                      )
-                    : Column(
-                        children: [
-                          _buildSummaryHeader("Savings Goals",
-                              "Visualize your progress toward each savings target."),
-                          Expanded(
-                            child: savingsGoals.isEmpty
-                                ? Center(
-                                    child: Text(
-                                      "No savings goals yet!\nTap 'Add Goal' to create one.",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(fontSize: 16, color: mediumText),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    itemCount: savingsGoals.length,
-                                    itemBuilder: (context, index) {
-                                      final goal = savingsGoals[index];
-                                      final saved = goal['saved'] ?? 0.0;
-                                      final target = goal['target'] ?? 1.0;
-                                      final percent =
-                                          target > 0 ? (saved / target).clamp(0.0, 1.0) : 0.0;
-                                      final color = percent >= 1.0
-                                          ? strongGreen
-                                          : _progressColor(percent);
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Expanded(
+                      child: showBudgets
+                          ? _buildBudgetsSection(context, darkText, mediumText)
+                          : _buildSavingsGoalsSection(context, darkText, mediumText),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
 
-                                      return Dismissible(
-                                        key: Key(goal['id']),
-                                        direction: DismissDirection.endToStart,
-                                        background: Container(
-                                          decoration: BoxDecoration(
-                                            color: dangerRed,
-                                            borderRadius: BorderRadius.circular(12),
+  Widget _buildBudgetsSection(BuildContext context, Color darkText, Color mediumText) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Your Budgets",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: darkText,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Track your spending to stay on top of your finances.",
+          style: TextStyle(fontSize: 16, color: mediumText),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: categories.isEmpty
+              ? Center(
+                  child: Text(
+                    "No budget categories set up yet!\nTap 'Add Category' to get started.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: mediumText),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: categories.length,
+                  itemBuilder: (context, index) {
+                    final category = categories[index];
+                    final budget = budgets[category] ?? 0.0;
+                    final spent = spentPerCategory[category] ?? 0.0;
+                    final percent = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
+                    final txns = transactionsByAICategory[category] ?? [];
+                    final isExpanded = _expandedDropdowns[category] ?? false;
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Column(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              setState(() {
+                                _expandedDropdowns[category] = !(isExpanded);
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.category, color: kAppBarColor, size: 28),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      category,
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: darkText,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 22, color: mediumText),
+                                    onPressed: () => _editBudgetAmount(category),
+                                    tooltip: "Edit budget",
+                                  ),
+                                  Icon(
+                                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                                    color: mediumText,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Column(
+                              children: [
+                                LinearProgressIndicator(
+                                  value: percent,
+                                  minHeight: 12,
+                                  backgroundColor: Colors.grey[300],
+                                  color: _progressColor(percent),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      "Budget: \$${budget.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: mediumText),
+                                    ),
+                                    Text(
+                                      "Spent: \$${spent.toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: mediumText),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    "Remaining: \$${(budget - spent).toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        color: (budget - spent) < 0 ? Colors.red : Colors.green,
+                                        fontWeight: FontWeight.w500),
+                                  ),
+                                ),
+                                SizedBox(height: 10),
+                              ],
+                            ),
+                          ),
+                          if (isExpanded)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                              child: txns.isNotEmpty
+                                  ? Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          "Transactions:",
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: darkText,
                                           ),
-                                          alignment: Alignment.centerRight,
-                                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                                          margin: const EdgeInsets.symmetric(vertical: 8),
-                                          child: const Icon(Icons.delete_forever,
-                                              color: Colors.white, size: 30),
                                         ),
-                                        confirmDismiss: (direction) async {
-                                          return await showDialog(
-                                            context: context,
-                                            builder: (BuildContext context) {
-                                              return AlertDialog(
-                                                shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(15)),
-                                                title: const Text("Confirm Delete",
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.bold)),
-                                                content: Text(
-                                                    "Are you sure you want to delete the goal \"${goal['name']}\"?"),
-                                                actions: <Widget>[
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.of(context).pop(false),
-                                                    child: Text("Cancel",
-                                                        style:
-                                                            TextStyle(color: mediumText)),
-                                                  ),
-                                                  ElevatedButton(
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor: dangerRed,
-                                                      foregroundColor: Colors.white,
-                                                      shape: RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(10)),
-                                                    ),
-                                                    onPressed: () =>
-                                                        Navigator.of(context).pop(true),
-                                                    child: const Text("Delete"),
-                                                  ),
-                                                ],
-                                              );
-                                            },
-                                          );
-                                        },
-                                        onDismissed: (_) => _deleteGoal(goal['id']),
-                                        child: Card(
-                                          margin: const EdgeInsets.symmetric(vertical: 8),
-                                          elevation: 4,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(12)),
+                                        const SizedBox(height: 6),
+                                        ...txns.map((txn) => ListTile(
+                                              contentPadding: EdgeInsets.zero,
+                                              leading: Icon(
+                                                txn['type'] == 'Income'
+                                                    ? Icons.arrow_upward
+                                                    : Icons.arrow_downward,
+                                                color: txn['type'] == 'Income'
+                                                    ? Colors.green
+                                                    : Colors.red,
+                                              ),
+                                              title: Text(
+                                                txn['category'] ?? '',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 15,
+                                                  color: darkText,
+                                                ),
+                                              ),
+                                              subtitle: Text(
+                                                // Format date as "MMM d, yyyy"
+                                                "${txn['type']} • ${DateFormat('yyyy-MM-dd').format((txn['date'] as Timestamp).toDate())}",
+                                                style: TextStyle(
+                                                  color: Colors.grey[700],
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              trailing: Text(
+                                                "\$${(txn['amount'] as num?)?.toStringAsFixed(2) ?? ''}",
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: txn['type'] == 'Income'
+                                                      ? Colors.green
+                                                      : Colors.red,
+                                                  fontSize: 15,
+                                                ),
+                                              ),
+                                            )),
+                                      ],
+                                    )
+                                  : Text(
+                                      "No transactions in this category.",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: mediumText,
+                                      ),
+                                    ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kAppBarColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              elevation: 5,
+            ),
+            icon: const Icon(Icons.add_circle_outline, size: 28),
+            label: const Text(
+              "Add New Budget Category",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            onPressed: _showAddCategoryDialog,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDate(dynamic date) {
+    if (date is DateTime) {
+      return "${_monthAbbr(date.month)} ${date.day}, ${date.year}";
+    }
+    return date.toString();
+  }
+
+  String _monthAbbr(int month) {
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    return months[(month - 1).clamp(0, 11)];
+  }
+
+  Widget _buildSavingsGoalsSection(BuildContext context, Color darkText, Color mediumText) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Your Savings Goals",
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: darkText,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "Save up for your dreams and financial milestones.",
+          style: TextStyle(fontSize: 16, color: mediumText),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: savingsGoals.isEmpty
+              ? Center(
+                  child: Text(
+                    "No savings goals set up yet!\nStart saving for your dreams by tapping 'Add Goal'.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 16, color: mediumText),
+                  ),
+                )
+              : ListView.builder(
+                  itemCount: savingsGoals.length,
+                  itemBuilder: (context, index) {
+                    final goal = savingsGoals[index];
+                    final percent = (goal['target'] > 0)
+                        ? (goal['saved'] / goal['target']).clamp(0.0, 1.0)
+                        : 0.0;
+                    final double remainingOrExcess = goal['target'] - goal['saved'];
+                    String displayText;
+                    Color textColor;
+                    if (remainingOrExcess <= 0) {
+                      displayText = "Goal Met! Excess: \$${(-remainingOrExcess).toStringAsFixed(2)}";
+                      textColor = Colors.green;
+                    } else {
+                      displayText = "Remaining: \$${remainingOrExcess.toStringAsFixed(2)}";
+                      textColor = Colors.orange.shade700;
+                    }
+
+                    return Dismissible(
+                      key: Key(goal['id']),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: const Icon(Icons.delete_forever, color: Colors.white, size: 30),
+                      ),
+                      confirmDismiss: (direction) async {
+                        return await showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              title: const Text("Confirm Delete", style: TextStyle(fontWeight: FontWeight.bold)),
+                              content: Text("Are you sure you want to delete '${goal['name']}' goal?"),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: Text("Cancel", style: TextStyle(color: mediumText)),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade200,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text("Delete"),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      onDismissed: (_) => _deleteGoal(goal['id']),
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Icon(Icons.savings, color: kAppBarColor, size: 28),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      goal['name'],
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: darkText,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.edit, size: 22, color: mediumText),
+                                    onPressed: () {
+                                      final controller = TextEditingController(text: goal['target'].toStringAsFixed(2));
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => Dialog(
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                                          backgroundColor: Colors.white,
                                           child: Padding(
-                                            padding: const EdgeInsets.all(16.0),
+                                            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisSize: MainAxisSize.min,
                                               children: [
+                                                Text(
+                                                  "Edit Goal Amount",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 24,
+                                                    color: kAppBarColor,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 22),
+                                                TextField(
+                                                  controller: controller,
+                                                  keyboardType: TextInputType.number,
+                                                  decoration: InputDecoration(
+                                                    labelText: "Target Amount",
+                                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                                                    prefixText: "\$",
+                                                    contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 24),
                                                 Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.spaceBetween,
                                                   children: [
-                                                    Icon(Icons.savings,
-                                                        color: strongGreen, size: 28),
-                                                    const SizedBox(width: 8),
                                                     Expanded(
-                                                      child: Text(
-                                                        goal['name'],
-                                                        style: TextStyle(
-                                                          fontSize: 18,
-                                                          fontWeight: FontWeight.bold,
-                                                          color: darkText,
+                                                      child: OutlinedButton(
+                                                        onPressed: () => Navigator.pop(context),
+                                                        style: OutlinedButton.styleFrom(
+                                                          side: BorderSide(color: kAppBarColor, width: 1.5),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(14),
+                                                          ),
+                                                        ),
+                                                        child: Text(
+                                                          "Cancel",
+                                                          style: TextStyle(
+                                                            color: kAppBarColor,
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 16,
+                                                          ),
                                                         ),
                                                       ),
                                                     ),
-                                                    IconButton(
-                                                      icon: Icon(Icons.edit,
-                                                          size: 22, color: mediumText),
-                                                      onPressed: () =>
-                                                          _editGoalAmount(goal),
-                                                      tooltip: "Edit target",
+                                                    SizedBox(width: 12),
+                                                    Expanded(
+                                                      child: ElevatedButton(
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: kAppBarColor,
+                                                          foregroundColor: Colors.white,
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(14),
+                                                          ),
+                                                          elevation: 2,
+                                                        ),
+                                                        onPressed: () async {
+                                                          final value = double.tryParse(controller.text) ?? 0.0;
+                                                          if (value <= 0) {
+                                                            _showErrorMessage("Target amount must be greater than zero.");
+                                                            return;
+                                                          }
+                                                          await _firestore
+                                                              .collection('users')
+                                                              .doc(docID)
+                                                              .collection('SavingsGoals')
+                                                              .doc(goal['id'])
+                                                              .update({'target': value});
+                                                          await _fetchDocIDAndData();
+                                                          Navigator.pop(context);
+                                                        },
+                                                        child: const Text("Save", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                                      ),
                                                     ),
                                                   ],
-                                                ),
-                                                const SizedBox(height: 10),
-                                                LinearProgressIndicator(
-                                                  value: percent,
-                                                  minHeight: 12,
-                                                  backgroundColor: Colors.grey[300],
-                                                  color: color,
-                                                  borderRadius:
-                                                      BorderRadius.circular(6),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                Row(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.spaceBetween,
-                                                  children: [
-                                                    Text(
-                                                      "Target: \$${target.toStringAsFixed(2)}",
-                                                      style: TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: mediumText),
-                                                    ),
-                                                    Text(
-                                                      "Saved: \$${saved.toStringAsFixed(2)}",
-                                                      style: TextStyle(
-                                                          fontSize: 15,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: mediumText),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 5),
-                                                Text(
-                                                  percent >= 1.0
-                                                      ? "Goal Reached!"
-                                                      : "Remaining: \$${(target - saved).toStringAsFixed(2)}",
-                                                  style: TextStyle(
-                                                      fontSize: 15,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: percent >= 1.0
-                                                          ? strongGreen
-                                                          : warningOrange),
                                                 ),
                                               ],
                                             ),
@@ -1077,30 +1057,76 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                                         ),
                                       );
                                     },
+                                    tooltip: "Edit goal target",
                                   ),
-                          ),
-                          const SizedBox(height: 10),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: strongGreen,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10)),
+                                ],
                               ),
-                              icon: const Icon(Icons.add),
-                              label: const Text("Add Goal",
-                                  style: TextStyle(
-                                      fontSize: 17, fontWeight: FontWeight.w600)),
-                              onPressed: _addGoalDialog,
-                            ),
+                              const SizedBox(height: 10),
+                              LinearProgressIndicator(
+                                value: percent,
+                                minHeight: 12,
+                                backgroundColor: Colors.grey[300],
+                                color: _progressColor(percent),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              const SizedBox(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Target: \$${goal['target'].toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: mediumText),
+                                  ),
+                                  Text(
+                                    "Saved: \$${goal['saved'].toStringAsFixed(2)}",
+                                    style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: mediumText),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                displayText,
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: textColor,
+                                    fontWeight: FontWeight.w500),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
+                    );
+                  },
+                ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: kAppBarColor,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
               ),
+              elevation: 5,
             ),
+            icon: const Icon(Icons.star_border, size: 28),
+            label: const Text(
+              "Add New Savings Goal",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            onPressed: _addGoalDialog,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -20,6 +20,15 @@ import 'package:open_file/open_file.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
 
+const double kAppBarHeight = 75;
+const Color kAppBarColor = Color(0xFF2A4288);
+const TextStyle kAppBarTextStyle = TextStyle(
+  fontFamily: 'Barlow',
+  fontWeight: FontWeight.bold,
+  fontSize: 28,
+  color: Colors.white,
+);
+
 class Reports extends StatefulWidget {
   const Reports({super.key});
 
@@ -104,27 +113,86 @@ class _ReportsState extends State<Reports> {
   }
 
   Future<void> sharePdfLink() async {
-    // Show dialog to select the name type
-    String selectedName = 'General'; // Default value
-    await showDialog<String>(
+    String selectedName = 'General';
+    await showModalBottomSheet<String>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select PDF Type'),
-          content: DropdownButton<String>(
-            value: selectedName,
-            items: ['General', 'Weekly', 'Monthly'].map((String value) {
-              return DropdownMenuItem<String>(
-                value: value,
-                child: Text(value),
-              );
-            }).toList(),
-            onChanged: (newValue) {
-              if (newValue != null) {
-                selectedName = newValue;
-                Navigator.pop(context); // Close dialog when a selection is made
-              }
-            },
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 28.0, horizontal: 28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Text(
+                    'Select PDF Type',
+                    style: GoogleFonts.barlow(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2A4288),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ...['General', 'Weekly', 'Monthly'].map((option) {
+                  IconData icon;
+                  Color color;
+                  if (option == 'General') {
+                    icon = Icons.description_outlined;
+                    color = Color(0xff39baf9);
+                  } else if (option == 'Weekly') {
+                    icon = Icons.calendar_view_week;
+                    color = Color(0xff55e6c1);
+                  } else {
+                    icon = Icons.calendar_today;
+                    color = Color(0xff133164);
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14.0),
+                    child: Material(
+                      color: color.withOpacity(0.13),
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () {
+                          selectedName = option;
+                          Navigator.pop(context, option);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 18),
+                          child: Row(
+                            children: [
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.all(10),
+                                child: Icon(icon, color: Colors.white, size: 24),
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                option,
+                                style: GoogleFonts.barlow(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
           ),
         );
       },
@@ -272,134 +340,99 @@ class _ReportsState extends State<Reports> {
 
  @override
 Widget build(BuildContext context) {
+  final Color bgColor = Colors.white;
+
   return Scaffold(
-    body: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xffB8E8FF), // Light blue
-            Colors.white,             // White
-          ],
+    backgroundColor: kAppBarColor,
+    appBar: AppBar(
+      toolbarHeight: kAppBarHeight,
+      backgroundColor: kAppBarColor,
+      elevation: 0,
+      centerTitle: true,
+      title: Padding(
+        padding: const EdgeInsets.only(bottom: 15.0),
+        child: Text(
+          "Reports",
+          style: kAppBarTextStyle,
         ),
       ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with time and title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 8),
-                  Text(
-                    "Reports",
-                    style: GoogleFonts.ibmPlexSans(
-                      color: Colors.black,
-                      fontSize: 50,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+    ),
+    body: Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(50),
+          topRight: Radius.circular(50),
+        ),
+      ),
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        children: [
+          // Balance display
+          Center(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 30),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
               ),
-            ),
-            
-            // Balance display
-            Center(
-              child: Container(
-                padding: const EdgeInsets.only(left: 4),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20), // Adjust for desired roundness
-                        gradient: const LinearGradient(
-                                  colors: [
-                                    Color.fromRGBO(132, 255, 201, 1), // hsla(154, 100%, 76%)
-                                    Color.fromRGBO(170, 178, 255, 1), // hsla(234, 100%, 83%)
-                                    Color.fromRGBO(255, 97, 246, 1),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-
-                        boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 6,
-                offset: const Offset(0, 3),
-                      )],
-                      ),
-                      child: Text(
-                        NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                .format(_totalBalance),
-                        style: GoogleFonts.ibmPlexSans(
-              fontSize: 50,
-              fontWeight: FontWeight.bold,
-              color: Colors.white, // Ensure text is visible on white
-                        ),
-                      ),
-                    ),
-                  ],
+              child: Text(
+                NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                    .format(_totalBalance),
+                style: GoogleFonts.ibmPlexSans(
+                  fontSize: 38,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
             ),
-            
-            // Spacer to push options down slightly
-            const SizedBox(height: 80),
-            
-            // Floating report options
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                physics: const BouncingScrollPhysics(),
-                children: [
-                  _buildFloatingOption(
-                    icon: Icons.description,
-                    title: "Generate General Report",
-                    onTap: () async {
-                      final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-                      SaveAndOpenDocument.openPdf(paragraphPdf);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  _buildFloatingOption(
-                    icon: Icons.calendar_view_week,
-                    title: "Generate Weekly Report",
-                    onTap: () async {
-                      final paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-                      SaveAndOpenDocument.openPdf(paragraphPdf);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  _buildFloatingOption(
-                    icon: Icons.calendar_today,
-                    title: "Generate Monthly Report",
-                    onTap: () async {
-                      final paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
-                      SaveAndOpenDocument.openPdf(paragraphPdf);
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  _buildFloatingOption(
-                    icon: Icons.share,
-                    title: "Share PDF Link",
-                    onTap: sharePdfLink,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+          // Report options
+          _buildReportCard(
+            context,
+            icon: Icons.description_outlined,
+            title: "General Report",
+            subtitle: "Overview of all your transactions.",
+            color: Color(0xff39baf9),
+            onTap: () async {
+              final paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+              SaveAndOpenDocument.openPdf(paragraphPdf);
+            },
+          ),
+          const SizedBox(height: 18),
+          _buildReportCard(
+            context,
+            icon: Icons.calendar_view_week,
+            title: "Weekly Report",
+            subtitle: "See your weekly spending and income.",
+            color: Color(0xff55e6c1),
+            onTap: () async {
+              final paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+              SaveAndOpenDocument.openPdf(paragraphPdf);
+            },
+          ),
+          const SizedBox(height: 18),
+          _buildReportCard(
+            context,
+            icon: Icons.calendar_today,
+            title: "Monthly Report",
+            subtitle: "Track your monthly financial trends.",
+            color: Color.fromARGB(255, 40, 102, 210),
+            onTap: () async {
+              final paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+              SaveAndOpenDocument.openPdf(paragraphPdf);
+            },
+          ),
+          const SizedBox(height: 18),
+          _buildReportCard(
+            context,
+            icon: Icons.share,
+            title: "Share PDF Link",
+            subtitle: "Copy a shareable link to your report.",
+            color: Color(0xff39baf9),
+            onTap: sharePdfLink,
+          ),
+        ],
       ),
     ),
     floatingActionButton: FloatingActionButton(
@@ -416,38 +449,68 @@ Widget build(BuildContext context) {
   );
 }
 
-Widget _buildFloatingOption({
+Widget _buildReportCard(
+  BuildContext context, {
   required IconData icon,
   required String title,
+  required String subtitle,
+  required Color color,
   required VoidCallback onTap,
 }) {
   return Material(
-    elevation: 2,
-    borderRadius: BorderRadius.circular(20),
+    color: Colors.transparent,
     child: InkWell(
+      borderRadius: BorderRadius.circular(22),
       onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 20),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(15),
+          color: color.withOpacity(0.13),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: color.withOpacity(0.10),
+              blurRadius: 14,
+              offset: Offset(0, 6),
+            ),
+          ],
+          border: Border.all(color: color.withOpacity(0.18), width: 1.2),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 32, color: Colors.blue.shade900),
-            const SizedBox(width: 20),
-            Text(
-              title,
-              style: GoogleFonts.ibmPlexSans(
-                fontSize: 21,
-                fontWeight: FontWeight.w500,
-                color: Colors.black,
+            Container(
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.all(14),
+              child: Icon(icon, color: Colors.white, size: 32),
+            ),
+            const SizedBox(width: 18),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.barlow(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.barlow(
+                      fontSize: 15,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const Spacer(),
-            Icon(Icons.chevron_right, color: Colors.grey.shade400),
+            Icon(Icons.arrow_forward_ios_rounded, color: color, size: 22),
           ],
         ),
       ),
@@ -455,3 +518,4 @@ Widget _buildFloatingOption({
   );
 }
 }
+

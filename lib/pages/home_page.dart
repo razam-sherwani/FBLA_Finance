@@ -1,31 +1,29 @@
 import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fbla_finance/home_page_with_nav.dart';
 import 'package:fbla_finance/pages/chat_screen.dart';
 import 'package:fbla_finance/pages/filter_by_amount.dart';
 import 'package:fbla_finance/pages/filter_by_category.dart';
 import 'package:fbla_finance/pages/filter_by_date.dart';
 import 'package:fbla_finance/pages/filter_by_type.dart';
+import 'package:fbla_finance/pages/reports.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:fbla_finance/backend/read_data/get_user_name.dart';
-import 'package:fbla_finance/pages/academics_page.dart';
-import 'package:fbla_finance/pages/awards_page.dart';
-import 'package:fbla_finance/pages/clubs_page.dart';
-import 'package:fbla_finance/pages/ec_page.dart';
-import 'package:fbla_finance/pages/other_page.dart';
-import 'package:fbla_finance/util/filter_tile.dart';
-import 'package:fbla_finance/home_page_with_nav.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
-import 'package:fbla_finance/util/profile_picture.dart';
-import 'package:fbla_finance/pages/spending_habit.dart';
 
-double public_bal = 0;
+const double kAppBarHeight = 75;
+const Color kAppBarColor = Color(0xFF2A4288);
+const TextStyle kAppBarTextStyle = TextStyle(
+  fontFamily: 'Barlow',
+  fontWeight: FontWeight.bold,
+  fontSize: 28,
+  color: Colors.white,
+);
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -35,471 +33,537 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Map<String, dynamic>> _transactionsList = [];
-  int myIndex = 0;
-  bool _isLoading = true;
-  final User? user = Auth().currentUser;
-  List<Color> colors = [Color(0xffB8E8FF), Colors.blue.shade900];
-  var now = DateTime.now();
-  var formatter = DateFormat.yMMMMd('en_US');
-  String? formattedDate;
-  String docID = "6cHwPquSMMkpue7r6RRN";
+  List<Map<String, dynamic>> _recentTransactions = [];
+  String docID = "";
   double _totalBalance = 0.0;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  DateTime date = DateTime.now();
-  double amt = 0;
-  String? type1;
-  String? categ;
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
-    formattedDate = formatter.format(now);
+    fetchDocIDAndTransactions();
   }
 
-  Future<void> _initializeData() async {
-    await fetchDocID(); // Wait for fetchDocID to complete
-    await _fetchTransactions(); // Call _fetchTransactions after fetchDocID
-  }
-
-  Future<void> fetchDocID() async {
-    setState(() => _isLoading = true);
-
-    try {
-      var user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        var snapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .where('email', isEqualTo: user.email)
-            .get();
-
-        if (snapshot.docs.isNotEmpty) {
-          setState(() {
-            docID = snapshot.docs[0].id;
-          });
-
-          // Only fetch data once docID is valid
-          await _fetchTransactions();
-          await calculateTotalBalance();
-        } else {
-          setState(() {
-            docID = '';
-          });
-        }
+  Future<void> fetchDocIDAndTransactions() async {
+    final user = await Auth().currentUser;
+    if (user != null) {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: user.email)
+          .get();
+      if (snapshot.docs.isNotEmpty) {
+        docID = snapshot.docs.first.id;
+        await fetchRecentTransactions();
+        await fetchTotalBalance();
       }
-    } catch (e) {
-      print('Error in fetchDocID: $e');
-      setState(() {
-        docID = '';
-      });
-    } finally {
-      setState(() => _isLoading = false);
     }
   }
 
-  Future<void> calculateTotalBalance() async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('Transactions')
-          .get();
+  Future<void> fetchRecentTransactions() async {
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .orderBy('date', descending: true)
+        .limit(5)
+        .get();
 
-      double total = 0.0;
-      for (var doc in querySnapshot.docs) {
-        var transaction = {
-          'transactionId': doc.id,
-          'amount': doc['amount'],
-          'type': doc['type'],
-          'category': doc['category'],
-          'date': (doc['date'] as Timestamp).toDate(),
+    setState(() {
+      _recentTransactions = query.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'amount': data['amount'] ?? 0.0,
+          'type': data['type'] ?? 'Unknown',
+          'category': data['category'] ?? 'Uncategorized',
+          'date': (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
         };
-        if (transaction['type'] == 'Income') {
-          total += transaction['amount'];
-        } else {
-          total -= transaction['amount'];
-        }
+      }).toList();
+    });
+  }
+
+  Future<void> fetchTotalBalance() async {
+    double total = 0.0;
+    final query = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(docID)
+        .collection('Transactions')
+        .get();
+    for (var doc in query.docs) {
+      final data = doc.data();
+      if (data['type'] == 'Income') {
+        total += (data['amount'] ?? 0.0);
+      } else {
+        total -= (data['amount'] ?? 0.0);
       }
-      setState(() {
-        _totalBalance = total;
-        public_bal = _totalBalance;
-      });
-    } catch (error) {
-      print("Error fetching transactions: $error");
+    }
+    setState(() {
+      _totalBalance = total;
+    });
+  }
+
+  void _navigateToReportsViaNavBar(BuildContext context) {
+    // Find the nearest ancestor HomePageWithNavState and set the index to 4
+    final navState = context.findAncestorStateOfType<HomePageWithNavState>();
+    if (navState != null) {
+      navState.setSelectedIndex(4);
+    } else {
+      // Fallback: show a message if not found
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to fetch transactions')));
-    }
-  }
-
-  Future<void> _fetchTransactions() async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('users')
-          .doc(docID)
-          .collection('Transactions')
-          .get();
-
-      setState(() {
-        _transactionsList.clear();
-        for (var doc in querySnapshot.docs) {
-          var transaction = {
-            'transactionId': doc.id,
-            'amount': doc['amount'] ?? 0.0,
-            'type': doc['type'] ?? 'Unknown',
-            'category': doc['category'] ?? 'Uncategorized',
-            'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          };
-          _transactionsList.add(transaction);
-        }
-      });
-      // Always update total balance after fetching transactions
-      await calculateTotalBalance();
-    } catch (e) {
-      print("Error fetching transactions: $e");
-    }
-  }
-
-  // Call this after adding a transaction
-  Future<void> addTransaction(Map<String, dynamic> transaction) async {
-    // ...add transaction logic...
-    await _fetchTransactions();
-  }
-
-  // Call this after deleting a transaction
-  Future<void> deleteTransaction(String transactionId) async {
-    // ...delete transaction logic...
-    await _fetchTransactions();
-  }
-
-  Widget _buildTransactionList() {
-    if (_isLoading) {
-  return const Center(child: CircularProgressIndicator());
-} else if (_transactionsList.isEmpty) {
-    return Center(
-      child: Text(
-        'No transactions yet!',
-        style: GoogleFonts.ibmPlexSans(fontSize: 16),
-      ),
-    );
-  }
-
-  return ListView.builder(
-  itemCount: _transactionsList.length > 6 ? 6 : _transactionsList.length,
-  itemBuilder: (context, index) {
-    if (index < 0 || index >= _transactionsList.length) {
-      return const SizedBox(); // Prevent RangeError
-    }
-    return _buildTransactionItem(_transactionsList[index], index);
-  },
-);
-}
-
-
-  Widget _buildTransactionItem(Map<String, dynamic> transaction, int index) {
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.7),
-            colors[0].withOpacity(0.85),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        SnackBar(
+          content: Text('Navigation bar not found.'),
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: colors[1].withOpacity(0.25),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Card(
-        color: Colors.transparent,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: ListTile(
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: colors[1].withOpacity(0.5),
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: Icon(
-                transaction['type'] != 'Income'
-                    ? Icons.arrow_downward
-                    : Icons.arrow_upward,
-                color: colors[1],
-                size: 20,
-              ),
-            ),
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                transaction['category'] ?? 'Uncategorized',
-                style: GoogleFonts.ibmPlexSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              SizedBox(height: 4),
-              Text(
-                "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
-                style: GoogleFonts.ibmPlexSans(
-                  fontSize: 10,
-                  color: Colors.black,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-            ],
-          ),
-          trailing: Container(
-            constraints: BoxConstraints(minWidth: 70),
-            child: Text(
-              NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
-                  .format(transaction['amount'] ?? 0.0),
-              style: GoogleFonts.ibmPlexSans(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: transaction['type'] != 'Income'
-                      ? Colors.red
-                      : Colors.green,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> signOut() async {
-    await Auth().signOut();
-  }
-
-  Widget _userUID() {
-    return Text(
-      user?.email ?? 'User email',
-      style: GoogleFonts.ibmPlexSans(),
-    );
-  }
-
-  Widget _signOutButton() {
-    return ElevatedButton(onPressed: signOut, child: const Text("Sign Out"));
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    const primaryColor = Color(0xFF2A4288);
+    const accentColor = Color(0xff39baf9);
+    const bgColor = Colors.white;
+
     return Scaffold(
+      backgroundColor: kAppBarColor,
+      appBar: AppBar(
+        toolbarHeight: kAppBarHeight,
+        backgroundColor: kAppBarColor,
+        elevation: 0,
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.only(bottom: 15.0),
+          child: Text(
+            "Home",
+            style: kAppBarTextStyle,
+          ),
+        ),
+      ),
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xffB8E8FF),
-              Colors.white,
+        decoration: const BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(50),
+            topRight: Radius.circular(50),
+          ),
+        ),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          children: [
+            _buildWelcomeBanner(),
+            SizedBox(height: 28),
+            _buildTotalBalanceCard(),
+            const SizedBox(height: 28),
+            _buildSectionTitle("Recent Transactions", primaryColor),
+            const SizedBox(height: 10),
+            _buildRecentTransactionsCard(),
+            const SizedBox(height: 28),
+            _buildSectionTitle("Reports", primaryColor),
+            const SizedBox(height: 14),
+            _buildReportShortcut(
+              context,
+              icon: Icons.description_outlined,
+              label: "View Reports",
+              color: accentColor,
+              onTap: () {
+                _navigateToReportsViaNavBar(context);
+              },
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+      },
+      child: const Icon(Icons.chat),
+      backgroundColor: Colors.blue.shade900,
+      foregroundColor: Colors.white,
+    ),
+    );
+  }
+
+  Widget _buildWelcomeBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color.fromRGBO(132, 255, 201, 1),
+            Color.fromRGBO(170, 178, 255, 1),
+            Color.fromRGBO(255, 97, 246, 1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Welcome Back!",
+            style: GoogleFonts.barlow(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Here's a quick overview of your finances.",
+            style: GoogleFonts.barlow(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.95),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTotalBalanceCard() {
+    double totalIncome = 0;
+    double totalExpense = 0;
+    for (var txn in _recentTransactions) {
+      if (txn['type'] == 'Income') {
+        totalIncome += txn['amount'] ?? 0.0;
+      } else {
+        totalExpense += txn['amount'] ?? 0.0;
+      }
+    }
+    double net = totalIncome - totalExpense;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: const Color(0xff39baf9).withOpacity(0.10), width: 1.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Quick Overview", style: GoogleFonts.barlow(fontSize: 17, color: Colors.grey[700], fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text("Total Balance", style: GoogleFonts.barlow(fontSize: 15, color: Colors.grey[600])),
+                    const SizedBox(height: 4),
+                    Text(
+                      NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
+                      style: GoogleFonts.barlow(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                        color: _totalBalance >= 0 ? Colors.green : Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 54,
+                height: 54,
+                decoration: BoxDecoration(
+                  color: const Color(0xff39baf9).withOpacity(0.13),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.account_balance_wallet,
+                  color: const Color(0xff39baf9),
+                  size: 32,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildOverviewStat(
+                icon: Icons.arrow_upward,
+                label: "Income",
+                value: totalIncome,
+                color: Colors.green,
+              ),
+              _buildOverviewStat(
+                icon: Icons.arrow_downward,
+                label: "Expense",
+                value: totalExpense,
+                color: Colors.red,
+              ),
+              _buildOverviewStat(
+                icon: net >= 0 ? Icons.trending_up : Icons.trending_down,
+                label: "Net",
+                value: net,
+                color: net >= 0 ? Colors.green : Colors.red,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverviewStat({required IconData icon, required String label, required double value, required Color color}) {
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.13),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: GoogleFonts.barlow(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          NumberFormat.compactCurrency(symbol: "\$", decimalDigits: 0).format(value),
+          style: GoogleFonts.barlow(fontWeight: FontWeight.bold, color: color, fontSize: 15),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickAction(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap}) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.13),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.10),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
+            border: Border.all(color: color.withOpacity(0.18), width: 1.2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: Icon(icon, color: Colors.white, size: 28),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: GoogleFonts.barlow(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
-        child: StreamBuilder<List<Color>>(
-          stream: docID.isNotEmpty
-              ? GradientService(userId: docID).getGradientStream()
-              : Stream.value([Color(0xffB8E8FF)]),
-          builder: (context, snapshot) {
-            //colors = snapshot.data ?? [Color(0xffB8E8FF)];
-            return Stack(
+      ),
+    );
+  }
+
+  Widget _buildReportShortcut(BuildContext context,
+      {required IconData icon,
+      required String label,
+      required Color color,
+      required VoidCallback onTap}) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.13),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.10),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: color.withOpacity(0.18), width: 1.2),
+          ),
+          child: Row(
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: Icon(icon, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: GoogleFonts.barlow(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded, color: color, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String text, Color color) {
+    return Text(
+      text,
+      style: GoogleFonts.barlow(
+        fontWeight: FontWeight.bold,
+        fontSize: 20,
+        color: color,
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderCard(String message) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Center(
+        child: Text(
+          message,
+          style: GoogleFonts.barlow(
+            fontSize: 16,
+            color: Colors.grey[600],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecentTransactionsCard() {
+    if (_recentTransactions.isEmpty) {
+      return _buildPlaceholderCard("No recent transactions.");
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: _recentTransactions.map((txn) {
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
               children: [
-                // Remove glassmorphic BackdropFilter/background
-                SafeArea(
+                Container(
+                  decoration: BoxDecoration(
+                    color: txn['type'] == 'Income'
+                        ? Colors.green.withOpacity(0.13)
+                        : Colors.red.withOpacity(0.13),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    txn['type'] == 'Income'
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
+                    color: txn['type'] == 'Income' ? Colors.green : Colors.red,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Keep all existing widgets inside this column unchanged
-                      // They will now appear above the blurred background
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                        child: Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Stack(
-                                      children: [
-                                        ProfilePicture(userId: docID),
-                                      ],
-                                    ),
-                                    FutureBuilder<String>(
-                                      future: GetUserName(documentId: docID).getUserName(),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState == ConnectionState.waiting) {
-                                          return const Text('Loading...', style: TextStyle(color: Colors.white));
-                                        } else if (snapshot.hasError) {
-                                          return const Text('Error', style: TextStyle(color: Colors.white));
-                                        } else {
-                                          String userName = snapshot.data ?? 'User';
-                                          return Padding(
-                                            padding: const EdgeInsets.only(top: 10.0),
-                                            child: Row(
-                                              children: [
-                                                Text(
-                                                  "Welcome ",
-                                                  style: GoogleFonts.ibmPlexSans(
-                                                    color: Colors.black,
-                                                    fontSize: 30,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  "$userName!",
-                                                  style: GoogleFonts.ibmPlexSans(
-                                                    color: Colors.black,
-                                                    fontSize: 28,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 25),
-                            Container(
-                              height: 160 * 1.25,
-                              width: 260 * 1.25,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color.fromRGBO(132, 255, 201, 1), // hsla(154, 100%, 76%)
-                                    Color.fromRGBO(170, 178, 255, 1), // hsla(234, 100%, 83%)
-                                    Color.fromRGBO(255, 97, 246, 1),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                              ),
-                              child: Align(
-                                alignment: Alignment.center,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Text(
-                                    NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
-                                    style: GoogleFonts.ibmPlexSans(
-                                      color: Colors.white,
-                                      fontSize: 42,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 30),
-                          ],
+                      Text(
+                        txn['category'] ?? 'Uncategorized',
+                        style: GoogleFonts.barlow(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.black87,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      // Remaining widgets...
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(25),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Colors.white.withOpacity(0.7),
-                                colors[0].withOpacity(0.4),
-                              ],
-                            ),
-                          ),
-                          child: Center(
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Recent Activity',
-                                      style: GoogleFonts.ibmPlexSans(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 20,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: () {
-                                        final homePageState = context.findAncestorStateOfType<HomePageWithNavState>();
-                                        homePageState?.onItemTapped(1);
-                                      },
-                                      child: Text(
-                                        "See More",
-                                        style: GoogleFonts.ibmPlexSans(
-                                          color: colors[1],
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Expanded(
-                                  child: _buildTransactionList(),
-                                ),
-                                SizedBox(height: 20),
-                              ],
-                            ),
-                          ),
+                      Text(
+                        DateFormat('yyyy-MM-dd').format(txn['date']),
+                        style: GoogleFonts.barlow(
+                          fontSize: 13,
+                          color: Colors.grey[700],
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 10),
+                Text(
+                  NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2)
+                      .format(txn['amount']),
+                  style: GoogleFonts.barlow(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: txn['type'] == 'Income' ? Colors.green : Colors.red,
+                  ),
+                ),
               ],
-            );
-          },
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ChatScreen(),
             ),
           );
-        },
-        foregroundColor: colors[1],
-        backgroundColor: colors[0],
-        child: const Icon(Icons.chat),
+        }).toList(),
       ),
     );
   }

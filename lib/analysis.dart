@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:fbla_finance/pages/chat_screen.dart';
 
 class AiAnalysisPage extends StatefulWidget {
   const AiAnalysisPage({Key? key}) : super(key: key);
@@ -737,9 +738,21 @@ $budgetList
                 ],
               ),
             ),
+            
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+      },
+      child: const Icon(Icons.chat),
+      backgroundColor: Colors.blue.shade900,
+      foregroundColor: Colors.white,
+    ),
     );
   }
 }
