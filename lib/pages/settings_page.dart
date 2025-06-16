@@ -144,13 +144,6 @@ class _SettingsPageState extends State<SettingsPage> {
             textAlign: TextAlign.center,
           ),
         ),
-        actions: [
-          if (userId.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 10.0, top: 8),
-              child: ProfilePicture(userId: userId),
-            ),
-        ],
       ),
       body: Column(
         children: [
