@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../pages/message.dart';
+import '../util/profile_picture.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -173,6 +174,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final photoUrl = user?.photoURL;
+    final userId = user?.uid ?? '';
 
     return Scaffold(
       backgroundColor: const Color(0xFF2A4288),
@@ -198,23 +200,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          if (photoUrl != null)
+          if (userId.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(photoUrl),
-                backgroundColor: Colors.white,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: Color(0xFF2A4288)),
-              ),
+              padding: const EdgeInsets.only(right: 10.0, top: 8),
+              child: ProfilePicture(userId: userId),
             ),
         ],
       ),

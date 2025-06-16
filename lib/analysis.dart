@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:fbla_finance/pages/chat_screen.dart';
+import 'package:fbla_finance/util/profile_picture.dart';
 
 class AiAnalysisPage extends StatefulWidget {
   const AiAnalysisPage({Key? key}) : super(key: key);
@@ -564,7 +565,7 @@ $budgetList
     final Color bgColor = Colors.white;
 
     final user = FirebaseAuth.instance.currentUser;
-    final photoUrl = user?.photoURL;
+    final userId = user?.uid ?? '';
 
     return Scaffold(
       backgroundColor: primaryColor,
@@ -587,23 +588,10 @@ $budgetList
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          if (photoUrl != null)
+          if (userId.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(photoUrl),
-                backgroundColor: Colors.white,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: primaryColor),
-              ),
+              padding: const EdgeInsets.only(right: 10.0, top: 8),
+              child: ProfilePicture(userId: userId),
             ),
         ],
       ),
@@ -767,6 +755,18 @@ $budgetList
       ),
       floatingActionButton: FloatingActionButton(
       onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => ChatScreen()),
+        );
+      },
+      child: const Icon(Icons.chat),
+      backgroundColor: Colors.blue.shade900,
+      foregroundColor: Colors.white,
+    ),
+    );
+  }
+}
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => ChatScreen()),

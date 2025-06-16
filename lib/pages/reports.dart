@@ -12,7 +12,7 @@ import 'package:fbla_finance/backend/paragraph_pdf_api.dart';
 import 'package:fbla_finance/backend/read_data/get_user_name.dart';
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
-import 'package:fbla_finance/util/profile_picture.dart';
+import '../util/profile_picture.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -342,7 +342,7 @@ class _ReportsState extends State<Reports> {
 Widget build(BuildContext context) {
   final Color bgColor = Colors.white;
   final user = FirebaseAuth.instance.currentUser;
-  final photoUrl = user?.photoURL;
+  final userId = user?.uid ?? '';
 
   return Scaffold(
     backgroundColor: kAppBarColor,
@@ -359,23 +359,10 @@ Widget build(BuildContext context) {
         ),
       ),
       actions: [
-        if (photoUrl != null)
+        if (userId.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(right: 18.0, top: 8),
-            child: CircleAvatar(
-              radius: 22,
-              backgroundImage: NetworkImage(photoUrl),
-              backgroundColor: Colors.white,
-            ),
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.only(right: 18.0, top: 8),
-            child: CircleAvatar(
-              radius: 22,
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: kAppBarColor),
-            ),
+            padding: const EdgeInsets.only(right: 10.0, top: 8),
+            child: ProfilePicture(userId: userId),
           ),
       ],
     ),
@@ -527,6 +514,19 @@ Widget _buildReportCard(
                     style: GoogleFonts.barlow(
                       fontSize: 15,
                       color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, color: color, size: 22),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+}
                     ),
                   ),
                 ],

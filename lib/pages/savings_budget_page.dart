@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import '../util/profile_picture.dart';
 
 const double kAppBarHeight = 75;
 const Color kAppBarColor = Color(0xFF2A4288);
@@ -523,7 +524,7 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final photoUrl = user?.photoURL;
+    final userId = user?.uid ?? '';
 
     // Always show the white container and appbar, even if loading
     return Scaffold(
@@ -541,23 +542,10 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
           ),
         ),
         actions: [
-          if (photoUrl != null)
+          if (userId.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(photoUrl),
-                backgroundColor: Colors.white,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: kAppBarColor),
-              ),
+              padding: const EdgeInsets.only(right: 10.0, top: 8),
+              child: ProfilePicture(userId: userId),
             ),
         ],
       ),

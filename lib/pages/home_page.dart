@@ -16,6 +16,7 @@ import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../util/profile_picture.dart';
 
 const double kAppBarHeight = 75;
 const Color kAppBarColor = Color(0xFF2A4288);
@@ -123,7 +124,7 @@ class _HomePageState extends State<HomePage> {
     const bgColor = Colors.white;
 
     final user = FirebaseAuth.instance.currentUser;
-    final photoUrl = user?.photoURL;
+    final userId = user?.uid ?? '';
 
     return Scaffold(
       backgroundColor: kAppBarColor,
@@ -140,23 +141,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         actions: [
-          if (photoUrl != null)
+          if (userId.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(bottom: 15),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(photoUrl),
-                backgroundColor: Colors.white,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: kAppBarColor),
-              ),
+              padding: const EdgeInsets.only(right: 10.0, top: 8),
+              child: ProfilePicture(userId: userId),
             ),
         ],
       ),

@@ -17,6 +17,7 @@ import 'package:plaid_flutter/plaid_flutter.dart';
 import '../backend/paragraph_pdf_api.dart';
 import '../backend/save_and_open_pdf.dart';
 import '../util/gradient_service.dart';
+import '../util/profile_picture.dart';
 
 class Transactions extends StatefulWidget {
   const Transactions({super.key});
@@ -1627,7 +1628,7 @@ class _TransactionsPageState extends State<Transactions> {
     final Color bgColor = Colors.white;
 
     final user = FirebaseAuth.instance.currentUser;
-    final photoUrl = user?.photoURL;
+    final userId = user?.uid ?? '';
 
     return Scaffold(
       backgroundColor: primaryColor,
@@ -1651,23 +1652,10 @@ class _TransactionsPageState extends State<Transactions> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          if (photoUrl != null)
+          if (userId.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundImage: NetworkImage(photoUrl),
-                backgroundColor: Colors.white,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 22,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: primaryColor),
-              ),
+              padding: const EdgeInsets.only(right: 10.0, top: 8),
+              child: ProfilePicture(userId: userId),
             ),
         ],
       ),
@@ -1921,6 +1909,18 @@ class _TransactionsPageState extends State<Transactions> {
                     heroTag: 'share',
                     backgroundColor: primaryColor,
                     child: const Icon(Icons.share, color: Colors.white),
+                    onPressed: sharePdfLink,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
                     onPressed: sharePdfLink,
                   ),
                   const SizedBox(width: 10),

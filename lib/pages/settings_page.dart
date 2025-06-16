@@ -10,6 +10,7 @@ import 'package:fbla_finance/util/setting_item.dart';
 import 'package:fbla_finance/util/setting_switch.dart';
 import 'package:fbla_finance/pages/forward_button.dart';
 import 'package:fbla_finance/pages/edit_screen.dart';
+import '../util/profile_picture.dart';
 
 const double kAppBarHeight = 75;
 const Color kAppBarColor = Color(0xFF2A4288);
@@ -125,7 +126,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final photoUrl = user?.photoURL;
+    final userId = user?.uid ?? '';
 
     return Scaffold(
       backgroundColor: kAppBarColor,
@@ -144,23 +145,10 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         actions: [
-          if (photoUrl != null)
+          if (userId.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundImage: NetworkImage(photoUrl),
-                backgroundColor: Colors.white,
-              ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.only(right: 18.0, top: 8),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: kAppBarColor),
-              ),
+              padding: const EdgeInsets.only(right: 10.0, top: 8),
+              child: ProfilePicture(userId: userId),
             ),
         ],
       ),
