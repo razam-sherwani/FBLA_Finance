@@ -1043,6 +1043,86 @@ void _promptUpdateBudget() {
                           ),
                         ),
                         Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text('Expenses By Category',
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(10),
+                          child: RepaintBoundary(
+                            key: _pieChartKey,
+                            child: AspectRatio(
+                              aspectRatio: 2,
+                              child: Row(
+                                children: <Widget>[
+                                  Expanded(
+                                    child: AspectRatio(
+                                      aspectRatio: 1,
+                                      child: PieChart(
+                                        PieChartData(
+                                          pieTouchData: PieTouchData(
+                                            touchCallback: (FlTouchEvent event,
+                                                pieTouchResponse) {
+                                              setState(() {
+                                                if (!event
+                                                        .isInterestedForInteractions ||
+                                                    pieTouchResponse == null ||
+                                                    pieTouchResponse.touchedSection ==
+                                                        null) {
+                                                  touchedIndex = -1;
+                                                  return;
+                                                }
+                                                touchedIndex = pieTouchResponse
+                                                    .touchedSection!
+                                                    .touchedSectionIndex;
+                                              });
+                                            },
+                                          ),
+                                          borderData: FlBorderData(
+                                            show: false,
+                                          ),
+                                          sectionsSpace: 0,
+                                          centerSpaceRadius: 40,
+                                          sections: showingSections(),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: SingleChildScrollView(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: List.generate(
+                                            _categoryTotals.keys.length, (index) {
+                                          final category =
+                                              _categoryTotals.keys.elementAt(index);
+                                          final color =
+                                              pieColors[index % pieColors.length];
+              
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 2.0),
+                                            child: Indicator(
+                                              color: color,
+                                              text: category,
+                                              isSquare: true,
+                                            ),
+                                          );
+                                        }),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    width: 28,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(
                           padding: const EdgeInsets.only(top: 24),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -1429,86 +1509,7 @@ void _promptUpdateBudget() {
                         ),
                         // PIE CHART
                         SizedBox(height: 24),
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text('Expenses By Category',
-                              style: TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.bold)),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: RepaintBoundary(
-                            key: _pieChartKey,
-                            child: AspectRatio(
-                              aspectRatio: 2,
-                              child: Row(
-                                children: <Widget>[
-                                  Expanded(
-                                    child: AspectRatio(
-                                      aspectRatio: 1,
-                                      child: PieChart(
-                                        PieChartData(
-                                          pieTouchData: PieTouchData(
-                                            touchCallback: (FlTouchEvent event,
-                                                pieTouchResponse) {
-                                              setState(() {
-                                                if (!event
-                                                        .isInterestedForInteractions ||
-                                                    pieTouchResponse == null ||
-                                                    pieTouchResponse.touchedSection ==
-                                                        null) {
-                                                  touchedIndex = -1;
-                                                  return;
-                                                }
-                                                touchedIndex = pieTouchResponse
-                                                    .touchedSection!
-                                                    .touchedSectionIndex;
-                                              });
-                                            },
-                                          ),
-                                          borderData: FlBorderData(
-                                            show: false,
-                                          ),
-                                          sectionsSpace: 0,
-                                          centerSpaceRadius: 40,
-                                          sections: showingSections(),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: SingleChildScrollView(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: List.generate(
-                                            _categoryTotals.keys.length, (index) {
-                                          final category =
-                                              _categoryTotals.keys.elementAt(index);
-                                          final color =
-                                              pieColors[index % pieColors.length];
-              
-                                          return Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                vertical: 2.0),
-                                            child: Indicator(
-                                              color: color,
-                                              text: category,
-                                              isSquare: true,
-                                            ),
-                                          );
-                                        }),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    width: 28,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                        
                         SizedBox(height: 75)
                       ],
                     ),
