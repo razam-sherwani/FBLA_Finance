@@ -1739,15 +1739,3 @@ void _promptUpdateBudget() {
     );
   }
 }
-            height: 8,
-            margin: const EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}

@@ -527,17 +527,4 @@ Widget _buildReportCard(
   );
 }
 }
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios_rounded, color: color, size: 22),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-}
 

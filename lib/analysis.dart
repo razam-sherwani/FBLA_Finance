@@ -767,15 +767,3 @@ $budgetList
     );
   }
 }
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ChatScreen()),
-        );
-      },
-      child: const Icon(Icons.chat),
-      backgroundColor: Colors.blue.shade900,
-      foregroundColor: Colors.white,
-    ),
-    );
-  }
-}

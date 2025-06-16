@@ -1921,15 +1921,3 @@ class _TransactionsPageState extends State<Transactions> {
     );
   }
 }
-                    onPressed: sharePdfLink,
-                  ),
-                  const SizedBox(width: 10),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
