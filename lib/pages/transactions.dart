@@ -782,76 +782,240 @@ class _TransactionsPageState extends State<Transactions> {
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(builder: (context, setState) {
-          return AlertDialog(
-            title: Text('Select Transactions to Import'),
-            content: SizedBox(
-              width: double.maxFinite,
-              height: 400,
-              child: ListView.builder(
-                itemCount: _plaidTransactions.length,
-                itemBuilder: (context, index) {
-                  final txn = _plaidTransactions[index];
-                  final selected = selectedIndexes.contains(index);
-                  return ListTile(
-                    tileColor: selected ? Colors.blue[50] : null,
-                    title: Text(txn['name']),
-                    subtitle: Text(
-                        "Amount: \$${txn['amount']} | Date: ${DateFormat('yyyy-MM-dd').format(txn['date'])}"),
-                    trailing: Checkbox(
-                      value: selected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            selectedIndexes.add(index);
-                          } else {
-                            selectedIndexes.remove(index);
-                          }
-                        });
-                      },
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+            child: Container(
+              // Increased height for the popup
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.82,
+                minWidth: 320,
+                maxWidth: 500,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.13),
+                    blurRadius: 28,
+                    offset: Offset(0, 12),
+                    spreadRadius: 2,
+                  ),
+                  BoxShadow(
+                    color: Colors.blueAccent.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.only(top: 28, left: 28, right: 28, bottom: 12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.account_balance, color: Color(0xFF2A4288), size: 28),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Import Bank Transactions',
+                            style: GoogleFonts.ibmPlexSans(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 22,
+                              color: Color(0xFF2A4288),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    onTap: () {
-                      setState(() {
-                        if (selected) {
-                          selectedIndexes.remove(index);
-                        } else {
-                          selectedIndexes.add(index);
-                        }
-                      });
-                    },
-                  );
-                },
+                  ),
+                  Divider(height: 1, color: Colors.grey[300]),
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.55,
+                    child: _plaidTransactions.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Text(
+                                "No transactions found.",
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                            itemCount: _plaidTransactions.length,
+                            separatorBuilder: (_, __) => SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final txn = _plaidTransactions[index];
+                              final selected = selectedIndexes.contains(index);
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (selected) {
+                                      selectedIndexes.remove(index);
+                                    } else {
+                                      selectedIndexes.add(index);
+                                    }
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: Duration(milliseconds: 180),
+                                  curve: Curves.easeInOut,
+                                  decoration: BoxDecoration(
+                                    color: selected ? Color(0xffB8E8FF) : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: selected ? Color(0xFF2A4288) : Colors.grey[200]!,
+                                      width: selected ? 2 : 1,
+                                    ),
+                                    boxShadow: [
+                                      if (selected)
+                                        BoxShadow(
+                                          color: Color(0xFF2A4288).withOpacity(0.10),
+                                          blurRadius: 10,
+                                          offset: Offset(0, 4),
+                                        ),
+                                    ],
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                    child: Row(
+                                      children: [
+                                        Checkbox(
+                                          value: selected,
+                                          onChanged: (val) {
+                                            setState(() {
+                                              if (val == true) {
+                                                selectedIndexes.add(index);
+                                              } else {
+                                                selectedIndexes.remove(index);
+                                              }
+                                            });
+                                          },
+                                          activeColor: Color(0xFF2A4288),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                        ),
+                                        SizedBox(width: 6),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                txn['name'],
+                                                style: GoogleFonts.ibmPlexSans(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 16,
+                                                  color: Colors.black87,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              SizedBox(height: 2),
+                                              Text(
+                                                "Date: ${DateFormat('yyyy-MM-dd').format(txn['date'])}",
+                                                style: GoogleFonts.ibmPlexSans(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          "\$${txn['amount'].toStringAsFixed(2)}",
+                                          style: GoogleFonts.ibmPlexSans(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  Divider(height: 1, color: Colors.grey[300]),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Color(0xFF2A4288), width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              "Cancel",
+                              style: TextStyle(
+                                color: Color(0xFF2A4288),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: selectedIndexes.isEmpty
+                                ? null
+                                : () {
+                                    final selectedTxns = selectedIndexes
+                                        .map((i) => _plaidTransactions[i])
+                                        .toList();
+
+                                    for (var txn in selectedTxns) {
+                                      if (!_isDuplicateTransaction(txn)) {
+                                        _addTransaction(
+                                          (txn['amount'] as num).toDouble(),
+                                          'Expense',
+                                          txn['name'],
+                                          txn['date'],
+                                        );
+                                      } else {
+                                        print(
+                                            "🔁 Skipping duplicate: ${txn['name']} on ${txn['date']}");
+                                      }
+                                    }
+
+                                    Navigator.pop(context);
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF2A4288),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              "Import Selected",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            actions: [
-              TextButton(
-                child: Text('Cancel'),
-                onPressed: () => Navigator.pop(context),
-              ),
-              ElevatedButton(
-                child: Text('Import Selected'),
-                onPressed: () {
-                  final selectedTxns = selectedIndexes
-                      .map((i) => _plaidTransactions[i])
-                      .toList();
-
-                  for (var txn in selectedTxns) {
-                    if (!_isDuplicateTransaction(txn)) {
-                      _addTransaction(
-                        (txn['amount'] as num).toDouble(),
-                        'Expense',
-                        txn['name'],
-                        txn['date'],
-                      );
-                    } else {
-                      print(
-                          "🔁 Skipping duplicate: ${txn['name']} on ${txn['date']}");
-                    }
-                  }
-
-                  Navigator.pop(context);
-                },
-              ),
-            ],
           );
         });
       },

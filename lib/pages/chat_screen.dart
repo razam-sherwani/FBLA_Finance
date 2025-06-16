@@ -4,6 +4,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../pages/message.dart';
 import '../util/profile_picture.dart';
 
@@ -17,9 +18,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
-  final List<Message> msgs = [
-    Message(false, "Hi! I'm Fineas, your financial assistant. Ask me anything about budgeting, saving, or investing.")
-  ];
+  final List<Message> msgs = [];
   bool isTyping = false;
 
   final List<String> suggestedQuestions = [
@@ -28,6 +27,65 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     "How do I create a budget?",
     "Tips for managing student loans?",
   ];
+
+  Map<String, dynamic>? userProfile;
+  List<Map<String, dynamic>> transactions = [];
+  Map<String, dynamic> budgets = {};
+  List<Map<String, dynamic>> savingsGoals = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchUserData();
+  }
+
+  Future<void> _fetchUserData() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final firestore = FirebaseFirestore.instance;
+
+    // Get user profile
+    final userSnap = await firestore.collection('users').where('email', isEqualTo: user.email).get();
+    String? firebaseName;
+    if (userSnap.docs.isNotEmpty) {
+      userProfile = userSnap.docs.first.data();
+      // Use 'first_name' from Firestore
+      if (userProfile != null && userProfile!['first_name'] != null && (userProfile!['first_name'] as String).trim().isNotEmpty) {
+        firebaseName = userProfile!['first_name'];
+      }
+    }
+    // fallback to FirebaseAuth displayName if available
+    if (firebaseName == null || firebaseName.trim().isEmpty) {
+      if (user.displayName != null && user.displayName!.trim().isNotEmpty) {
+        firebaseName = user.displayName;
+      }
+    }
+    // Set the initial greeting message with the user's name
+    setState(() {
+      msgs.clear();
+      msgs.add(
+        Message(false, "Hi${firebaseName != null ? " $firebaseName" : ""}! I'm Fineas, your financial assistant. Ask me anything about budgeting, saving, or investing.")
+      );
+    });
+
+    // Get transactions
+    final docId = userSnap.docs.isNotEmpty ? userSnap.docs.first.id : null;
+    if (docId != null) {
+      final txnSnap = await firestore.collection('users').doc(docId).collection('Transactions').get();
+      transactions = txnSnap.docs.map((doc) => doc.data()).toList();
+
+      // Get budgets
+      final budgetsSnap = await firestore.collection('users').doc(docId).collection('Budgets').doc('budgets').get();
+      if (budgetsSnap.exists) {
+        budgets = budgetsSnap.data()?['categories'] ?? {};
+      }
+
+      // Get savings goals
+      final goalsSnap = await firestore.collection('users').doc(docId).collection('SavingsGoals').get();
+      savingsGoals = goalsSnap.docs.map((doc) => doc.data()).toList();
+    }
+    setState(() {});
+  }
 
   void sendMsg([String? prefilledText]) async {
     String text = prefilledText ?? controller.text.trim();
@@ -42,6 +100,46 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     scrollController.animateTo(0.0,
         duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
 
+    // Prepare user context for the assistant
+    String userContext = "";
+    String? firebaseName;
+    // Try to get the user's name from Firestore profile if available
+    if (userProfile != null && userProfile!['first_name'] != null && (userProfile!['first_name'] as String).trim().isNotEmpty) {
+      firebaseName = userProfile!['first_name'];
+    } else {
+      // fallback to FirebaseAuth displayName if available
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null && user.displayName != null && user.displayName!.trim().isNotEmpty) {
+        firebaseName = user.displayName;
+      }
+    }
+    if (firebaseName != null && firebaseName.trim().isNotEmpty) {
+      userContext += "User name: $firebaseName.\n";
+    }
+    if (transactions.isNotEmpty) {
+      userContext += "Recent transactions: ";
+      for (var txn in transactions.take(10)) {
+        userContext +=
+            "${txn['type'] ?? ''} - ${txn['category'] ?? ''} - \$${txn['amount'] ?? ''}; ";
+      }
+      userContext += "\n";
+    }
+    if (budgets.isNotEmpty) {
+      userContext += "Budgets: ";
+      budgets.forEach((cat, amt) {
+        userContext += "$cat: \$${amt.toStringAsFixed(2)}; ";
+      });
+      userContext += "\n";
+    }
+    if (savingsGoals.isNotEmpty) {
+      userContext += "Savings goals: ";
+      for (var goal in savingsGoals) {
+        userContext +=
+            "${goal['name'] ?? ''} (target: \$${goal['target'] ?? ''}, saved: \$${goal['saved'] ?? ''}); ";
+      }
+      userContext += "\n";
+    }
+
     try {
       final response = await http.post(
         Uri.parse("https://api.openai.com/v1/chat/completions"),
@@ -55,7 +153,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             {
               "role": "system",
               "content":
-                  "You are Fineas, a financial assistant. Provide financial advice, investment tips, and budgeting help. Make your responses short and concise being as helpful as possible in around 50 to 100 words."
+                  "You are Fineas, a financial assistant. You have access to the user's profile and financial data. Here is the user's context:\n$userContext\nProvide financial advice, investment tips, and budgeting help. Make your responses short and concise being as helpful as possible in around 50 to 100 words. Do not add any special formatting to the response."
             },
             {"role": "user", "content": text}
           ]

@@ -64,11 +64,11 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
         "You are a financial assistant. Given this list of budget categories: ${budgetCategories.join(", ")} and a transaction called \"$transactionName\", which category does it belong to? Only respond with ONE category from the list. If none fit, respond with 'Other'.";
 
     final body = jsonEncode({
-      "model": "gpt-3.5-turbo",
+      "model": "gpt-3.5-turbo", // You might consider 'gpt-4' or 'gpt-4o' for better reasoning
       "messages": [
         {"role": "user", "content": prompt}
       ],
-      "max_tokens": 8,
+      "max_tokens": 8, // Keep this small as we expect a single word response
       "temperature": 0
     });
 
@@ -85,17 +85,111 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
       if (resp.statusCode == 200) {
         final decoded = jsonDecode(resp.body);
         final response = decoded["choices"][0]["message"]["content"].trim().replaceAll('\n', '');
-        aiCategoryCache[cacheKey] = response;
-        return response;
+        // Ensure the response is one of the valid categories or "Other"
+        if (budgetCategories.contains(response) || response == "Other") {
+          aiCategoryCache[cacheKey] = response;
+          return response;
+        } else {
+          // If AI hallucinates a category not in the list, default to "Other"
+          aiCategoryCache[cacheKey] = "Other";
+          return "Other";
+        }
       } else {
+        print("Error from OpenAI API (getAICategory): ${resp.statusCode} - ${resp.body}");
         aiCategoryCache[cacheKey] = "Other";
         return "Other";
       }
-    } catch (_) {
+    } catch (e) {
+      print("Exception in getAICategory: $e");
       aiCategoryCache[cacheKey] = "Other";
       return "Other";
     }
   }
+
+  // New function to get AI to suggest categories and budget values
+  Future<Map<String, double>> getAIBudgetSuggestions(double income, List<Map<String, dynamic>> expenseTransactions) async {
+    if (expenseTransactions.isEmpty) return {};
+
+    final url = Uri.parse("https://api.openai.com/v1/chat/completions");
+
+    // Prepare a list of transaction names and amounts for the AI
+    final transactionDescriptions = expenseTransactions.map((txn) =>
+        "Transaction: \"${txn['category']}\", Amount: \$${(txn['amount'] as num).toDouble().toStringAsFixed(2)}"
+    ).join("\n");
+
+    final prompt = """
+    You are a financial planning AI.
+    Given a total monthly income of \$${income.toStringAsFixed(2)} and the following list of expense transactions:
+
+    $transactionDescriptions
+
+    Your task is to:
+    1.  **Identify broad, common budget categories dont arent too specific or too random** that these transactions naturally fall into.
+    2.  For each identified category, **suggest a reasonable monthly budget amount** based on the transactions and the total income and based on common budgeting rules.
+    3.  Ensure the sum of all suggested budget amounts does not significantly exceed the total income, considering typical savings (e.g., aim for a total budget of around 70-90% of income, leaving room for savings/discretionary).
+    4.  If a category doesn't explicitly appear but is common (e.g., "Savings"), you can include it with a suggested budget.
+    5.  Respond ONLY with a JSON object. The keys should be the category names (strings), and the values should be the suggested budget amounts (numbers/doubles). Do not include any other text or explanation.
+
+    Example desired output format:
+    {
+      "Housing": 1500.00,
+      "Food": 600.00,
+      "Transportation": 300.00,
+      "Utilities": 200.00,
+      "Entertainment": 400.00,
+      "Savings": 500.00,
+      "Other": 100.00
+    }
+    """;
+
+    final body = jsonEncode({
+      "model": "gpt-4o", // Use a more capable model for better reasoning and JSON output
+      "messages": [
+        {"role": "user", "content": prompt}
+      ],
+      "max_tokens": 1000, // Allow enough tokens for the JSON response
+      "temperature": 0.2, // A bit of creativity can help with category naming, but keep it low for structure
+      "response_format": {"type": "json_object"} // Explicitly request JSON
+    });
+
+    try {
+      final resp = await http.post(
+        url,
+        headers: {
+          "Authorization": "Bearer $gptApiKey",
+          "Content-Type": "application/json"
+        },
+        body: body,
+      );
+
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body);
+        final String jsonString = decoded["choices"][0]["message"]["content"].trim();
+        print("AI Budget Suggestion Raw Response: $jsonString");
+
+        try {
+          final Map<String, dynamic> aiResponse = jsonDecode(jsonString);
+          Map<String, double> suggestedBudgets = {};
+          aiResponse.forEach((key, value) {
+            if (value is num) {
+              suggestedBudgets[key] = value.toDouble();
+            }
+          });
+          return suggestedBudgets;
+        } catch (e) {
+          print("Failed to parse AI budget suggestion JSON: $e");
+          return {}; // Return empty if parsing fails
+        }
+      } else {
+        print("Error from OpenAI API (getAIBudgetSuggestions): ${resp.statusCode} - ${resp.body}");
+        return {}; // Return empty on API error
+      }
+    } catch (e) {
+      print("Exception in getAIBudgetSuggestions: $e");
+      return {}; // Return empty on network/other error
+    }
+  }
+
 
   Future<void> _fetchDocIDAndData() async {
     if (user == null) return;
@@ -107,49 +201,64 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
     final txnSnap = await _firestore.collection('users').doc(docID).collection('Transactions').get();
 
     double income = 0.0;
-    Map<String, double> spent = {};
-    List<Map<String, dynamic>> allTxns = [];
+    List<Map<String, dynamic>> allExpenseTxns = []; // Only expenses for AI budget suggestions
 
     for (var doc in txnSnap.docs) {
       final data = doc.data();
       final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
       final type = data['type'];
-      final cat = data['category'];
-      if (type == 'Income') income += amt;
-      if (type == 'Expense' && cat != null) {
-        allTxns.add({...data, 'id': doc.id});
+      if (type == 'Income') {
+        income += amt;
+      } else if (type == 'Expense') {
+        allExpenseTxns.add({...data, 'id': doc.id});
       }
     }
-    totalIncome = income > 0 ? income : 5000.0;
+    totalIncome = income > 0 ? income : 5000.0; // Default income if none recorded
 
-    final broadCategories = ["Housing", "Food", "Transportation", "Utilities", "Lifestyle", "Other"];
+    // --- AI generates broad categories and budget suggestions ---
+    final Map<String, double> aiSuggestedBudgets = await getAIBudgetSuggestions(totalIncome, allExpenseTxns);
+    if (aiSuggestedBudgets.isEmpty) {
+        // Fallback to default categories if AI fails to suggest any
+        print("AI failed to suggest budgets. Falling back to default.");
+        budgets = {
+            "Housing": totalIncome * 0.30,
+            "Food": totalIncome * 0.15,
+            "Transportation": totalIncome * 0.10,
+            "Entertainment": totalIncome * 0.10,
+            "Utilities": totalIncome * 0.05,
+            "Health": totalIncome * 0.05,
+            "Other": totalIncome * 0.25,
+        };
+    } else {
+        budgets = aiSuggestedBudgets;
+    }
+    // -------------------------------------------------------------
+
+    // Get the list of categories identified by the AI (or fallback)
+    final List<String> currentBudgetCategories = budgets.keys.toList();
+
     Map<String, List<Map<String, dynamic>>> categorized = {};
     Map<String, double> allocated = {};
 
-    for (var txn in allTxns) {
-      final name = txn['category'];
+    for (var txn in allExpenseTxns) { // Iterate through expenses to categorize them
+      final name = txn['category']; // This is the detailed transaction description
       final amount = (txn['amount'] as num).toDouble();
-      final category = await getAICategory(name, broadCategories);
+      final category = await getAICategory(name, currentBudgetCategories); // Use AI-generated categories
       categorized.putIfAbsent(category, () => []).add(txn);
       allocated[category] = (allocated[category] ?? 0) + amount;
     }
 
-    Map<String, double> ruleBasedBudgets = {
-      "Housing": totalIncome * 0.30,
-      "Food": totalIncome * 0.15,
-      "Transportation": totalIncome * 0.10,
-      "Entertainment": totalIncome * 0.10,
-      "Utilities": totalIncome * 0.05,
-      "Health": totalIncome * 0.05,
-      "Other": totalIncome * 0.25,
-    };
-
+    // --- Update Firestore with both budgets and spent balances ---
     await _firestore
         .collection('users')
         .doc(docID)
         .collection('Budgets')
         .doc('budgets')
-        .set({'categories': ruleBasedBudgets});
+        .set({
+          'categories': budgets, // Now using AI-suggested budgets
+          'spent': allocated, // Save spent per category for balance tracking
+        }, SetOptions(merge: true));
+    // ------------------------------------------------------------
 
     final goalsSnap = await _firestore.collection('users').doc(docID).collection('SavingsGoals').get();
     List<Map<String, dynamic>> loadedGoals = goalsSnap.docs.map((doc) {
@@ -162,13 +271,15 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
       };
     }).toList();
 
-    setState(() {
-      budgets = ruleBasedBudgets;
-      spentPerCategory = allocated;
-      categories = budgets.keys.toList();
-      savingsGoals = loadedGoals;
-      transactionsByAICategory = categorized;
-    });
+    if (mounted) {
+      setState(() {
+        budgets = budgets; // The AI-generated budgets
+        spentPerCategory = allocated;
+        categories = budgets.keys.toList(); // Categories are now from AI-generated budgets
+        savingsGoals = loadedGoals;
+        transactionsByAICategory = categorized;
+      });
+    }
   }
 
   void _showErrorMessage(String message) {
@@ -496,17 +607,17 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
     );
   }
 
-  void _deleteBudget(String category) {
+  void _deleteBudget(String category) async {
     budgets.remove(category);
     categories.remove(category);
-    _firestore
+    await _firestore
         .collection('users')
         .doc(docID)
         .collection('Budgets')
         .doc('budgets')
         .set({'categories': budgets}, SetOptions(merge: true));
     setState(() {});
-    _fetchDocIDAndData();
+    await _fetchDocIDAndData();
     _showSuccessMessage("Budget for '$category' deleted.");
   }
 
@@ -519,6 +630,21 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
         .delete();
     await _fetchDocIDAndData();
     _showSuccessMessage("Savings goal deleted.");
+  }
+
+  String _formatDate(dynamic date) {
+    if (date is DateTime) {
+      return "${_monthAbbr(date.month)} ${date.day}, ${date.year}";
+    }
+    return date.toString();
+  }
+
+  String _monthAbbr(int month) {
+    const months = [
+      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ];
+    return months[(month - 1).clamp(0, 11)];
   }
 
   @override
@@ -898,21 +1024,6 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
         ),
       ],
     );
-  }
-
-  String _formatDate(dynamic date) {
-    if (date is DateTime) {
-      return "${_monthAbbr(date.month)} ${date.day}, ${date.year}";
-    }
-    return date.toString();
-  }
-
-  String _monthAbbr(int month) {
-    const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    ];
-    return months[(month - 1).clamp(0, 11)];
   }
 
   Widget _buildSavingsGoalsSection(BuildContext context, Color darkText, Color mediumText) {
