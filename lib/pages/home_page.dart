@@ -15,6 +15,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:fbla_finance/util/gradient_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const double kAppBarHeight = 75;
 const Color kAppBarColor = Color(0xFF2A4288);
@@ -121,6 +122,9 @@ class _HomePageState extends State<HomePage> {
     const accentColor = Color(0xff39baf9);
     const bgColor = Colors.white;
 
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+
     return Scaffold(
       backgroundColor: kAppBarColor,
       appBar: AppBar(
@@ -135,6 +139,26 @@ class _HomePageState extends State<HomePage> {
             style: kAppBarTextStyle,
           ),
         ),
+        actions: [
+          if (photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 15),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(photoUrl),
+                backgroundColor: Colors.white,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: kAppBarColor),
+              ),
+            ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -170,16 +194,16 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => ChatScreen()),
-        );
-      },
-      child: const Icon(Icons.chat),
-      backgroundColor: Colors.blue.shade900,
-      foregroundColor: Colors.white,
-    ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ChatScreen()),
+          );
+        },
+        child: const Icon(Icons.chat),
+        backgroundColor: Colors.blue.shade900,
+        foregroundColor: Colors.white,
+      ),
     );
   }
 

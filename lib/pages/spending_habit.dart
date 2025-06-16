@@ -814,6 +814,9 @@ void _promptUpdateBudget() {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+
     return Scaffold(
       backgroundColor: const Color(0xFF2A4288),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
@@ -844,8 +847,27 @@ void _promptUpdateBudget() {
         ),
         centerTitle: true,
         backgroundColor: const Color(0xFF2A4288),
+        actions: [
+          if (photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(photoUrl),
+                backgroundColor: Colors.white,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: Color(0xFF2A4288)),
+              ),
+            ),
+        ],
       ),
-      
       body: StreamBuilder<List<Color>>(
         stream: docID.isNotEmpty
             ? GradientService(userId: docID).getGradientStream()

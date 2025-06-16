@@ -124,6 +124,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+
     return Scaffold(
       backgroundColor: kAppBarColor,
       appBar: AppBar(
@@ -140,6 +143,26 @@ class _SettingsPageState extends State<SettingsPage> {
             textAlign: TextAlign.center,
           ),
         ),
+        actions: [
+          if (photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundImage: NetworkImage(photoUrl),
+                backgroundColor: Colors.white,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: kAppBarColor),
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [

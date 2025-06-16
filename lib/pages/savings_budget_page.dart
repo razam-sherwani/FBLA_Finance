@@ -522,10 +522,8 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryThemeBlue = kAppBarColor;
-    final Color bgColor = Colors.white;
-    final Color darkText = Colors.blueGrey[900]!;
-    final Color mediumText = Colors.blueGrey[600]!;
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
 
     // Always show the white container and appbar, even if loading
     return Scaffold(
@@ -542,10 +540,30 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
             style: kAppBarTextStyle,
           ),
         ),
+        actions: [
+          if (photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(photoUrl),
+                backgroundColor: Colors.white,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: kAppBarColor),
+              ),
+            ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: bgColor,
+          color: Colors.white,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(50),
             topRight: Radius.circular(50),
@@ -567,7 +585,7 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                           Expanded(
                             child: TextButton(
                               style: TextButton.styleFrom(
-                                foregroundColor: showBudgets ? kAppBarColor : mediumText,
+                                foregroundColor: showBudgets ? kAppBarColor : Colors.blueGrey[600],
                                 backgroundColor: showBudgets ? Colors.white : Colors.transparent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
@@ -579,7 +597,7 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
-                                  color: showBudgets ? kAppBarColor : mediumText,
+                                  color: showBudgets ? kAppBarColor : Colors.blueGrey[600],
                                 ),
                               ),
                             ),
@@ -587,7 +605,7 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                           Expanded(
                             child: TextButton(
                               style: TextButton.styleFrom(
-                                foregroundColor: !showBudgets ? kAppBarColor : mediumText,
+                                foregroundColor: !showBudgets ? kAppBarColor : Colors.blueGrey[600],
                                 backgroundColor: !showBudgets ? Colors.white : Colors.transparent,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
@@ -599,7 +617,7 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
-                                  color: !showBudgets ? kAppBarColor : mediumText,
+                                  color: !showBudgets ? kAppBarColor : Colors.blueGrey[600],
                                 ),
                               ),
                             ),
@@ -610,8 +628,8 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                     const SizedBox(height: 18),
                     Expanded(
                       child: showBudgets
-                          ? _buildBudgetsSection(context, darkText, mediumText)
-                          : _buildSavingsGoalsSection(context, darkText, mediumText),
+                          ? _buildBudgetsSection(context, Colors.blueGrey[900]!, Colors.blueGrey[600]!)
+                          : _buildSavingsGoalsSection(context, Colors.blueGrey[900]!, Colors.blueGrey[600]!),
                     ),
                   ],
                 ),
@@ -657,159 +675,213 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                     final txns = transactionsByAICategory[category] ?? [];
                     final isExpanded = _expandedDropdowns[category] ?? false;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: Column(
-                        children: [
-                          InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              setState(() {
-                                _expandedDropdowns[category] = !(isExpanded);
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.category, color: kAppBarColor, size: 28),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      category,
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: darkText,
+                    return Dismissible(
+                      key: Key(category),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade200,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: const Icon(Icons.delete_forever, color: Colors.white, size: 30),
+                      ),
+                      confirmDismiss: (direction) async {
+                        return await showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                              title: const Text("Confirm Delete", style: TextStyle(fontWeight: FontWeight.bold)),
+                              content: Text("Are you sure you want to delete the budget for '$category'?"),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(false),
+                                  child: Text("Cancel", style: TextStyle(color: mediumText)),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.red.shade200,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  onPressed: () => Navigator.of(context).pop(true),
+                                  child: const Text("Delete"),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      onDismissed: (_) async {
+                        budgets.remove(category);
+                        categories.remove(category);
+                        await _firestore
+                            .collection('users')
+                            .doc(docID)
+                            .collection('Budgets')
+                            .doc('budgets')
+                            .set({'categories': budgets}, SetOptions(merge: true));
+                        setState(() {});
+                        await _fetchDocIDAndData();
+                        _showSuccessMessage("Budget for '$category' deleted.");
+                      },
+                      child: Card(
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: Column(
+                          children: [
+                            InkWell(
+                              borderRadius: BorderRadius.circular(12),
+                              onTap: () {
+                                setState(() {
+                                  _expandedDropdowns[category] = !(isExpanded);
+                                });
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.category, color: kAppBarColor, size: 28),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        category,
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: darkText,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(Icons.edit, size: 22, color: mediumText),
-                                    onPressed: () => _editBudgetAmount(category),
-                                    tooltip: "Edit budget",
-                                  ),
-                                  Icon(
-                                    isExpanded ? Icons.expand_less : Icons.expand_more,
-                                    color: mediumText,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                            child: Column(
-                              children: [
-                                LinearProgressIndicator(
-                                  value: percent,
-                                  minHeight: 12,
-                                  backgroundColor: Colors.grey[300],
-                                  color: _progressColor(percent),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "Budget: \$${budget.toStringAsFixed(2)}",
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: mediumText),
+                                    IconButton(
+                                      icon: Icon(Icons.edit, size: 22, color: mediumText),
+                                      onPressed: () => _editBudgetAmount(category),
+                                      tooltip: "Edit budget",
                                     ),
-                                    Text(
-                                      "Spent: \$${spent.toStringAsFixed(2)}",
-                                      style: TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w600,
-                                          color: mediumText),
+                                    Icon(
+                                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                                      color: mediumText,
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 5),
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    "Remaining: \$${(budget - spent).toStringAsFixed(2)}",
-                                    style: TextStyle(
-                                        fontSize: 14,
-                                        color: (budget - spent) < 0 ? Colors.red : Colors.green,
-                                        fontWeight: FontWeight.w500),
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                              ],
+                              ),
                             ),
-                          ),
-                          if (isExpanded)
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                              child: txns.isNotEmpty
-                                  ? Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          "Transactions:",
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            color: darkText,
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Column(
+                                children: [
+                                  LinearProgressIndicator(
+                                    value: percent,
+                                    minHeight: 12,
+                                    backgroundColor: Colors.grey[300],
+                                    color: _progressColor(percent),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        "Budget: \$${budget.toStringAsFixed(2)}",
+                                        style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: mediumText),
+                                      ),
+                                      Text(
+                                        "Spent: \$${spent.toStringAsFixed(2)}",
+                                        style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: mediumText),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      "Remaining: \$${(budget - spent).toStringAsFixed(2)}",
+                                      style: TextStyle(
+                                          fontSize: 14,
+                                          color: (budget - spent) < 0 ? Colors.red : Colors.green,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                ],
+                              ),
+                            ),
+                            if (isExpanded)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                                child: txns.isNotEmpty
+                                    ? Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            "Transactions:",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                              color: darkText,
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        ...txns.map((txn) => ListTile(
-                                              contentPadding: EdgeInsets.zero,
-                                              leading: Icon(
-                                                txn['type'] == 'Income'
-                                                    ? Icons.arrow_upward
-                                                    : Icons.arrow_downward,
-                                                color: txn['type'] == 'Income'
-                                                    ? Colors.green
-                                                    : Colors.red,
-                                              ),
-                                              title: Text(
-                                                txn['category'] ?? '',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 15,
-                                                  color: darkText,
-                                                ),
-                                              ),
-                                              subtitle: Text(
-                                                // Format date as "MMM d, yyyy"
-                                                "${txn['type']} • ${DateFormat('yyyy-MM-dd').format((txn['date'] as Timestamp).toDate())}",
-                                                style: TextStyle(
-                                                  color: Colors.grey[700],
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                              trailing: Text(
-                                                "\$${(txn['amount'] as num?)?.toStringAsFixed(2) ?? ''}",
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
+                                          const SizedBox(height: 6),
+                                          ...txns.map((txn) => ListTile(
+                                                contentPadding: EdgeInsets.zero,
+                                                leading: Icon(
+                                                  txn['type'] == 'Income'
+                                                      ? Icons.arrow_upward
+                                                      : Icons.arrow_downward,
                                                   color: txn['type'] == 'Income'
                                                       ? Colors.green
                                                       : Colors.red,
-                                                  fontSize: 15,
                                                 ),
-                                              ),
-                                            )),
-                                      ],
-                                    )
-                                  : Text(
-                                      "No transactions in this category.",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: mediumText,
+                                                title: Text(
+                                                  txn['category'] ?? '',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 15,
+                                                    color: darkText,
+                                                  ),
+                                                ),
+                                                subtitle: Text(
+                                                  // Format date as "MMM d, yyyy"
+                                                  "${txn['type']} • ${DateFormat('yyyy-MM-dd').format((txn['date'] as Timestamp).toDate())}",
+                                                  style: TextStyle(
+                                                    color: Colors.grey[700],
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                                trailing: Text(
+                                                  "\$${(txn['amount'] as num?)?.toStringAsFixed(2) ?? ''}",
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: txn['type'] == 'Income'
+                                                        ? Colors.green
+                                                        : Colors.red,
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                              )),
+                                        ],
+                                      )
+                                    : Text(
+                                        "No transactions in this category.",
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: mediumText,
+                                        ),
                                       ),
-                                    ),
-                            ),
-                        ],
+                              ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -940,7 +1012,16 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
                           },
                         );
                       },
-                      onDismissed: (_) => _deleteGoal(goal['id']),
+                      onDismissed: (_) async {
+                        await _firestore
+                            .collection('users')
+                            .doc(docID)
+                            .collection('SavingsGoals')
+                            .doc(goal['id'])
+                            .delete();
+                        await _fetchDocIDAndData();
+                        _showSuccessMessage("Savings goal deleted.");
+                      },
                       child: Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         elevation: 4,

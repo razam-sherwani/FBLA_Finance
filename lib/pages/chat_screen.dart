@@ -1,10 +1,9 @@
 import 'dart:convert';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 import '../pages/message.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -18,16 +17,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   final TextEditingController controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
   final List<Message> msgs = [
-    Message(false,
-        "Hi! I'm Fineas, your financial assistant. Ask me anything about budgeting, saving, or investing.")
+    Message(false, "Hi! I'm Fineas, your financial assistant. Ask me anything about budgeting, saving, or investing.")
   ];
   bool isTyping = false;
-  String? _userName;
-  double _currentBalance = 0.0;
-  List<Map<String, dynamic>> _transactions = [];
-  List<Map<String, dynamic>> _savingsGoals = [];
-  Map<String, double> _budgets = {};
-  bool _loading = true;
 
   final List<String> suggestedQuestions = [
     "How can I start saving money?",
@@ -36,113 +28,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     "Tips for managing student loans?",
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchAllData();
-  }
-
-  Future<void> _fetchAllData() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      setState(() => _loading = false);
-      return;
-    }
-    final firestore = FirebaseFirestore.instance;
-    String docID = '';
-    // Get docID
-    final userSnap = await firestore
-        .collection('users')
-        .where('email', isEqualTo: user.email)
-        .get();
-    if (userSnap.docs.isNotEmpty) {
-      docID = userSnap.docs.first.id;
-    } else {
-      setState(() => _loading = false);
-      return;
-    }
-
-    // Get user name
-    final userData = userSnap.docs.first.data();
-    _userName =
-        (userData['first_name'] ?? '') + ' ' + (userData['last_name'] ?? '');
-
-    // Get transactions
-    final txSnap = await firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Transactions')
-        .get();
-    _transactions = txSnap.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
-        'type': data['type'] ?? '',
-        'category': data['category'] ?? '',
-        'date': (data['date'] as Timestamp?)?.toDate(),
-      };
-    }).toList();
-
-    // Calculate current balance
-    _currentBalance = 0.0;
-    for (var tx in _transactions) {
-      if (tx['type'] == 'Income') {
-        _currentBalance += tx['amount'];
-      } else {
-        _currentBalance -= tx['amount'];
-      }
-    }
-
-    // Get savings goals
-    final goalsSnap = await firestore
-        .collection('users')
-        .doc(docID)
-        .collection('SavingsGoals')
-        .get();
-    _savingsGoals = goalsSnap.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'name': data['name'] ?? '',
-        'target': (data['target'] as num?)?.toDouble() ?? 0.0,
-        'saved': (data['saved'] as num?)?.toDouble() ?? 0.0,
-      };
-    }).toList();
-
-    // Get budgets
-    final budgetsSnap = await firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Budgets')
-        .doc('budgets')
-        .get();
-    if (budgetsSnap.exists) {
-      final data = budgetsSnap.data();
-      if (data != null && data['categories'] != null) {
-        _budgets = Map<String, double>.from(
-          (data['categories'] as Map)
-              .map((k, v) => MapEntry(k as String, (v as num).toDouble())),
-        );
-      }
-    }
-
-    setState(() => _loading = false);
-  }
-
   void sendMsg([String? prefilledText]) async {
     String text = prefilledText ?? controller.text.trim();
-    // Prepare all user info for GPT
-    String txList = _transactions.map((tx) {
-      return "- ${tx['date'] != null ? (tx['date'] as DateTime).toIso8601String().split('T').first : ''}: ${tx['type']} \$${tx['amount']} [${tx['category']}]";
-    }).join('\n');
-
-    String savingsList = _savingsGoals
-        .map((goal) =>
-            "- ${goal['name']}: Saved \$${goal['saved']} / Target \$${goal['target']}")
-        .join('\n');
-
-    String budgetList = _budgets.entries
-        .map((e) => "- ${e.key}: \$${e.value.toStringAsFixed(2)}")
-        .join('\n');
     if (text.isEmpty) return;
     controller.clear();
 
@@ -158,8 +45,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       final response = await http.post(
         Uri.parse("https://api.openai.com/v1/chat/completions"),
         headers: {
-          "Authorization":
-              "Bearer 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",
+          "Authorization": "Bearer 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",
           "Content-Type": "application/json",
         },
         body: jsonEncode({
@@ -168,20 +54,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
             {
               "role": "system",
               "content":
-                  """You are Fineas, a financial assistant. Provide financial advice, investment tips, and budgeting help. Make your responses short and concise being as helpful as possible in around 50 to 100 words. Do not add any special formatting to the text,
-                  User Name: ${_userName ?? 'User'}
-Current Balance: \$${_currentBalance.toStringAsFixed(2)}
-
-Transactions List:
-$txList
-
-Savings Goals:
-$savingsList
-
-Budgets:
-$budgetList
-
-Use this inforation to provide personalized financial advice."""
+                  "You are Fineas, a financial assistant. Provide financial advice, investment tips, and budgeting help. Make your responses short and concise being as helpful as possible in around 50 to 100 words."
             },
             {"role": "user", "content": text}
           ]
@@ -190,8 +63,9 @@ Use this inforation to provide personalized financial advice."""
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        final reply =
-            json["choices"][0]["message"]["content"].toString().trimLeft();
+        final reply = json["choices"][0]["message"]["content"]
+            .toString()
+            .trimLeft();
 
         setState(() {
           isTyping = false;
@@ -257,14 +131,11 @@ Use this inforation to provide personalized financial advice."""
             isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Container(
-            constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75),
+            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
-              color: isSender
-                  ? const Color.fromARGB(255, 0, 140, 255)
-                  : const Color(0xFFE5E5EA),
+              color: isSender ? const Color.fromARGB(255, 0, 140, 255) : const Color(0xFFE5E5EA),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(18),
                 topRight: const Radius.circular(18),
@@ -300,6 +171,9 @@ Use this inforation to provide personalized financial advice."""
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+
     return Scaffold(
       backgroundColor: const Color(0xFF2A4288),
       appBar: AppBar(
@@ -323,6 +197,26 @@ Use this inforation to provide personalized financial advice."""
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(photoUrl),
+                backgroundColor: Colors.white,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: Color(0xFF2A4288)),
+              ),
+            ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -334,6 +228,7 @@ Use this inforation to provide personalized financial advice."""
         ),
         child: Column(
           children: [
+            
             Expanded(
               child: ListView.builder(
                 controller: scrollController,
@@ -344,9 +239,8 @@ Use this inforation to provide personalized financial advice."""
                   final timestamp = TimeOfDay.now().format(context);
                   final showTime = index % 3 == 0;
                   return Column(
-                    crossAxisAlignment: msg.isSender
-                        ? CrossAxisAlignment.end
-                        : CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        msg.isSender ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                     children: [
                       _buildMessageBubble(msg, timestamp, showTime),
                       if (isTyping && index == 0)

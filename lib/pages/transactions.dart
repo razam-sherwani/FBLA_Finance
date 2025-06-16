@@ -1626,6 +1626,9 @@ class _TransactionsPageState extends State<Transactions> {
     final Color secondaryColor = colors.length > 1 ? colors[1] : Colors.blue.shade900;
     final Color bgColor = Colors.white;
 
+    final user = FirebaseAuth.instance.currentUser;
+    final photoUrl = user?.photoURL;
+
     return Scaffold(
       backgroundColor: primaryColor,
       extendBodyBehindAppBar: false,
@@ -1647,6 +1650,26 @@ class _TransactionsPageState extends State<Transactions> {
         backgroundColor: primaryColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          if (photoUrl != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundImage: NetworkImage(photoUrl),
+                backgroundColor: Colors.white,
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.only(right: 18.0, top: 8),
+              child: CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: primaryColor),
+              ),
+            ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
