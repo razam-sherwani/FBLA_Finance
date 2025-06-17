@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';
 import 'package:fbla_finance/pages/awards_page.dart';
 import 'package:fbla_finance/pages/home_page.dart';
-import 'package:fbla_finance/pages/scholarships.dart';
 import 'package:fbla_finance/pages/settings_page.dart';
 import 'package:fbla_finance/pages/welcome_screen.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';

@@ -34,15 +34,83 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   List<Map<String, dynamic>> _recentTransactions = [];
   String docID = "";
   double _totalBalance = 0.0;
 
+  // Animation controllers
+  late AnimationController _bannerController;
+  late AnimationController _balanceController;
+  late AnimationController _transactionsController;
+  late AnimationController _fabController;
+  late AnimationController _overviewBounceController;
+  late Animation<double> _bannerFade;
+  late Animation<double> _balanceFade;
+  late Animation<double> _transactionsFade;
+  late Animation<double> _fabScale;
+  late Animation<double> _balanceCount;
+  late Animation<double> _overviewBounce;
+
+  double _displayedBalance = 0.0;
+
   @override
   void initState() {
     super.initState();
+
+    _bannerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _balanceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _transactionsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+    _fabController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _overviewBounceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+      lowerBound: 0.95,
+      upperBound: 1.0,
+      value: 1.0,
+    );
+    _overviewBounce = CurvedAnimation(
+      parent: _overviewBounceController,
+      curve: Curves.elasticOut,
+    );
+
+    _bannerFade = CurvedAnimation(parent: _bannerController, curve: Curves.easeIn);
+    _balanceFade = CurvedAnimation(parent: _balanceController, curve: Curves.easeIn);
+    _transactionsFade = CurvedAnimation(parent: _transactionsController, curve: Curves.easeIn);
+    _fabScale = CurvedAnimation(parent: _fabController, curve: Curves.elasticOut);
+
+    // Start animations in sequence
+    _bannerController.forward().then((_) {
+      _balanceController.forward().then((_) {
+        _overviewBounceController.forward();
+        _transactionsController.forward();
+      });
+    });
+    _fabController.forward();
+
     fetchDocIDAndTransactions();
+  }
+
+  @override
+  void dispose() {
+    _bannerController.dispose();
+    _balanceController.dispose();
+    _transactionsController.dispose();
+    _fabController.dispose();
+    _overviewBounceController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchDocIDAndTransactions() async {
@@ -99,6 +167,20 @@ class _HomePageState extends State<HomePage> {
     }
     setState(() {
       _totalBalance = total;
+      // Animate the counter
+      _balanceCount = Tween<double>(
+        begin: _displayedBalance,
+        end: _totalBalance,
+      ).animate(CurvedAnimation(
+        parent: _balanceController,
+        curve: Curves.easeOut,
+      ))
+        ..addListener(() {
+          setState(() {
+            _displayedBalance = _balanceCount.value;
+          });
+        });
+      _balanceController.forward(from: 0);
     });
   }
 
@@ -159,12 +241,27 @@ class _HomePageState extends State<HomePage> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           children: [
-            _buildWelcomeBanner(),
+            FadeTransition(
+              opacity: _bannerFade,
+              child: _buildWelcomeBanner(),
+            ),
             SizedBox(height: 28),
-            _buildTotalBalanceCard(),
+            GestureDetector(
+              onTap: () {
+                _overviewBounceController.forward(from: 0.95);
+              },
+              child: ScaleTransition(
+                scale: _overviewBounce,
+                child: FadeTransition(
+                  opacity: _balanceFade,
+                  child: _buildTotalBalanceCard(),
+                ),
+              ),
+            ),
             const SizedBox(height: 28),
             _buildSectionTitle("Recent Transactions", primaryColor),
             const SizedBox(height: 10),
+            // Remove animation from recent transactions card
             _buildRecentTransactionsCard(),
             const SizedBox(height: 28),
             _buildSectionTitle("Reports", primaryColor),
@@ -181,16 +278,19 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => ChatScreen()),
-          );
-        },
-        child: const Icon(Icons.chat),
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
+      floatingActionButton: ScaleTransition(
+        scale: _fabScale,
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ChatScreen()),
+            );
+          },
+          child: const Icon(Icons.chat),
+          backgroundColor: Colors.blue.shade900,
+          foregroundColor: Colors.white,
+        ),
       ),
     );
   }
@@ -280,13 +380,18 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Text("Total Balance", style: GoogleFonts.barlow(fontSize: 15, color: Colors.grey[600])),
                     const SizedBox(height: 4),
-                    Text(
-                      NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
-                      style: GoogleFonts.barlow(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 26,
-                        color: _totalBalance >= 0 ? Colors.green : Colors.red,
-                      ),
+                    AnimatedBuilder(
+                      animation: _balanceController,
+                      builder: (context, child) {
+                        return Text(
+                          NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_displayedBalance),
+                          style: GoogleFonts.barlow(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 26,
+                            color: _displayedBalance >= 0 ? Colors.green : Colors.red,
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -505,7 +610,9 @@ class _HomePageState extends State<HomePage> {
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
-        children: _recentTransactions.map((txn) {
+        children: List.generate(_recentTransactions.length, (i) {
+          final txn = _recentTransactions[i];
+          // Remove animation, just return the transaction row
           return Container(
             margin: const EdgeInsets.symmetric(vertical: 6),
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
@@ -575,7 +682,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           );
-        }).toList(),
+        }),
       ),
     );
   }
