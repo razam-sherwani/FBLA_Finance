@@ -26,14 +26,15 @@ Future<void> main() async {
   FirebaseAuth.instanceFor(app: app);
   FirebaseFunctions.instanceFor(app: app);
   runApp(
-    DevicePreview(
-      enabled: true,
-      tools: const [
-        ...DevicePreview.defaultTools,
-        CustomPlugin(),
-      ],
-      builder: (context) => const MyApp(),
-    ),
+    // DevicePreview(
+    //   enabled: true,
+    //   tools: const [
+    //     ...DevicePreview.defaultTools,
+    //     CustomPlugin(),
+    //   ],
+    //   builder: (context) => const MyApp(),
+    // ),
+    const MyApp(),
   );
 }
 
