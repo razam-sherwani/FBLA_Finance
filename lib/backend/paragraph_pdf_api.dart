@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -9,9 +8,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:fbla_finance/backend/save_and_open_pdf.dart';
 
 class ParagraphPdfApi {
-  static List<Map<String, dynamic>> _transactionsList = [];
-  static List<Map<String, dynamic>> _incomeList = [];
-  static List<Map<String, dynamic>> _expenseList = [];
+  static final List<Map<String, dynamic>> _transactionsList = [];
+  static final List<Map<String, dynamic>> _incomeList = [];
+  static final List<Map<String, dynamic>> _expenseList = [];
   static FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static double _totalBalance = 0.0;
 

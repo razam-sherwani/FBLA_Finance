@@ -1,29 +1,16 @@
 import 'package:fbla_finance/analysis.dart';
-import 'package:fbla_finance/pages/plaid_page.dart';
-import 'package:fbla_finance/pages/receipt_scanner_page.dart';
 import 'package:fbla_finance/pages/savings_budget_page.dart';
-import 'package:fbla_finance/pages/split_transactions.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/custom_nav_bar.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:fbla_finance/backend/widget_tree.dart';
-import 'package:fbla_finance/pages/awards_page.dart';
 import 'package:fbla_finance/pages/home_page.dart';
 import 'package:fbla_finance/pages/settings_page.dart';
-import 'package:fbla_finance/pages/welcome_screen.dart';
-import 'package:fbla_finance/backend/widget_tree.dart';
-import 'package:fbla_finance/firebase_options.dart';
 import 'package:fbla_finance/pages/reports.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:google_nav_bar/google_nav_bar.dart';
-import 'dart:io';
 import 'package:fbla_finance/pages/spending_habit.dart';
 
 class HomePageWithNav extends StatefulWidget {
+  const HomePageWithNav({super.key});
+
   @override
   HomePageWithNavState createState() => HomePageWithNavState();
 }

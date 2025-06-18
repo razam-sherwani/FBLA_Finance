@@ -12,15 +12,13 @@ import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/indicator.dart';
 import 'package:fbla_finance/backend/app_colors.dart';
-import 'package:fbla_finance/backend/app_utils.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:math';
 import 'package:fbla_finance/util/profile_picture.dart';
 
 enum PeriodType { monthly, quarterly, yearly, custom }
 
 class SpendingHabitPage extends StatefulWidget {
-  SpendingHabitPage({Key? key}) : super(key: key);
+  const SpendingHabitPage({super.key});
 
   @override
   _SpendingHabitPageState createState() => _SpendingHabitPageState();
@@ -60,9 +58,9 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   final int maxDays = 31;
   double budget = 0;
 
-  int _currentMonthIndex = 5;
-  int _currentWeekIndex = 0;
-  int _currentYearIndex = DateTime.now().year - 2020; // adjust as needed
+  final int _currentMonthIndex = 5;
+  final int _currentWeekIndex = 0;
+  final int _currentYearIndex = DateTime.now().year - 2020; // adjust as needed
   final List<String> monthsNames = [
     'January',
     'February',
@@ -320,7 +318,7 @@ class _SpendingHabitPageState extends State<SpendingHabitPage> {
   double overallMin = 0;
   double overallMax = 0;
   int _interactedSpotIndex = -1;
-  int _interactedSpotIndexExpense = -1; // For expense graph
+  final int _interactedSpotIndexExpense = -1; // For expense graph
   int _interactedSpotIndexBalance = -1; // For balance graph
 
   Future<void> _initializeData() async {
@@ -400,7 +398,7 @@ void _promptUpdateBudget() {
           builder: (context, setState) {
             return AlertDialog(
               title: Text('Update Budget'),
-              content: Container(
+              content: SizedBox(
                 height: 230,
                 width: 250,
                 child: Column(
@@ -832,9 +830,9 @@ void _promptUpdateBudget() {
             ),
           );
         },
-        child: const Icon(Icons.chat),
         backgroundColor: Colors.blue.shade900,
         foregroundColor: Colors.white,
+        child: const Icon(Icons.chat),
       ),
       appBar: AppBar(
         toolbarHeight: 75,
@@ -883,10 +881,10 @@ void _promptUpdateBudget() {
                       onPressed: _pickCustomDates,
                       color: colors[1],
                       textColor: Colors.white,
-                      child: Text('Select Dates', style: TextStyle(fontSize: 20)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
+                      child: Text('Select Dates', style: TextStyle(fontSize: 20)),
                     ),
                   ],
                 ),
@@ -939,11 +937,11 @@ void _promptUpdateBudget() {
                                   fit: BoxFit.scaleDown,
                                   child: Text(
                                     _selectedPeriod == PeriodType.monthly
-                                        ? '${_selectedYear} ${monthsNames[_sharedScrollIndex]}'
+                                        ? '$_selectedYear ${monthsNames[_sharedScrollIndex]}'
                                         : _selectedPeriod == PeriodType.quarterly
-                                            ? '${_selectedYear} ${quarterNames[_sharedScrollIndex]}'
+                                            ? '$_selectedYear ${quarterNames[_sharedScrollIndex]}'
                                             : _selectedPeriod == PeriodType.yearly
-                                                ? '${_selectedYear}'
+                                                ? '$_selectedYear'
                                                 : '',
                                     style: TextStyle(
                                       color: AppColors.contentColorBlue,
@@ -1546,7 +1544,7 @@ void _promptUpdateBudget() {
     );
   }
 
-  _touchCallback(FlTouchEvent event, LineTouchResponse? touchResponse) {
+  void _touchCallback(FlTouchEvent event, LineTouchResponse? touchResponse) {
     if (!event.isInterestedForInteractions ||
         touchResponse?.lineBarSpots == null ||
         touchResponse!.lineBarSpots!.isEmpty) {

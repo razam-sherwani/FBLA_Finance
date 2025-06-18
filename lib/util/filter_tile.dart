@@ -1,11 +1,10 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class FilterTile extends StatelessWidget {
   final icon;
   final String FilterName;
   final Color color;
-  const FilterTile({Key? key,required this.icon,required this.FilterName, required this.color}) : super(key: key);
+  const FilterTile({super.key,required this.icon,required this.FilterName, required this.color});
 
   @override
   Widget build(BuildContext context) {

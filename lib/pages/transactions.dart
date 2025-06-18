@@ -1,6 +1,5 @@
 // ignore_for_file: invalid_return_type_for_catch_error, avoid_print
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
@@ -16,7 +15,6 @@ import 'package:plaid_flutter/plaid_flutter.dart';
 
 import '../backend/paragraph_pdf_api.dart';
 import '../backend/save_and_open_pdf.dart';
-import '../util/gradient_service.dart';
 import '../util/profile_picture.dart';
 
 class Transactions extends StatefulWidget {
@@ -34,12 +32,12 @@ class _TransactionsPageState extends State<Transactions> {
   final List<Map<String, dynamic>> _transactionsList = [];
   List<Map<String, dynamic>> _filteredTransactions = [];
   Map<String, List<Map<String, dynamic>>> _groupedTransactions = {};
-  Map<String, bool> _expandedSections = {};
+  final Map<String, bool> _expandedSections = {};
   double _totalBalance = 0.0;
   String _searchQuery = '';
   String? _linkToken;
   LinkTokenConfiguration? _configuration;
-  List<Map<String, dynamic>> _plaidTransactions = [];
+  final List<Map<String, dynamic>> _plaidTransactions = [];
   DateTime date = DateTime.now();
   double amt = 0;
   String? type1;
@@ -576,10 +574,6 @@ class _TransactionsPageState extends State<Transactions> {
                             );
                           }
                         },
-                        child: Text(
-                          "Add Transaction",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF2A4288),
                           foregroundColor: Colors.white,
@@ -587,6 +581,10 @@ class _TransactionsPageState extends State<Transactions> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 2,
+                        ),
+                        child: Text(
+                          "Add Transaction",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                       ),
                     ),
@@ -723,7 +721,7 @@ class _TransactionsPageState extends State<Transactions> {
                     ),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),
@@ -733,7 +731,7 @@ class _TransactionsPageState extends State<Transactions> {
 
   selected ??= 'General';
 
-  var paragraphPdf;
+  File paragraphPdf;
   if (selected == 'General') {
     paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
   } else if (selected == 'Weekly') {
@@ -1023,8 +1021,8 @@ class _TransactionsPageState extends State<Transactions> {
   }
 
   Future<void> _scanReceipt() async {
-    final ImagePicker _picker = ImagePicker();
-    final XFile? image = await _picker.pickImage(source: ImageSource.camera);
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
 
     if (image != null) {
       final inputImage = InputImage.fromFilePath(image.path);
@@ -1297,13 +1295,13 @@ class _TransactionsPageState extends State<Transactions> {
         };
         // Recalculate total balance
         _totalBalance = 0;
-        _transactionsList.forEach((transaction) {
+        for (var transaction in _transactionsList) {
           if (transaction['type'] == 'Income') {
             _totalBalance += transaction['amount'];
           } else {
             _totalBalance -= transaction['amount'];
           }
-        });
+        }
         _filterTransactions(); // <-- Ensure UI updates with new values
       });
     }).catchError((error) {
@@ -1545,10 +1543,6 @@ class _TransactionsPageState extends State<Transactions> {
                             index,
                           );
                         },
-                        child: Text(
-                          "Update Transaction",
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xFF2A4288),
                           foregroundColor: Colors.white,
@@ -1556,6 +1550,10 @@ class _TransactionsPageState extends State<Transactions> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 2,
+                        ),
+                        child: Text(
+                          "Update Transaction",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                         ),
                       ),
                     ),
@@ -1655,7 +1653,7 @@ class _TransactionsPageState extends State<Transactions> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    "${DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now())}",
+                    DateFormat('yyyy-MM-dd').format(transaction['date'] ?? DateTime.now()),
                     style: GoogleFonts.barlow(
                       fontSize: 12,
                       color: Colors.grey[700],
@@ -1849,7 +1847,7 @@ class _TransactionsPageState extends State<Transactions> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    '${NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance)}',
+                    NumberFormat.simpleCurrency(locale: 'en_US', decimalDigits: 2).format(_totalBalance),
                     style: GoogleFonts.barlow(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -1928,8 +1926,8 @@ class _TransactionsPageState extends State<Transactions> {
                   FloatingActionButton.small(
                     heroTag: 'manual',
                     backgroundColor: primaryColor,
-                    child: const Icon(Icons.edit, color: Colors.white),
                     onPressed: _showModalManualEntry,
+                    child: const Icon(Icons.edit, color: Colors.white),
                   ),
                   const SizedBox(width: 10),
                 ],
@@ -1974,8 +1972,8 @@ class _TransactionsPageState extends State<Transactions> {
                   FloatingActionButton.small(
                     heroTag: 'scan',
                     backgroundColor: primaryColor,
-                    child: const Icon(Icons.camera_alt, color: Colors.white),
                     onPressed: _showModalScanReceipt,
+                    child: const Icon(Icons.camera_alt, color: Colors.white),
                   ),
                   const SizedBox(width: 10),
                 ],
@@ -2072,8 +2070,8 @@ class _TransactionsPageState extends State<Transactions> {
                   FloatingActionButton.small(
                     heroTag: 'share',
                     backgroundColor: primaryColor,
-                    child: const Icon(Icons.share, color: Colors.white),
                     onPressed: sharePdfLink,
+                    child: const Icon(Icons.share, color: Colors.white),
                   ),
                   const SizedBox(width: 10),
                 ],

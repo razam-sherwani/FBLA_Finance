@@ -1,4 +1,3 @@
-import 'dart:math';
 
 import 'package:fbla_finance/util/gradient_service.dart';
 import 'package:flutter/material.dart';
@@ -9,7 +8,7 @@ import 'package:intl/intl.dart';
 class FilterByAmountPage extends StatefulWidget {
   final String userId;
   // Constructor to receive the userId
-  FilterByAmountPage({Key? key, required this.userId}) : super(key: key);
+  const FilterByAmountPage({super.key, required this.userId});
 
   @override
   _FilterByAmountPageState createState() => _FilterByAmountPageState();
