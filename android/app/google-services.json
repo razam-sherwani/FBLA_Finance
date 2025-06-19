@@ -29,6 +29,13 @@
             {
               "client_id": "307046751911-4660pq98lpil1bsg0domm30gob7kkrqm.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "307046751911-rvs0tlh0gurg0nrdpaajcr4t544r3n9e.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.fblaFinance"
+              }
             }
           ]
         }
