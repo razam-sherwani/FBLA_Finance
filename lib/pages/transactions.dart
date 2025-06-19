@@ -1876,6 +1876,7 @@ class _TransactionsPageState extends State<Transactions> {
       ),
       floatingActionButtonLocation: ExpandableFab.location,
       floatingActionButton: ExpandableFab(
+        key: UniqueKey(),
         type: ExpandableFabType.up,
         childrenAnimation: ExpandableFabAnimation.none,
         distance: 70,
