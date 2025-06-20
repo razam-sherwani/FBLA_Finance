@@ -6,7 +6,6 @@ import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
-
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -27,7 +26,7 @@ class Transactions extends StatefulWidget {
 class _TransactionsPageState extends State<Transactions> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   String docID = '';
-  List<Color> colors = [Color(0xffB8E8FF), Colors.white];
+  List<Color> colors = [const Color(0xffB8E8FF), Colors.white];
 
   final List<Map<String, dynamic>> _transactionsList = [];
   List<Map<String, dynamic>> _filteredTransactions = [];
@@ -42,6 +41,7 @@ class _TransactionsPageState extends State<Transactions> {
   double amt = 0;
   String? type1;
   String? categ;
+  bool _isLoading = true;
 
   String? _selectedType;
   String? _selectedCategory;
@@ -53,14 +53,6 @@ class _TransactionsPageState extends State<Transactions> {
 
   final GlobalKey<ExpandableFabState> _fabKey = GlobalKey<ExpandableFabState>();
 
-  bool _isDuplicateTransaction(Map<String, dynamic> txn) {
-    return _transactionsList.any((existing) =>
-        existing['amount'] == txn['amount'] &&
-        existing['category'] == txn['name'] &&
-        DateFormat('yyyy-MM-dd').format(existing['date']) ==
-            DateFormat('yyyy-MM-dd').format(txn['date']));
-  }
-
   @override
   void initState() {
     super.initState();
@@ -69,59 +61,97 @@ class _TransactionsPageState extends State<Transactions> {
 
   Future<void> _initializeData() async {
     await fetchDocID();
-    _fetchTransactions();
+    if (docID.isNotEmpty) {
+      await _fetchTransactions();
+    }
+    setState(() => _isLoading = false);
   }
 
   Future<void> fetchDocID() async {
-    var user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: user.email)
-          .get();
+    try {
+      var user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final snapshot = await _firestore
+            .collection('users')
+            .where('email', isEqualTo: user.email)
+            .get();
 
-      if (snapshot.docs.isNotEmpty) {
-        final doc = snapshot.docs.first;
-        setState(() {
-          docID = doc.id;
-        });
+        if (snapshot.docs.isNotEmpty) {
+          setState(() => docID = snapshot.docs.first.id);
+        }
+      }
+    } catch (e) {
+      print('Error fetching docID: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load user data')),
+        );
       }
     }
   }
 
-  void _fetchTransactions() {
-    _firestore
-        .collection('users')
-        .doc(docID)
-        .collection('Transactions')
-        .orderBy('date', descending: true)
-        .get()
-        .then((querySnapshot) {
-      if (!mounted) return; // Prevent setState after dispose
+  Future<void> _fetchTransactions() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      final querySnapshot = await _firestore
+          .collection('users')
+          .doc(docID)
+          .collection('Transactions')
+          .orderBy('date', descending: true)
+          .get();
+
+      if (!mounted) return;
+      
       setState(() {
         _transactionsList.clear();
         _totalBalance = 0.0;
+        
         for (var doc in querySnapshot.docs) {
           var transaction = {
             'transactionId': doc.id,
-            'amount': doc['amount'] ?? 0.0,
+            'amount': (doc['amount'] as num?)?.toDouble() ?? 0.0,
             'type': doc['type'] ?? 'Unknown',
             'category': doc['category'] ?? 'Uncategorized',
             'date': (doc['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
           };
           _transactionsList.add(transaction);
+          
           if (transaction['type'] == 'Income') {
             _totalBalance += transaction['amount'];
           } else {
             _totalBalance -= transaction['amount'];
           }
         }
-        _filterTransactions();
+        
+        _filteredTransactions = List.from(_transactionsList);
+        _updateTotalBalanceInFirestore();
       });
-    });
+    } catch (e) {
+      print('Error fetching transactions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load transactions')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  bool _isDuplicateTransaction(Map<String, dynamic> txn) {
+    return _transactionsList.any((existing) =>
+        existing['amount'] == txn['amount'] &&
+        existing['category'] == txn['name'] &&
+        DateFormat('yyyy-MM-dd').format(existing['date']) ==
+            DateFormat('yyyy-MM-dd').format(txn['date']));
   }
 
   void _filterTransactions() {
+    if (_transactionsList.isEmpty) return;
+
     final filtered = _transactionsList.where((transaction) {
       final matchesSearch = transaction['category']
               .toString()
@@ -145,7 +175,7 @@ class _TransactionsPageState extends State<Transactions> {
           (transaction['date'].isAfter(_startDate!) &&
               (_endDate == null ||
                   transaction['date']
-                      .isBefore(_endDate!.add(Duration(days: 1)))));
+                      .isBefore(_endDate!.add(const Duration(days: 1)))));
 
       final amount = transaction['amount'] as double;
       final matchesAmount = (_minAmount == null || amount >= _minAmount!) &&
@@ -160,23 +190,25 @@ class _TransactionsPageState extends State<Transactions> {
 
     filtered.sort((a, b) => b['date'].compareTo(a['date']));
 
-    if (!mounted) return; // Prevent setState after dispose
+    if (!mounted) return;
     setState(() {
       _filteredTransactions = filtered;
       if (_groupByCategory) {
-        _groupedTransactions = {};
-        for (var transaction in _filteredTransactions) {
-          String category = transaction['category'] ?? 'Uncategorized';
-          if (!_groupedTransactions.containsKey(category)) {
-            _groupedTransactions[category] = [];
-            _expandedSections[category] = false; // Initialize expanded state
-          }
-          _groupedTransactions[category]!.add(transaction);
-        }
-      } else {
-        _groupedTransactions = {}; // Clear grouped transactions if not grouping
+        _groupTransactionsByCategory();
       }
     });
+  }
+
+  void _groupTransactionsByCategory() {
+    _groupedTransactions = {};
+    for (var transaction in _filteredTransactions) {
+      String category = transaction['category'] ?? 'Uncategorized';
+      if (!_groupedTransactions.containsKey(category)) {
+        _groupedTransactions[category] = [];
+        _expandedSections[category] = true;
+      }
+      _groupedTransactions[category]!.add(transaction);
+    }
   }
 
   void _clearFilters() {
@@ -187,7 +219,7 @@ class _TransactionsPageState extends State<Transactions> {
       _endDate = null;
       _minAmount = null;
       _maxAmount = null;
-      _searchQuery = ''; // Clear search query as well
+      _searchQuery = '';
     });
     _filterTransactions();
   }
@@ -225,13 +257,13 @@ class _TransactionsPageState extends State<Transactions> {
                 BoxShadow(
                   color: Colors.black.withOpacity(0.13),
                   blurRadius: 28,
-                  offset: Offset(0, 12),
+                  offset: const Offset(0, 12),
                   spreadRadius: 2,
                 ),
                 BoxShadow(
                   color: Colors.blueAccent.withOpacity(0.08),
                   blurRadius: 8,
-                  offset: Offset(0, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -244,27 +276,28 @@ class _TransactionsPageState extends State<Transactions> {
                     style: GoogleFonts.ibmPlexSans(
                       fontWeight: FontWeight.bold,
                       fontSize: 22,
-                      color: Color(0xFF2A4288),
+                      color: const Color(0xFF2A4288),
                     ),
                   ),
                   const SizedBox(height: 22),
-                  // Improved Select Type Dropdown
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white, // Make the field white
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Color(0xFF2A4288).withOpacity(0.18), width: 1.2),
+                      border: Border.all(
+                          color: const Color(0xFF2A4288).withOpacity(0.18), width: 1.2),
                     ),
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedType,
-                        hint: Text("Select Type", style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
+                        hint: Text("Select Type", 
+                            style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500)),
                         isExpanded: true,
-                        icon: Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF2A4288)),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF2A4288)),
                         style: GoogleFonts.ibmPlexSans(
                           fontSize: 16,
-                          color: Color(0xFF2A4288),
+                          color: const Color(0xFF2A4288),
                           fontWeight: FontWeight.w600,
                         ),
                         dropdownColor: Colors.white,
@@ -279,7 +312,7 @@ class _TransactionsPageState extends State<Transactions> {
                                         color: type == 'Income' ? Colors.green : Colors.red,
                                         size: 20,
                                       ),
-                                      SizedBox(width: 10),
+                                      const SizedBox(width: 10),
                                       Text(type,
                                           style: TextStyle(
                                             color: type == 'Income' ? Colors.green : Colors.red,
@@ -298,7 +331,7 @@ class _TransactionsPageState extends State<Transactions> {
                     decoration: InputDecoration(
                       labelText: 'Name',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                      contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                     ),
                     onChanged: (val) =>
                         _selectedCategory = val.isEmpty ? null : val,
@@ -311,19 +344,19 @@ class _TransactionsPageState extends State<Transactions> {
                           decoration: InputDecoration(
                             labelText: 'Min Amount',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                            contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                           ),
                           keyboardType: TextInputType.number,
                           onChanged: (val) => _minAmount = double.tryParse(val),
                         ),
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: TextField(
                           decoration: InputDecoration(
                             labelText: 'Max Amount',
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                            contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                           ),
                           keyboardType: TextInputType.number,
                           onChanged: (val) => _maxAmount = double.tryParse(val),
@@ -335,14 +368,14 @@ class _TransactionsPageState extends State<Transactions> {
                   ListTile(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     tileColor: Colors.grey[100],
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                     title: Text(
                       _startDate == null && _endDate == null
                           ? "Select Date Range"
                           : "${_startDate != null ? DateFormat('yyyy-MM-dd').format(_startDate!) : ''} - ${_endDate != null ? DateFormat('yyyy-MM-dd').format(_endDate!) : ''}",
-                      style: TextStyle(fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
-                    trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
+                    trailing: const Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
                     onTap: () async {
                       await _selectDateRange();
                       setStateInDialog(() {});
@@ -358,12 +391,12 @@ class _TransactionsPageState extends State<Transactions> {
                             Navigator.pop(context);
                           },
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Color(0xFF2A4288), width: 1.5),
+                            side: const BorderSide(color: Color(0xFF2A4288), width: 1.5),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                           ),
-                          child: Text(
+                          child: const Text(
                             "Clear Filters",
                             style: TextStyle(
                               color: Color(0xFF2A4288),
@@ -373,7 +406,7 @@ class _TransactionsPageState extends State<Transactions> {
                           ),
                         ),
                       ),
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () {
@@ -381,14 +414,14 @@ class _TransactionsPageState extends State<Transactions> {
                             _filterTransactions();
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF2A4288),
+                            backgroundColor: const Color(0xFF2A4288),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
                             elevation: 2,
                           ),
-                          child: Text(
+                          child: const Text(
                             "Apply",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
@@ -428,7 +461,6 @@ class _TransactionsPageState extends State<Transactions> {
       builder: (context) {
         final double width = MediaQuery.of(context).size.width * 0.92;
         final double height = MediaQuery.of(context).size.height * 0.52;
-        // Local state for modal fields
         double localAmt = 0;
         String? localType = type1;
         String? localCateg = categ;
@@ -448,7 +480,7 @@ class _TransactionsPageState extends State<Transactions> {
                 BoxShadow(
                   color: Colors.black.withOpacity(0.10),
                   blurRadius: 24,
-                  offset: Offset(0, 8),
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
@@ -462,7 +494,7 @@ class _TransactionsPageState extends State<Transactions> {
                       style: GoogleFonts.ibmPlexSans(
                         fontWeight: FontWeight.bold,
                         fontSize: 22,
-                        color: Color(0xFF2A4288),
+                        color: const Color(0xFF2A4288),
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -480,8 +512,8 @@ class _TransactionsPageState extends State<Transactions> {
                           });
                         },
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               'Expense',
                               style: TextStyle(
@@ -490,8 +522,8 @@ class _TransactionsPageState extends State<Transactions> {
                               ),
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
                               'Income',
                               style: TextStyle(
@@ -508,9 +540,9 @@ class _TransactionsPageState extends State<Transactions> {
                       keyboardType: TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'Amount',
-                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                        contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
                       ),
                       onChanged: (val) {
                         setStateModal(() {
@@ -522,9 +554,9 @@ class _TransactionsPageState extends State<Transactions> {
                     TextField(
                       decoration: InputDecoration(
                         labelText: 'Name',
-                        labelStyle: TextStyle(fontWeight: FontWeight.w500),
+                        labelStyle: const TextStyle(fontWeight: FontWeight.w500),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                        contentPadding: EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
                       ),
                       onChanged: (val) {
                         setStateModal(() {
@@ -537,9 +569,9 @@ class _TransactionsPageState extends State<Transactions> {
                       contentPadding: EdgeInsets.zero,
                       title: Text(
                         "Date: ${DateFormat('yyyy-MM-dd').format(localDate)}",
-                        style: TextStyle(fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
-                      trailing: Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
+                      trailing: const Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -558,31 +590,24 @@ class _TransactionsPageState extends State<Transactions> {
                       height: 52,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Only add if all required fields are filled
                           if (localAmt > 0 && localType != null && localCateg != null && localCateg!.trim().isNotEmpty) {
                             Navigator.pop(context);
-                            setState(() {
-                              amt = localAmt;
-                              type1 = localType;
-                              categ = localCateg;
-                              date = localDate;
-                            });
                             _addTransaction(localAmt, localType, localCateg, localDate);
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Please fill all fields')),
+                              const SnackBar(content: Text('Please fill all fields')),
                             );
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF2A4288),
+                          backgroundColor: const Color(0xFF2A4288),
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                           elevation: 2,
                         ),
-                        child: Text(
+                        child: const Text(
                           "Add Transaction",
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                         ),
@@ -598,14 +623,149 @@ class _TransactionsPageState extends State<Transactions> {
     );
   }
 
-  void _showModalScanReceipt() async {
-    await _scanReceipt();
+  Future<void> _scanReceipt() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+    if (image != null) {
+      final inputImage = InputImage.fromFilePath(image.path);
+      final textRecognizer = GoogleMlKit.vision.textRecognizer();
+      final RecognizedText recognizedText =
+          await textRecognizer.processImage(inputImage);
+
+      String rawText = recognizedText.text;
+      print('Recognized Text: $rawText');
+
+      double? scannedAmount;
+      String? scannedCategory;
+      DateTime? scannedDate;
+
+      final amountRegex = RegExp(r'\d+\.\d{2}');
+      final amountMatch = amountRegex.firstMatch(rawText);
+      if (amountMatch != null) {
+        scannedAmount = double.tryParse(amountMatch.group(0)!);
+      }
+
+      final dateRegex =
+          RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2}');
+      final dateMatch = dateRegex.firstMatch(rawText);
+      if (dateMatch != null) {
+        try {
+          scannedDate = DateFormat('MM/dd/yyyy').parse(dateMatch.group(0)!);
+        } catch (e) {
+          try {
+            scannedDate = DateFormat('yyyy-MM-dd').parse(dateMatch.group(0)!);
+          } catch (e) {
+            print("Could not parse date: $e");
+          }
+        }
+      }
+
+      scannedCategory = "Scanned Item";
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Scanned Transaction'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Raw Text: $rawText'),
+                  const SizedBox(height: 10),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Amount'),
+                    keyboardType: TextInputType.number,
+                    controller: TextEditingController(
+                        text: scannedAmount?.toStringAsFixed(2) ?? ''),
+                    onChanged: (val) => scannedAmount = double.tryParse(val),
+                  ),
+                  DropdownButtonFormField<String>(
+                    decoration: const InputDecoration(labelText: 'Type'),
+                    value: 'Expense',
+                    items: ['Income', 'Expense']
+                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                        .toList(),
+                    onChanged: (val) => type1 = val,
+                  ),
+                  TextField(
+                    decoration: const InputDecoration(labelText: 'Name'),
+                    controller: TextEditingController(text: scannedCategory),
+                    onChanged: (val) => scannedCategory = val,
+                  ),
+                  ListTile(
+                    title: Text(
+                        "Date: ${scannedDate != null ? DateFormat('yyyy-MM-dd').format(scannedDate!) : 'Select Date'}"),
+                    trailing: const Icon(Icons.calendar_today),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: scannedDate ?? DateTime.now(),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                      );
+                      if (picked != null) {
+                        setState(() => scannedDate = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (scannedAmount != null &&
+                      type1 != null &&
+                      scannedCategory != null &&
+                      scannedDate != null) {
+                    _addTransaction(
+                        scannedAmount!, type1!, scannedCategory!, scannedDate!);
+                    Navigator.pop(context);
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Please verify all scanned details')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Add Scanned'),
+              ),
+            ],
+          );
+        },
+      );
+      textRecognizer.close();
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No image selected.')),
+        );
+      }
+    }
   }
 
   Future<void> _updateTotalBalanceInFirestore() async {
-    await _firestore.collection('users').doc(docID).update({
-      'totalBalance': _totalBalance,
-    });
+    try {
+      await _firestore.collection('users').doc(docID).update({
+        'totalBalance': _totalBalance,
+      });
+    } catch (e) {
+      print('Error updating balance: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update balance')),
+        );
+      }
+    }
   }
 
   void _addTransaction(
@@ -633,6 +793,13 @@ class _TransactionsPageState extends State<Transactions> {
           _filterTransactions();
         });
         _updateTotalBalanceInFirestore();
+      }).catchError((error) {
+        print('Error adding transaction: $error');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to add transaction')),
+          );
+        }
       });
     }
   }
@@ -658,121 +825,135 @@ class _TransactionsPageState extends State<Transactions> {
         }
       });
       _updateTotalBalanceInFirestore();
+    }).catchError((error) {
+      print('Error removing transaction: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete transaction')),
+        );
+      }
     });
   }
 
   Future<void> sharePdfLink() async {
-  String? selected = await showModalBottomSheet<String>(
-    context: context,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    backgroundColor: Colors.white,
-    builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select the type of report to share',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+    String? selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      backgroundColor: Colors.white,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24.0, horizontal: 24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Select the type of report to share',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              SizedBox(height: 16),
-              ...['General', 'Weekly', 'Monthly'].map((option) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: InkWell(
-                    onTap: () => Navigator.pop(context, option),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 6,
-                            offset: Offset(0, 3),
-                          )
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.picture_as_pdf_outlined, color: Colors.blue.shade700),
-                          SizedBox(width: 12),
-                          Text(
-                            option,
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w500,
-                              color: Colors.black87,
+                const SizedBox(height: 16),
+                ...['General', 'Weekly', 'Monthly'].map((option) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: InkWell(
+                      onTap: () => Navigator.pop(context, option),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.picture_as_pdf_outlined, color: Colors.blue.shade700),
+                            const SizedBox(width: 12),
+                            Text(
+                              option,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black87,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
-            ],
+                  );
+                }),
+              ],
+            ),
           ),
+        );
+      },
+    );
+
+    selected ??= 'General';
+
+    try {
+      File paragraphPdf;
+      if (selected == 'General') {
+        paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
+      } else if (selected == 'Weekly') {
+        paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
+      } else {
+        paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+      }
+
+      final pdfFileName = '$selected-Report.pdf';
+      final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(paragraphPdf, pdfFileName);
+
+      if (downloadUrl != null) {
+        SaveAndOpenDocument.copyToClipboard(downloadUrl);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$selected PDF link copied to clipboard!'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Failed to upload report'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error generating PDF: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Failed to generate report'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
-    },
-  );
-
-  selected ??= 'General';
-
-  File paragraphPdf;
-  if (selected == 'General') {
-    paragraphPdf = await ParagraphPdfApi.generateParagraphPdf(docID);
-  } else if (selected == 'Weekly') {
-    paragraphPdf = await ParagraphPdfApi.generateWeeklyPdf(docID);
-  } else {
-    paragraphPdf = await ParagraphPdfApi.generateMonthlyPdf(docID);
+    }
   }
-
-  final pdfFileName = '$selected-Report.pdf';
-  final downloadUrl = await SaveAndOpenDocument.uploadPdfAndGetLink(paragraphPdf, pdfFileName);
-
-  if (downloadUrl != null) {
-    SaveAndOpenDocument.copyToClipboard(downloadUrl);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$selected PDF link copied to clipboard!'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to upload $selected report.'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
-
-
-
 
   void _searchTransactions(String query) {
     setState(() {
       _searchQuery = query;
     });
-    _filterTransactions(); // Apply filters immediately after search query changes
+    _filterTransactions();
   }
-
   void _showPlaidTransactionPicker() {
     final Set<int> selectedIndexes = {};
 
@@ -1020,144 +1201,7 @@ class _TransactionsPageState extends State<Transactions> {
     );
   }
 
-  Future<void> _scanReceipt() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.camera);
-
-    if (image != null) {
-      final inputImage = InputImage.fromFilePath(image.path);
-      final textRecognizer = GoogleMlKit.vision.textRecognizer();
-      final RecognizedText recognizedText =
-          await textRecognizer.processImage(inputImage);
-
-      String rawText = recognizedText.text;
-      print('Recognized Text: $rawText'); // For debugging
-
-      // Implement your logic to parse amount, type, category, and date from rawText
-      // For demonstration, let's assume simple parsing or just showing the raw text
-      double? scannedAmount;
-      String? scannedCategory;
-      DateTime? scannedDate;
-
-      // Simple regex to find a dollar amount (e.g., $12.34 or 12.34)
-      final amountRegex = RegExp(r'\d+\.\d{2}');
-      final amountMatch = amountRegex.firstMatch(rawText);
-      if (amountMatch != null) {
-        scannedAmount = double.tryParse(amountMatch.group(0)!);
-      }
-
-      // Simple regex to find a date (e.g., MM/DD/YYYY or YYYY-MM-DD)
-      final dateRegex =
-          RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2}');
-      final dateMatch = dateRegex.firstMatch(rawText);
-      if (dateMatch != null) {
-        try {
-          scannedDate = DateFormat('MM/dd/yyyy')
-              .parse(dateMatch.group(0)!); // Adjust format as needed
-        } catch (e) {
-          try {
-            scannedDate = DateFormat('yyyy-MM-dd')
-                .parse(dateMatch.group(0)!); // Adjust format as needed
-          } catch (e) {
-            print("Could not parse date: $e");
-          }
-        }
-      }
-
-      // For category, you'd need more sophisticated NLP or keyword matching
-      // For now, let's just use a placeholder
-      scannedCategory = "Scanned Item";
-
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text('Scanned Transaction'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Raw Text: $rawText'),
-                  SizedBox(height: 10),
-                  TextField(
-                    decoration: InputDecoration(labelText: 'Amount'),
-                    keyboardType: TextInputType.number,
-                    controller: TextEditingController(
-                        text: scannedAmount?.toStringAsFixed(2) ?? ''),
-                    onChanged: (val) => scannedAmount = double.tryParse(val),
-                  ),
-                  DropdownButtonFormField<String>(
-                    decoration: InputDecoration(labelText: 'Type'),
-                    value:
-                        'Expense', // Assume expense for receipts, or let user pick
-                    items: ['Income', 'Expense']
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (val) => type1 = val,
-                  ),
-                  TextField(
-                    decoration: InputDecoration(labelText: 'Name'),
-                    controller: TextEditingController(text: scannedCategory),
-                    onChanged: (val) => scannedCategory = val,
-                  ),
-                  ListTile(
-                    title: Text(
-                        "Date: ${scannedDate != null ? DateFormat('yyyy-MM-dd').format(scannedDate!) : 'Select Date'}"),
-                    trailing: Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: scannedDate ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => scannedDate = picked);
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (scannedAmount != null &&
-                      type1 != null &&
-                      scannedCategory != null &&
-                      scannedDate != null) {
-                    _addTransaction(
-                        scannedAmount!, type1!, scannedCategory!, scannedDate!);
-                    Navigator.pop(context);
-                  } else {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text('Please verify all scanned details')),
-                      );
-                    }
-                  }
-                },
-                child: Text('Add Scanned'),
-              ),
-            ],
-          );
-        },
-      );
-      textRecognizer.close();
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No image selected.')),
-        );
-      }
-    }
-  }
+  
 
   Future<void> fetchTransactions(String accessToken) async {
     try {
@@ -1781,6 +1825,10 @@ class _TransactionsPageState extends State<Transactions> {
         },
       );
     }
+  }
+
+  void _showModalScanReceipt() async {
+    await _scanReceipt();
   }
 
   @override
