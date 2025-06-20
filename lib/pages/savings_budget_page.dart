@@ -655,26 +655,38 @@ class _BudgetSavingsPageState extends State<BudgetSavingsPage> {
     // Always show the white container and appbar, even if loading
     return Scaffold(
       backgroundColor: kAppBarColor,
-      appBar: AppBar(
-        toolbarHeight: kAppBarHeight,
-        backgroundColor: kAppBarColor,
-        elevation: 0,
-        centerTitle: true,
-        title: Padding(
-          padding: const EdgeInsets.only(bottom: 15.0),
-          child: Text(
-            "Budgets & Savings",
-            style: kAppBarTextStyle,
-          ),
+appBar: AppBar(
+  toolbarHeight: kAppBarHeight,
+  backgroundColor: kAppBarColor,
+  elevation: 0,
+  centerTitle: true,
+  // Add the info icon here
+  leading: Padding(
+    padding: const EdgeInsets.only(left: 16.0, bottom: 10.0),
+    child: Container(
+        padding: const EdgeInsets.all(6),
+        child: const Icon(
+          Icons.info_outline,
+          color: Colors.white,
+          size: 40,
         ),
-        actions: [
-          if (userId.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 10.0, top: 8),
-              child: ProfilePicture(userId: userId),
-            ),
-        ],
       ),
+  ),
+  title: Padding(
+    padding: const EdgeInsets.only(bottom: 15.0),
+    child: Text(
+      "Budgets & Savings",
+      style: kAppBarTextStyle,
+    ),
+  ),
+  actions: [
+    if (userId.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.only(right: 10.0, top: 8),
+        child: ProfilePicture(userId: userId),
+      ),
+  ],
+),
       body: Container(
         decoration: BoxDecoration(
           color: Colors.white,

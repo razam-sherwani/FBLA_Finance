@@ -1794,33 +1794,45 @@ class _TransactionsPageState extends State<Transactions> {
 
     return Scaffold(
       backgroundColor: primaryColor,
-      extendBodyBehindAppBar: false,
-      appBar: AppBar(
-        toolbarHeight: 75,
-        title: Padding(
-          padding: const EdgeInsets.only(bottom: 15.0),
-          child: Text(
-            "Transactions",
-            style: GoogleFonts.barlow(
-              fontWeight: FontWeight.bold,
-              fontSize: 28,
-              color: Colors.white,
-            ),
-            textAlign: TextAlign.center,
-          ),
+extendBodyBehindAppBar: false,
+appBar: AppBar(
+  toolbarHeight: 75,
+  // Add the info icon here
+  leading: Padding(
+    padding: const EdgeInsets.only(left: 16.0, bottom: 10.0),
+    child: Container(
+        padding: const EdgeInsets.all(6),
+        child: const Icon(
+          Icons.info_outline,
+          color: Colors.white,
+          size: 40,
         ),
-        centerTitle: true,
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          if (userId.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 10.0, top: 8),
-              child: ProfilePicture(userId: userId),
-            ),
-        ],
       ),
+  ),
+  title: Padding(
+    padding: const EdgeInsets.only(bottom: 15.0),
+    child: Text(
+      "Transactions",
+      style: GoogleFonts.barlow(
+        fontWeight: FontWeight.bold,
+        fontSize: 28,
+        color: Colors.white,
+      ),
+      textAlign: TextAlign.center,
+    ),
+  ),
+  centerTitle: true,
+  backgroundColor: primaryColor,
+  foregroundColor: Colors.white,
+  elevation: 0,
+  actions: [
+    if (userId.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.only(right: 10.0, top: 8),
+        child: ProfilePicture(userId: userId),
+      ),
+  ],
+),
       body: Container(
         decoration: BoxDecoration(
           color: bgColor,

@@ -818,42 +818,54 @@ void _promptUpdateBudget() {
 
     return Scaffold(
       backgroundColor: const Color(0xFF2A4288),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                return ChatScreen();
-              },
-            ),
-          );
+floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+floatingActionButton: FloatingActionButton(
+  onPressed: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) {
+          return ChatScreen();
         },
-        backgroundColor: Colors.blue.shade900,
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.chat),
       ),
-      appBar: AppBar(
-        toolbarHeight: 75,
-        title: Padding(
-          padding: const EdgeInsets.only(bottom: 15.0), // Move title up
-          child: Text(
-            'Transaction Analysis',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
+    );
+  },
+  backgroundColor: Colors.blue.shade900,
+  foregroundColor: Colors.white,
+  child: const Icon(Icons.chat),
+),
+appBar: AppBar(
+  toolbarHeight: 75,
+  // Add the info icon here
+  leading: Padding(
+    padding: const EdgeInsets.only(left: 16.0, bottom: 10.0),
+    child: Container(
+        padding: const EdgeInsets.all(6),
+        child: const Icon(
+          Icons.info_outline,
+          color: Colors.white,
+          size: 40,
         ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFF2A4288),
-        actions: [
-          if (userId.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 10.0, top: 8),
-              child: ProfilePicture(userId: userId),
-            ),
-        ],
       ),
+  ),
+  title: Padding(
+    padding: const EdgeInsets.only(bottom: 15.0), // Move title up
+    child: Text(
+      'Transaction Analysis',
+      textAlign: TextAlign.center,
+      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+    ),
+  ),
+  centerTitle: true,
+  backgroundColor: const Color(0xFF2A4288),
+  actions: [
+    if (userId.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.only(right: 10.0, top: 8),
+        child: ProfilePicture(userId: userId),
+      ),
+  ],
+),
       body: StreamBuilder<List<Color>>(
         stream: docID.isNotEmpty
             ? GradientService(userId: docID).getGradientStream()

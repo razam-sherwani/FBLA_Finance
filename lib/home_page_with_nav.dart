@@ -1,4 +1,4 @@
-import 'package:fbla_finance/analysis.dart';
+import 'package:fbla_finance/pages/analysis.dart';
 import 'package:fbla_finance/pages/savings_budget_page.dart';
 import 'package:fbla_finance/pages/transactions.dart';
 import 'package:fbla_finance/util/custom_nav_bar.dart';

@@ -1,4 +1,3 @@
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fbla_finance/home_page_with_nav.dart';
 import 'package:fbla_finance/pages/chat_screen.dart';
@@ -8,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:fbla_finance/backend/auth.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../util/profile_picture.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart'; // Import the dependency
 
 const double kAppBarHeight = 75;
 const Color kAppBarColor = Color(0xFF2A4288);
@@ -30,10 +30,28 @@ class _HomePageState extends State<HomePage> {
   String docID = "";
   double _totalBalance = 0.0;
 
+  // Define GlobalKeys for the elements you want to highlight
+  final GlobalKey _welcomeBannerKey = GlobalKey();
+  final GlobalKey _totalBalanceCardKey = GlobalKey();
+  final GlobalKey _recentTransactionsTitleKey = GlobalKey();
+  final GlobalKey _reportsShortcutKey = GlobalKey();
+  final GlobalKey _chatFabKey = GlobalKey();
+
+  TutorialCoachMark? tutorialCoachMark;
+  final ScrollController _scrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     fetchDocIDAndTransactions();
+    // No tutorial auto-start here, it's triggered by the info icon
+  }
+
+  @override
+  void dispose() {
+    tutorialCoachMark?.finish();
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> fetchDocIDAndTransactions() async {
@@ -94,18 +112,153 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _navigateToReportsViaNavBar(BuildContext context) {
-    // Find the nearest ancestor HomePageWithNavState and set the index to 4
     final navState = context.findAncestorStateOfType<HomePageWithNavState>();
     if (navState != null) {
       navState.setSelectedIndex(4);
     } else {
-      // Fallback: show a message if not found
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Navigation bar not found.'),
         ),
       );
     }
+  }
+
+  // Adjusted _buildTutorialContent to fit the new design (white background, colored text)
+  Widget _buildTutorialContent({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white, // White background for the tutorial bubble
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.10),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.13), // Lighter background for the icon
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Icon(icon, color: color, size: 32),
+          ),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.barlow(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: color, // Title text color matches the icon color
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  description,
+                  style: GoogleFonts.barlow(
+                    fontSize: 16,
+                    color: Colors.grey[800], // Description text color
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTutorial() {
+    List<TargetFocus> targets = [
+      TargetFocus(
+        keyTarget: _welcomeBannerKey,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              icon: Icons.home_rounded,
+              color: Colors.blueAccent,
+              title: "Welcome Banner",
+              description: "Welcome to your FBLA Finance Home! This banner greets you.",
+            ),
+          ),
+        ],
+      ),
+      TargetFocus(
+        keyTarget: _totalBalanceCardKey,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              icon: Icons.account_balance_wallet,
+              color: Colors.green,
+              title: "Quick Overview",
+              description: "Here's your Quick Overview, showing your total balance, income, and expenses.",
+            ),
+          ),
+        ],
+      ),
+      TargetFocus(
+        keyTarget: _recentTransactionsTitleKey,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.bottom,
+            child: _buildTutorialContent(
+              icon: Icons.history,
+              color: Colors.deepPurple,
+              title: "Recent Transactions",
+              description: "See your most recent transactions listed here.",
+            ),
+          ),
+        ],
+      ),
+
+      TargetFocus(
+        keyTarget: _chatFabKey,
+        alignSkip: Alignment.topRight,
+        contents: [
+          TargetContent(
+            align: ContentAlign.top,
+            child: _buildTutorialContent(
+              icon: Icons.chat_bubble_outline,
+              color: Colors.blue,
+              title: "AI Chat Assistant",
+              description: "Need help? Tap this button to chat with our AI assistant for financial advice!",
+            ),
+          ),
+        ],
+      ),
+    ];
+
+    tutorialCoachMark = TutorialCoachMark(
+      targets: targets,
+      colorShadow: Colors.black.withOpacity(0.85),
+      textSkip: "SKIP",
+      paddingFocus: 12,
+      opacityShadow: 0.85,
+      hideSkip: false,
+      onFinish: () {},
+      onSkip: () => true,
+    )..show(context: context);
   }
 
   @override
@@ -124,6 +277,20 @@ class _HomePageState extends State<HomePage> {
         backgroundColor: kAppBarColor,
         elevation: 0,
         centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 16.0, bottom: 10.0),
+          child: GestureDetector(
+            onTap: _showTutorial, // Trigger tutorial on tap
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              child: const Icon(
+                Icons.info_outline,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
+          ),
+        ),
         title: Padding(
           padding: const EdgeInsets.only(bottom: 15.0),
           child: Text(
@@ -148,13 +315,15 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         child: ListView(
+          controller: _scrollController, // Attach the ScrollController
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           children: [
-            _buildWelcomeBanner(),
-            SizedBox(height: 28),
-            _buildTotalBalanceCard(),
+            // Assign keys to the widgets you want to highlight
+            _buildWelcomeBanner(key: _welcomeBannerKey),
             const SizedBox(height: 28),
-            _buildSectionTitle("Recent Transactions", primaryColor),
+            _buildTotalBalanceCard(key: _totalBalanceCardKey),
+            const SizedBox(height: 28),
+            _buildSectionTitle("Recent Transactions", primaryColor, key: _recentTransactionsTitleKey),
             const SizedBox(height: 10),
             _buildRecentTransactionsCard(),
             const SizedBox(height: 28),
@@ -162,6 +331,7 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 14),
             _buildReportShortcut(
               context,
+              key: _reportsShortcutKey,
               icon: Icons.description_outlined,
               label: "View Reports",
               color: accentColor,
@@ -173,6 +343,7 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        key: _chatFabKey,
         onPressed: () {
           Navigator.push(
             context,
@@ -186,8 +357,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildWelcomeBanner() {
+  // --- Helper Methods ---
+
+  Widget _buildWelcomeBanner({Key? key}) {
     return Container(
+      key: key, // Assign the key here
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -232,7 +406,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTotalBalanceCard() {
+  Widget _buildTotalBalanceCard({Key? key}) {
     double totalIncome = 0;
     double totalExpense = 0;
     for (var txn in _recentTransactions) {
@@ -245,6 +419,7 @@ class _HomePageState extends State<HomePage> {
     double net = totalIncome - totalExpense;
 
     return Container(
+      key: key, // Assign the key here
       padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 22),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -289,9 +464,9 @@ class _HomePageState extends State<HomePage> {
                   color: const Color(0xff39baf9).withOpacity(0.13),
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.account_balance_wallet,
-                  color: const Color(0xff39baf9),
+                  color: Color(0xff39baf9),
                   size: 32,
                 ),
               ),
@@ -403,13 +578,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildReportShortcut(BuildContext context,
-      {required IconData icon,
+      {Key? key, // Accept key parameter
+      required IconData icon,
       required String label,
       required Color color,
       required VoidCallback onTap}) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
+        key: key, // Assign the key here
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
@@ -455,9 +632,10 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildSectionTitle(String text, Color color) {
+  Widget _buildSectionTitle(String text, Color color, {Key? key}) {
     return Text(
       text,
+      key: key, // Assign the key here
       style: GoogleFonts.barlow(
         fontWeight: FontWeight.bold,
         fontSize: 20,

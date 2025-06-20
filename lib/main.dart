@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:fbla_finance/backend/custom_plugin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:fbla_finance/backend/widget_tree.dart';
@@ -14,15 +15,15 @@ Future<void> main() async {
   FirebaseAuth.instanceFor(app: app);
   FirebaseFunctions.instanceFor(app: app);
   runApp(
-    // DevicePreview(
-    //   enabled: true,
-    //   tools: const [
-    //     ...DevicePreview.defaultTools,
-    //     CustomPlugin(),
-    //   ],
-    //   builder: (context) => const MyApp(),
-    // ),
-    const MyApp(),
+    DevicePreview(
+      enabled: true,
+      tools: const [
+        ...DevicePreview.defaultTools,
+        CustomPlugin(),
+      ],
+      builder: (context) => const MyApp(),
+    ),
+    //const MyApp(),
   );
 }
 
