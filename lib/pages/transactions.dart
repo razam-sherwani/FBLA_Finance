@@ -2474,165 +2474,124 @@ appBar: AppBar(
   }
 
   String _extractMerchantName(String rawText) {
-    // Split text into lines and clean them
-    List<String> lines = rawText.split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
+  // Clean lines
+  List<String> lines = rawText.split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList();
+
+  List<String> merchantCandidates = [];
+
+  // Header scan
+  for (int i = 0; i < lines.length && i < 10; i++) {
+    String originalLine = lines[i];
+    String upperLine = originalLine.toUpperCase();
+
+    if (_isReceiptKeyword(upperLine)) continue;
+
+    if (_isPotentialMerchantName(originalLine)) {
+      String cleanLine = _cleanMerchantName(originalLine);
+      if (cleanLine.length > 2) {
+        merchantCandidates.add(cleanLine);
+      }
+    }
+  }
+
+  // Regex patterns
+  final businessPatterns = [
+    RegExp(r"\b([A-Z][A-Z\s&.\'\-]{2,30})\b"),
+    RegExp(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b'),
+    RegExp(r'\b([A-Z][a-z]*\s*(DINER|RESTAURANT|KITCHEN|RESTAURANTE|CAFE|GRILL|BAR|BAKERY|BISTRO|PIZZERIA|STEAKHOUSE|BUFFET|TAVERN|PUB|LOUNGE|CANTINA|TRATTORIA|BRASSERIE|SUSHI|BBQ|CHICKEN|BURGER|PIZZA|SUBS|SANDWICH|DELI|MARKET|FOODS|GROCERY|SUPERMARKET))\b', caseSensitive: false),
+  ];
+
+  for (final pattern in businessPatterns) {
+    final matches = pattern.allMatches(rawText);
+    for (final match in matches) {
+      String candidate = match.group(0)!.trim();
+      if (_isPotentialMerchantName(candidate)) {
+        merchantCandidates.add(_cleanMerchantName(candidate));
+      }
+    }
+  }
+
+  // Score and return best match
+  if (merchantCandidates.isNotEmpty) {
+    List<MapEntry<String, int>> scored = merchantCandidates
+        .toSet()
+        .map((c) => MapEntry(c, _scoreMerchantCandidate(c)))
         .toList();
 
-    // Common receipt header patterns for merchant names
-    List<String> merchantCandidates = [];
-    
-    // Look for common receipt header patterns (first 10 lines)
-    for (int i = 0; i < lines.length && i < 10; i++) {
-      String line = lines[i].toUpperCase();
-      
-      // Skip lines that are clearly not merchant names
-      if (_isReceiptKeyword(line)) continue;
-      
-      // Look for lines that could be merchant names
-      if (_isPotentialMerchantName(line)) {
-        String cleanLine = _cleanMerchantName(line);
-        if (cleanLine.length > 2) {
-          merchantCandidates.add(cleanLine);
-        }
-      }
+    scored.sort((a, b) => b.value.compareTo(a.value));
+
+    if (scored.first.value > 5) {
+      return scored.first.key;
     }
-
-    // Additional patterns for business names
-    final businessPatterns = [
-      RegExp(r'\b([A-Z][A-Z\s&.-]{2,30})\b'), // All caps business names
-      RegExp(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b'), // Title case business names
-      RegExp(r'\b([A-Z][a-z]+(?:\s+[&]\s+[A-Z][a-z]+)*)\b'), // Names with &
-    ];
-
-    for (final pattern in businessPatterns) {
-      final matches = pattern.allMatches(rawText);
-      for (final match in matches) {
-        String candidate = match.group(1)!.trim();
-        if (_isPotentialMerchantName(candidate)) {
-          merchantCandidates.add(candidate.toUpperCase());
-        }
-      }
-    }
-
-    // Score and select the best candidate
-    if (merchantCandidates.isNotEmpty) {
-      List<MapEntry<String, int>> scoredCandidates = merchantCandidates
-          .toSet()
-          .map((candidate) => MapEntry(candidate, _scoreMerchantCandidate(candidate)))
-          .toList();
-      
-      scoredCandidates.sort((a, b) => b.value.compareTo(a.value));
-      
-      if (scoredCandidates.isNotEmpty && scoredCandidates.first.value > 5) {
-        return scoredCandidates.first.key;
-      }
-    }
-
-    // Fallback to keyword-based category detection
-    return _detectCategoryFromKeywords(rawText);
   }
 
-  bool _isReceiptKeyword(String line) {
-    final keywords = [
-      'RECEIPT', 'TOTAL', 'SUBTOTAL', 'TAX', 'CHANGE', 'CARD', 'THANK', 'WELCOME',
-      'PHONE', 'ADDRESS', 'DATE', 'TIME', 'CASHIER', 'REGISTER', 'TRANSACTION',
-      'BALANCE', 'DUE', 'PAYMENT', 'INVOICE', 'ORDER', 'REFERENCE', 'ACCOUNT',
-      'CUSTOMER', 'MEMBER', 'LOYALTY', 'REWARDS', 'POINTS', 'DISCOUNT', 'SALE',
-      'CLEARANCE', 'RETURN', 'EXCHANGE', 'REFUND', 'CASH', 'DEBIT', 'CREDIT',
-      'VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'APPROVED', 'DECLINED',
-      'SIGNATURE', 'PIN', 'AUTHORIZED', 'TERMINAL', 'POS', 'SYSTEM', 'ERROR',
-      'VOID', 'CANCELLED', 'COMPLETE', 'FINISHED', 'END', 'COPY', 'ORIGINAL'
-    ];
-    return keywords.any((keyword) => line.contains(keyword));
+  // Fallback: trust one of the top lines
+  for (int i = 0; i < 5 && i < lines.length; i++) {
+    if (_isPotentialMerchantName(lines[i])) {
+      return _cleanMerchantName(lines[i]);
+    }
   }
 
-  bool _isPotentialMerchantName(String line) {
-    return line.length > 3 && line.length < 60 &&
-           !RegExp(r'^\d+$').hasMatch(line) && // Not just numbers
-           !RegExp(r'^\d+[.,]\d{2}$').hasMatch(line) && // Not just amounts
-           !RegExp(r'^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$').hasMatch(line) && // Not just dates
-           !RegExp(r'^\d{1,2}:\d{2}(:\d{2})?(\s*[AP]M)?$').hasMatch(line) && // Not just time
-           !line.contains('\$') && !line.contains('€') && !line.contains('£') && !line.contains('¥') &&
-           !line.contains('%') && !line.contains('OFF') && !line.contains('SAVE');
-  }
+  return "Scanned Item";
+}
 
-  String _cleanMerchantName(String line) {
-    return line
-        .replaceAll(RegExp(r'[^\w\s&.-]'), '') // Remove special chars except &, ., -
-        .replaceAll(RegExp(r'\s+'), ' ') // Normalize spaces
-        .trim();
-  }
+int _scoreMerchantCandidate(String candidate) {
+  int score = 0;
 
-  int _scoreMerchantCandidate(String candidate) {
-    int score = 0;
-    
-    // Higher score for reasonable length
-    if (candidate.length >= 4 && candidate.length <= 25) score += 10;
-    
-    // Higher score for containing spaces (multi-word names)
-    if (candidate.contains(' ')) score += 5;
-    
-    // Higher score for containing common business indicators
-    if (candidate.contains('&')) score += 3;
-    if (candidate.contains('-')) score += 2;
-    if (candidate.contains('.')) score += 1;
-    
-    // Higher score for not being all caps (more natural)
-    if (!RegExp(r'^[A-Z\s&.-]+$').hasMatch(candidate)) score += 8;
-    
-    // Lower score for very short or very long names
-    if (candidate.length < 3) score -= 5;
-    if (candidate.length > 30) score -= 3;
-    
-    // Higher score for common business words
-    if (candidate.contains('STORE') || candidate.contains('SHOP') || 
-        candidate.contains('MARKET') || candidate.contains('FOODS') ||
-        candidate.contains('RESTAURANT') || candidate.contains('CAFE') ||
-        candidate.contains('PIZZA') || candidate.contains('BURGER')) {
-      score += 2;
-    }
-    
-    return score;
-  }
+  if (candidate.length >= 4 && candidate.length <= 25) score += 10;
+  if (candidate.contains(' ')) score += 5;
+  if (candidate.contains('&')) score += 3;
+  if (candidate.contains('-')) score += 2;
+  if (candidate.contains('.')) score += 1;
+  if (!RegExp(r"^[A-Z\s&.\'-]+$").hasMatch(candidate)) score += 8;
 
-  String _detectCategoryFromKeywords(String rawText) {
-    String lowerText = rawText.toLowerCase();
-    
-    // Food & Dining
-    if (lowerText.contains(RegExp(r'coffee|starbucks|cafe|bakery|restaurant|food|dining|pizza|burger|subway|mcdonalds|kfc|taco|chipotle|panera|dunkin|tim hortons'))) {
-      return "Food & Drink";
-    }
-    // Transportation
-    else if (lowerText.contains(RegExp(r'gas|fuel|petrol|shell|exxon|chevron|bp|mobil|uber|lyft|taxi|parking|toll|transit|bus|train|subway|metro'))) {
-      return "Transportation";
-    }
-    // Groceries
-    else if (lowerText.contains(RegExp(r'grocery|supermarket|walmart|target|costco|sams|kroger|safeway|albertsons|publix|whole foods|trader joes|aldi|lidl'))) {
-      return "Groceries";
-    }
-    // Shopping
-    else if (lowerText.contains(RegExp(r'store|shop|mall|outlet|amazon|ebay|best buy|home depot|lowes|macy|nordstrom|target|walmart'))) {
-      return "Shopping";
-    }
-    // Entertainment
-    else if (lowerText.contains(RegExp(r'movie|theater|cinema|netflix|spotify|hulu|disney|amazon prime|game|entertainment|concert|show|ticket'))) {
-      return "Entertainment";
-    }
-    // Health
-    else if (lowerText.contains(RegExp(r'pharmacy|drug|walgreens|cvs|rite aid|medical|doctor|hospital|clinic|dental|vision|optical'))) {
-      return "Healthcare";
-    }
-    // Utilities
-    else if (lowerText.contains(RegExp(r'electric|gas|water|internet|phone|cable|utility|bill|service'))) {
-      return "Utilities";
-    }
-    // Banking
-    else if (lowerText.contains(RegExp(r'bank|atm|withdrawal|deposit|transfer|payment|credit|debit'))) {
-      return "Banking";
-    }
-    
-    return "Scanned Item";
-  }
+  // Penalty for item-looking lines
+  if (RegExp(r'^\d+\s*x\s+\w+', caseSensitive: false).hasMatch(candidate)) score -= 20;
+  if (candidate.contains(RegExp(r'\d'))) score -= 5;
+
+  if (candidate.length < 3) score -= 5;
+  if (candidate.length > 30) score -= 3;
+
+  return score;
+}
+
+bool _isReceiptKeyword(String line) {
+  final keywords = [
+    'RECEIPT', 'TOTAL', 'SUBTOTAL', 'TAX', 'CHANGE', 'CARD', 'THANK', 'WELCOME',
+    'PHONE', 'ADDRESS', 'DATE', 'TIME', 'CASHIER', 'REGISTER', 'TRANSACTION',
+    'BALANCE', 'DUE', 'PAYMENT', 'INVOICE', 'ORDER', 'REFERENCE', 'ACCOUNT',
+    'CUSTOMER', 'MEMBER', 'LOYALTY', 'REWARDS', 'POINTS', 'DISCOUNT', 'SALE',
+    'CLEARANCE', 'RETURN', 'EXCHANGE', 'REFUND', 'CASH', 'DEBIT', 'CREDIT',
+    'VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'APPROVED', 'DECLINED',
+    'SIGNATURE', 'PIN', 'AUTHORIZED', 'TERMINAL', 'POS', 'SYSTEM', 'ERROR',
+    'VOID', 'CANCELLED', 'COMPLETE', 'FINISHED', 'END', 'COPY', 'ORIGINAL'
+  ];
+  return keywords.any((keyword) => line.contains(keyword));
+}
+
+bool _isPotentialMerchantName(String line) {
+  final itemLinePattern = RegExp(r'^\d+\s*x\s+\w+', caseSensitive: false);
+  return line.length > 3 &&
+      line.length < 60 &&
+      !itemLinePattern.hasMatch(line) &&
+      !RegExp(r'^\d+[.,]\d{2}$').hasMatch(line) &&
+      !RegExp(r'^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$').hasMatch(line) &&
+      !RegExp(r'^\d{1,2}:\d{2}(:\d{2})?(\s*[AP]M)?$', caseSensitive: false).hasMatch(line) &&
+      !line.contains('\$') &&
+      !line.contains('%') &&
+      !line.toUpperCase().contains('OFF') &&
+      !line.toUpperCase().contains('SAVE');
+}
+
+String _cleanMerchantName(String line) {
+  return line
+      .replaceAll(RegExp(r"[^\w\s&.\'-]"), '') // Allow apostrophes, hyphens, dots
+      .replaceAll(RegExp(r'\s+'), ' ')  
+      .trim();
+}
+
+
 }
