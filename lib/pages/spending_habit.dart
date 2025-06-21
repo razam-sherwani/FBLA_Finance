@@ -799,7 +799,7 @@ void _promptUpdateBudget() {
       // Save the graphs as images after rendering
       await saveGraphAsImage(_expenseGraphKey, 'expense_graph.png');
       await saveGraphAsImage(_balanceGraphKey, 'balance_graph.png');
-      //await saveGraphAsImage(_pieChartKey, 'pie_chart.png');
+      await saveGraphAsImage(_pieChartKey, 'pie_chart.png');
     });
 
     // Initialize min/max values
