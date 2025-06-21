@@ -480,7 +480,7 @@ class _TransactionsPageState extends State<Transactions> {
                 BoxShadow(
                   color: Colors.black.withOpacity(0.10),
                   blurRadius: 24,
-                  offset: const Offset(0, 8),
+                  offset: Offset(0, 8),
                 ),
               ],
             ),
@@ -543,6 +543,7 @@ class _TransactionsPageState extends State<Transactions> {
                         labelStyle: const TextStyle(fontWeight: FontWeight.w500),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                         contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                        prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF2A4288)),
                       ),
                       onChanged: (val) {
                         setStateModal(() {
@@ -553,10 +554,11 @@ class _TransactionsPageState extends State<Transactions> {
                     const SizedBox(height: 16),
                     TextField(
                       decoration: InputDecoration(
-                        labelText: 'Name',
+                        labelText: 'Name/Merchant',
                         labelStyle: const TextStyle(fontWeight: FontWeight.w500),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                         contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                        prefixIcon: const Icon(Icons.shopping_bag, color: Color(0xFF2A4288)),
                       ),
                       onChanged: (val) {
                         setStateModal(() {
@@ -625,126 +627,453 @@ class _TransactionsPageState extends State<Transactions> {
 
   Future<void> _scanReceipt() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.camera);
+
+    // Show a styled modal bottom sheet for image source selection
+    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.10),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Scan Receipt',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2A4288),
+                ),
+              ),
+              const SizedBox(height: 18),
+              ListTile(
+                leading: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xffB8E8FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.camera_alt, color: Color(0xFF2A4288), size: 28),
+                ),
+                title: const Text('Take a Photo', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xffB8E8FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.photo_library, color: Color(0xFF2A4288), size: 28),
+                ),
+                title: const Text('Upload from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Cancel', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (source == null) {
+      // User canceled the source selection
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No image source selected.')),
+        );
+      }
+      return;
+    }
+
+    final XFile? image = await picker.pickImage(source: source);
 
     if (image != null) {
+      // Show a modern loading dialog while processing
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Dialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A4288).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2A4288)),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      "Scanning receipt...",
+                      style: GoogleFonts.ibmPlexSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Please wait while we extract transaction details",
+                      style: GoogleFonts.ibmPlexSans(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      }
+
       final inputImage = InputImage.fromFilePath(image.path);
       final textRecognizer = GoogleMlKit.vision.textRecognizer();
       final RecognizedText recognizedText =
           await textRecognizer.processImage(inputImage);
 
       String rawText = recognizedText.text;
-      print('Recognized Text: $rawText');
+      print('Recognized Text: $rawText'); // For debugging
 
+      // Dismiss the loading indicator
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Initialize with parsed values or null
       double? scannedAmount;
       String? scannedCategory;
       DateTime? scannedDate;
 
-      final amountRegex = RegExp(r'\d+\.\d{2}');
-      final amountMatch = amountRegex.firstMatch(rawText);
-      if (amountMatch != null) {
-        scannedAmount = double.tryParse(amountMatch.group(0)!);
-      }
+      // Enhanced amount parsing with multiple patterns
+      final amountPatterns = [
+        RegExp(r'[\$€£¥]\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))'), // Currency symbols
+        RegExp(r'(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))'), // Plain numbers
+        RegExp(r'total[:\s]*[\$€£¥]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))', caseSensitive: false), // Total amounts
+        RegExp(r'amount[:\s]*[\$€£¥]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))', caseSensitive: false), // Amount labels
+        RegExp(r'grand\s*total[:\s]*[\$€£¥]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))', caseSensitive: false), // Grand total
+        RegExp(r'balance[:\s]*[\$€£¥]?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))', caseSensitive: false), // Balance
+      ];
 
-      final dateRegex =
-          RegExp(r'\d{2}[-/]\d{2}[-/]\d{4}|\d{4}[-/]\d{2}[-/]\d{2}');
-      final dateMatch = dateRegex.firstMatch(rawText);
-      if (dateMatch != null) {
-        try {
-          scannedDate = DateFormat('MM/dd/yyyy').parse(dateMatch.group(0)!);
-        } catch (e) {
+      double? largestAmount = 0.0;
+      for (final pattern in amountPatterns) {
+        final matches = pattern.allMatches(rawText);
+        for (final match in matches) {
+          String amountStr = match.group(1) ?? match.group(0) ?? '';
+          amountStr = amountStr.replaceAll(RegExp(r'[^\d.,]'), '').replaceAll(',', '');
+          double? amount = double.tryParse(amountStr);
+          if (amount != null && amount > largestAmount!) {
+            largestAmount = amount;
+          }
+        }
+      }
+      scannedAmount = largestAmount! > 0 ? largestAmount : null;
+
+      // Enhanced date parsing with multiple formats
+      final datePatterns = [
+        RegExp(r'\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b'), // MM/DD/YYYY or DD/MM/YYYY
+        RegExp(r'\b(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\b'), // YYYY-MM-DD
+        RegExp(r'\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),?\s+(\d{4})\b', caseSensitive: false), // Month names
+      ];
+
+      List<DateTime> dateCandidates = [];
+      for (final pattern in datePatterns) {
+        final matches = pattern.allMatches(rawText);
+        for (final match in matches) {
           try {
-            scannedDate = DateFormat('yyyy-MM-dd').parse(dateMatch.group(0)!);
+            if (pattern == datePatterns[0]) {
+              // MM/DD/YYYY or DD/MM/YYYY
+              int first = int.parse(match.group(1)!);
+              int second = int.parse(match.group(2)!);
+              int year = int.parse(match.group(3)!);
+              if (year < 100) year += 2000;
+              
+              // Try both MM/DD and DD/MM
+              if (first <= 12 && second <= 31) {
+                dateCandidates.add(DateTime(year, first, second));
+              }
+              if (second <= 12 && first <= 31) {
+                dateCandidates.add(DateTime(year, second, first));
+              }
+            } else if (pattern == datePatterns[1]) {
+              // YYYY-MM-DD
+              int year = int.parse(match.group(1)!);
+              int month = int.parse(match.group(2)!);
+              int day = int.parse(match.group(3)!);
+              if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                dateCandidates.add(DateTime(year, month, day));
+              }
+            } else if (pattern == datePatterns[2]) {
+              // Month names
+              String monthStr = match.group(1)!.toLowerCase();
+              int day = int.parse(match.group(2)!);
+              int year = int.parse(match.group(3)!);
+              
+              Map<String, int> monthMap = {
+                'jan': 1, 'january': 1, 'feb': 2, 'february': 2,
+                'mar': 3, 'march': 3, 'apr': 4, 'april': 4,
+                'may': 5, 'jun': 6, 'june': 6, 'jul': 7, 'july': 7,
+                'aug': 8, 'august': 8, 'sep': 9, 'september': 9,
+                'oct': 10, 'october': 10, 'nov': 11, 'november': 11,
+                'dec': 12, 'december': 12,
+              };
+              
+              int? month = monthMap[monthStr];
+              if (month != null && day >= 1 && day <= 31) {
+                dateCandidates.add(DateTime(year, month, day));
+              }
+            }
           } catch (e) {
-            print("Could not parse date: $e");
+            // Continue to next match
           }
         }
       }
 
+      // Select the most recent valid date
+      if (dateCandidates.isNotEmpty) {
+        dateCandidates.sort((a, b) => b.compareTo(a)); // Sort descending
+        scannedDate = dateCandidates.first;
+      }
+
+      // For category, you'd need more sophisticated NLP or keyword matching.
+      // For now, let's just use a placeholder.
       scannedCategory = "Scanned Item";
 
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Scanned Transaction'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Raw Text: $rawText'),
-                  const SizedBox(height: 10),
-                  TextField(
-                    decoration: const InputDecoration(labelText: 'Amount'),
-                    keyboardType: TextInputType.number,
-                    controller: TextEditingController(
-                        text: scannedAmount?.toStringAsFixed(2) ?? ''),
-                    onChanged: (val) => scannedAmount = double.tryParse(val),
-                  ),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Type'),
-                    value: 'Expense',
-                    items: ['Income', 'Expense']
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (val) => type1 = val,
-                  ),
-                  TextField(
-                    decoration: const InputDecoration(labelText: 'Name'),
-                    controller: TextEditingController(text: scannedCategory),
-                    onChanged: (val) => scannedCategory = val,
-                  ),
-                  ListTile(
-                    title: Text(
-                        "Date: ${scannedDate != null ? DateFormat('yyyy-MM-dd').format(scannedDate!) : 'Select Date'}"),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: scannedDate ?? DateTime.now(),
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() => scannedDate = picked);
-                      }
-                    },
-                  ),
-                ],
+      // Sophisticated merchant name extraction
+      scannedCategory = _extractMerchantName(rawText);
+
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (context) {
+            final double width = MediaQuery.of(context).size.width * 0.92;
+            final double height = MediaQuery.of(context).size.height * 0.55; // More compact height
+            double? dialogScannedAmount = scannedAmount;
+            String? dialogType = 'Expense'; // Default to Expense for receipts
+            String? dialogScannedCategory = scannedCategory;
+            DateTime? dialogScannedDate = scannedDate ?? DateTime.now();
+
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: Colors.white,
+              child: Container(
+                width: width,
+                height: height,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.10),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: StatefulBuilder(
+                  builder: (context, setStateModal) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2A4288).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long,
+                                color: Color(0xFF2A4288),
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                "Scanned Transaction",
+                                style: GoogleFonts.ibmPlexSans(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                  color: const Color(0xFF2A4288),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
+                        Center(
+                          child: ToggleButtons(
+                            borderRadius: BorderRadius.circular(14),
+                            fillColor: Colors.blueAccent,
+                            selectedColor: Colors.white,
+                            color: Colors.black,
+                            constraints: const BoxConstraints(minHeight: 44, minWidth: 120),
+                            isSelected: [dialogType == 'Expense', dialogType == 'Income'],
+                            onPressed: (index) {
+                              setStateModal(() {
+                                dialogType = index == 0 ? 'Expense' : 'Income';
+                              });
+                            },
+                            children: [
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'Expense',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  'Income',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 22),
+                        TextField(
+                          keyboardType: TextInputType.numberWithOptions(decimal: true),
+                          decoration: InputDecoration(
+                            labelText: 'Amount',
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                            prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF2A4288)),
+                          ),
+                          controller: TextEditingController(
+                            text: dialogScannedAmount?.toStringAsFixed(2) ?? '',
+                          ),
+                          onChanged: (val) {
+                            setStateModal(() {
+                              dialogScannedAmount = double.tryParse(val);
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          decoration: InputDecoration(
+                            labelText: 'Name/Merchant',
+                            labelStyle: const TextStyle(fontWeight: FontWeight.w500),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 18),
+                            prefixIcon: const Icon(Icons.shopping_bag, color: Color(0xFF2A4288)),
+                          ),
+                          controller: TextEditingController(text: dialogScannedCategory),
+                          onChanged: (val) {
+                            setStateModal(() {
+                              dialogScannedCategory = val;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            "Date: ${DateFormat('yyyy-MM-dd').format(dialogScannedDate!)}",
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          trailing: const Icon(Icons.calendar_today, color: Color(0xFF2A4288)),
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: dialogScannedDate!,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (picked != null) {
+                              setStateModal(() => dialogScannedDate = picked);
+                            }
+                          },
+                        ),
+                        const Spacer(),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              if (dialogScannedAmount != null &&
+                                  dialogType != null &&
+                                  dialogScannedCategory != null &&
+                                  dialogScannedCategory!.trim().isNotEmpty &&
+                                  dialogScannedDate != null) {
+                                _addTransaction(dialogScannedAmount!, dialogType!,
+                                    dialogScannedCategory!, dialogScannedDate!);
+                                Navigator.pop(context);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Please verify all scanned details')),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2A4288),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: const Text(
+                              "Add Scanned Transaction",
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  if (scannedAmount != null &&
-                      type1 != null &&
-                      scannedCategory != null &&
-                      scannedDate != null) {
-                    _addTransaction(
-                        scannedAmount!, type1!, scannedCategory!, scannedDate!);
-                    Navigator.pop(context);
-                  } else {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Please verify all scanned details')),
-                      );
-                    }
-                  }
-                },
-                child: const Text('Add Scanned'),
-              ),
-            ],
-          );
-        },
-      );
+            );
+          },
+        );
+      }
       textRecognizer.close();
     } else {
+      // User canceled image picking
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No image selected.')),
@@ -2142,5 +2471,168 @@ appBar: AppBar(
         ],
       ),
     );
+  }
+
+  String _extractMerchantName(String rawText) {
+    // Split text into lines and clean them
+    List<String> lines = rawText.split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    // Common receipt header patterns for merchant names
+    List<String> merchantCandidates = [];
+    
+    // Look for common receipt header patterns (first 10 lines)
+    for (int i = 0; i < lines.length && i < 10; i++) {
+      String line = lines[i].toUpperCase();
+      
+      // Skip lines that are clearly not merchant names
+      if (_isReceiptKeyword(line)) continue;
+      
+      // Look for lines that could be merchant names
+      if (_isPotentialMerchantName(line)) {
+        String cleanLine = _cleanMerchantName(line);
+        if (cleanLine.length > 2) {
+          merchantCandidates.add(cleanLine);
+        }
+      }
+    }
+
+    // Additional patterns for business names
+    final businessPatterns = [
+      RegExp(r'\b([A-Z][A-Z\s&.-]{2,30})\b'), // All caps business names
+      RegExp(r'\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b'), // Title case business names
+      RegExp(r'\b([A-Z][a-z]+(?:\s+[&]\s+[A-Z][a-z]+)*)\b'), // Names with &
+    ];
+
+    for (final pattern in businessPatterns) {
+      final matches = pattern.allMatches(rawText);
+      for (final match in matches) {
+        String candidate = match.group(1)!.trim();
+        if (_isPotentialMerchantName(candidate)) {
+          merchantCandidates.add(candidate.toUpperCase());
+        }
+      }
+    }
+
+    // Score and select the best candidate
+    if (merchantCandidates.isNotEmpty) {
+      List<MapEntry<String, int>> scoredCandidates = merchantCandidates
+          .toSet()
+          .map((candidate) => MapEntry(candidate, _scoreMerchantCandidate(candidate)))
+          .toList();
+      
+      scoredCandidates.sort((a, b) => b.value.compareTo(a.value));
+      
+      if (scoredCandidates.isNotEmpty && scoredCandidates.first.value > 5) {
+        return scoredCandidates.first.key;
+      }
+    }
+
+    // Fallback to keyword-based category detection
+    return _detectCategoryFromKeywords(rawText);
+  }
+
+  bool _isReceiptKeyword(String line) {
+    final keywords = [
+      'RECEIPT', 'TOTAL', 'SUBTOTAL', 'TAX', 'CHANGE', 'CARD', 'THANK', 'WELCOME',
+      'PHONE', 'ADDRESS', 'DATE', 'TIME', 'CASHIER', 'REGISTER', 'TRANSACTION',
+      'BALANCE', 'DUE', 'PAYMENT', 'INVOICE', 'ORDER', 'REFERENCE', 'ACCOUNT',
+      'CUSTOMER', 'MEMBER', 'LOYALTY', 'REWARDS', 'POINTS', 'DISCOUNT', 'SALE',
+      'CLEARANCE', 'RETURN', 'EXCHANGE', 'REFUND', 'CASH', 'DEBIT', 'CREDIT',
+      'VISA', 'MASTERCARD', 'AMEX', 'DISCOVER', 'APPROVED', 'DECLINED',
+      'SIGNATURE', 'PIN', 'AUTHORIZED', 'TERMINAL', 'POS', 'SYSTEM', 'ERROR',
+      'VOID', 'CANCELLED', 'COMPLETE', 'FINISHED', 'END', 'COPY', 'ORIGINAL'
+    ];
+    return keywords.any((keyword) => line.contains(keyword));
+  }
+
+  bool _isPotentialMerchantName(String line) {
+    return line.length > 3 && line.length < 60 &&
+           !RegExp(r'^\d+$').hasMatch(line) && // Not just numbers
+           !RegExp(r'^\d+[.,]\d{2}$').hasMatch(line) && // Not just amounts
+           !RegExp(r'^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$').hasMatch(line) && // Not just dates
+           !RegExp(r'^\d{1,2}:\d{2}(:\d{2})?(\s*[AP]M)?$').hasMatch(line) && // Not just time
+           !line.contains('\$') && !line.contains('€') && !line.contains('£') && !line.contains('¥') &&
+           !line.contains('%') && !line.contains('OFF') && !line.contains('SAVE');
+  }
+
+  String _cleanMerchantName(String line) {
+    return line
+        .replaceAll(RegExp(r'[^\w\s&.-]'), '') // Remove special chars except &, ., -
+        .replaceAll(RegExp(r'\s+'), ' ') // Normalize spaces
+        .trim();
+  }
+
+  int _scoreMerchantCandidate(String candidate) {
+    int score = 0;
+    
+    // Higher score for reasonable length
+    if (candidate.length >= 4 && candidate.length <= 25) score += 10;
+    
+    // Higher score for containing spaces (multi-word names)
+    if (candidate.contains(' ')) score += 5;
+    
+    // Higher score for containing common business indicators
+    if (candidate.contains('&')) score += 3;
+    if (candidate.contains('-')) score += 2;
+    if (candidate.contains('.')) score += 1;
+    
+    // Higher score for not being all caps (more natural)
+    if (!RegExp(r'^[A-Z\s&.-]+$').hasMatch(candidate)) score += 8;
+    
+    // Lower score for very short or very long names
+    if (candidate.length < 3) score -= 5;
+    if (candidate.length > 30) score -= 3;
+    
+    // Higher score for common business words
+    if (candidate.contains('STORE') || candidate.contains('SHOP') || 
+        candidate.contains('MARKET') || candidate.contains('FOODS') ||
+        candidate.contains('RESTAURANT') || candidate.contains('CAFE') ||
+        candidate.contains('PIZZA') || candidate.contains('BURGER')) {
+      score += 2;
+    }
+    
+    return score;
+  }
+
+  String _detectCategoryFromKeywords(String rawText) {
+    String lowerText = rawText.toLowerCase();
+    
+    // Food & Dining
+    if (lowerText.contains(RegExp(r'coffee|starbucks|cafe|bakery|restaurant|food|dining|pizza|burger|subway|mcdonalds|kfc|taco|chipotle|panera|dunkin|tim hortons'))) {
+      return "Food & Drink";
+    }
+    // Transportation
+    else if (lowerText.contains(RegExp(r'gas|fuel|petrol|shell|exxon|chevron|bp|mobil|uber|lyft|taxi|parking|toll|transit|bus|train|subway|metro'))) {
+      return "Transportation";
+    }
+    // Groceries
+    else if (lowerText.contains(RegExp(r'grocery|supermarket|walmart|target|costco|sams|kroger|safeway|albertsons|publix|whole foods|trader joes|aldi|lidl'))) {
+      return "Groceries";
+    }
+    // Shopping
+    else if (lowerText.contains(RegExp(r'store|shop|mall|outlet|amazon|ebay|best buy|home depot|lowes|macy|nordstrom|target|walmart'))) {
+      return "Shopping";
+    }
+    // Entertainment
+    else if (lowerText.contains(RegExp(r'movie|theater|cinema|netflix|spotify|hulu|disney|amazon prime|game|entertainment|concert|show|ticket'))) {
+      return "Entertainment";
+    }
+    // Health
+    else if (lowerText.contains(RegExp(r'pharmacy|drug|walgreens|cvs|rite aid|medical|doctor|hospital|clinic|dental|vision|optical'))) {
+      return "Healthcare";
+    }
+    // Utilities
+    else if (lowerText.contains(RegExp(r'electric|gas|water|internet|phone|cable|utility|bill|service'))) {
+      return "Utilities";
+    }
+    // Banking
+    else if (lowerText.contains(RegExp(r'bank|atm|withdrawal|deposit|transfer|payment|credit|debit'))) {
+      return "Banking";
+    }
+    
+    return "Scanned Item";
   }
 }
