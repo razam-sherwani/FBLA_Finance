@@ -29,8 +29,6 @@ class _HomePageState extends State<HomePage> {
   List<Map<String, dynamic>> _recentTransactions = [];
   String docID = "";
   double _totalBalance = 0.0;
-  double _totalIncome = 0.0; // Added
-  double _totalExpense = 0.0; // Added
 
   // Define GlobalKeys for the elements you want to highlight
   final GlobalKey _welcomeBannerKey = GlobalKey();
@@ -95,8 +93,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> fetchTotalBalance() async {
     double total = 0.0;
-    double income = 0.0;
-    double expense = 0.0;
     final query = await FirebaseFirestore.instance
         .collection('users')
         .doc(docID)
@@ -105,17 +101,13 @@ class _HomePageState extends State<HomePage> {
     for (var doc in query.docs) {
       final data = doc.data();
       if (data['type'] == 'Income') {
-        income += (data['amount'] ?? 0.0);
         total += (data['amount'] ?? 0.0);
       } else {
-        expense += (data['amount'] ?? 0.0);
         total -= (data['amount'] ?? 0.0);
       }
     }
     setState(() {
       _totalBalance = total;
-      _totalIncome = income;
-      _totalExpense = expense;
     });
   }
 
@@ -415,9 +407,15 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTotalBalanceCard({Key? key}) {
-    // Use the correct values from all transactions
-    double totalIncome = _totalIncome;
-    double totalExpense = _totalExpense;
+    double totalIncome = 0;
+    double totalExpense = 0;
+    for (var txn in _recentTransactions) {
+      if (txn['type'] == 'Income') {
+        totalIncome += txn['amount'] ?? 0.0;
+      } else {
+        totalExpense += txn['amount'] ?? 0.0;
+      }
+    }
     double net = totalIncome - totalExpense;
 
     return Container(
