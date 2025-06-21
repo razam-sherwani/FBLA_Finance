@@ -31,6 +31,8 @@ class _AiAnalysisPageState extends State<AiAnalysisPage> {
   String? _leastSpentCategory;
   double _mostSpentAmount = 0.0;
   double _leastSpentAmount = 0.0;
+  int _maxCategoriesToShow = 5;
+  bool _showAllCategories = false;
 
   @override
   void initState() {
@@ -317,6 +319,9 @@ $budgetList
     var sortedCategories = _categorySpending.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value)); // Sort descending by amount
 
+    int displayCount = _showAllCategories ? sortedCategories.length : _maxCategoriesToShow;
+    var displayCategories = sortedCategories.take(displayCount).toList();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -343,7 +348,7 @@ $budgetList
             ),
           ),
           const SizedBox(height: 12),
-          ...sortedCategories.map((entry) => Padding(
+          ...displayCategories.map((entry) => Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
@@ -383,6 +388,18 @@ $budgetList
               ],
             ),
           )),
+          if (sortedCategories.length > _maxCategoriesToShow)
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  setState(() {
+                    _showAllCategories = !_showAllCategories;
+                  });
+                },
+                child: Text(_showAllCategories ? 'Show Less' : 'Show More'),
+              ),
+            ),
         ],
       ),
     );

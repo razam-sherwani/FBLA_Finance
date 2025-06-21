@@ -1133,6 +1133,8 @@ appBar: AppBar(
                                         ? 'Expenses Per Month'
                                         : _selectedPeriod == PeriodType.yearly
                                             ? 'Expenses Per Year'
+                                            : _selectedPeriod == PeriodType.quarterly
+                                            ? 'Expenses Per Quarter'
                                             : 'Expenses (Custom)',
                                     style: TextStyle(
                                       color: Colors.black,
