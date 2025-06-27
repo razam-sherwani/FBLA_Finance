@@ -91,13 +91,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void showErrorMessage(String message) {
+    // Remove brackets and split by comma
+    String cleaned = message.trim();
+    if (cleaned.startsWith('[') && cleaned.endsWith(']')) {
+      cleaned = cleaned.substring(1, cleaned.length - 1);
+    }
+    List<String> errors = cleaned.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+
+    // Replace the badly formatted email message
+    errors = errors.map((e) =>
+      e == "The email address is badly formatted."
+        ? "The email address provided is missing the '@' symbol or domain."
+        : e
+    ).toList();
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(
-            message,
+            'Sign Up Error',
             style: const TextStyle(color: Colors.black),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: errors.map((e) => Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('\u2022 ', style: TextStyle(fontSize: 18)),
+                Expanded(child: Text(e, style: const TextStyle(fontSize: 16))),
+              ],
+            )).toList(),
           ),
           actions: [
             TextButton(
