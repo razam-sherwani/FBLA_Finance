@@ -8,13 +8,14 @@ const { Configuration, PlaidApi, PlaidEnvironments } = require('plaid');
 // Initialize Firebase Admin SDK
 initializeApp();
 
-// Initialize Plaid client
+// Plaid API keys are NOT hardcoded and are loaded from Firebase Functions config.
+// This keeps them hidden from your codebase and version control.
 const configuration = new Configuration({
   basePath: PlaidEnvironments.sandbox, // Change to 'development' or 'production' as needed
   baseOptions: {
     headers: {
-      'PLAID-CLIENT-ID': "67d8d31e4ec72d00221c7015",
-      'PLAID-SECRET': "9069aaf27c70989df0368ab48df0b2",
+      'PLAID-CLIENT-ID': functions.config().plaid.client_id,
+      'PLAID-SECRET': functions.config().plaid.secret,
     },
   },
 });

@@ -47,7 +47,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAT4xR11JFSSRln7I8WLpmwNgrej7hGI_I',
+    apiKey: '', // HIDDEN
     appId: '1:307046751911:web:8297a905c52d7d124a0582',
     messagingSenderId: '307046751911',
     projectId: 'fbla-finance',
@@ -56,7 +56,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAwtBz475JG67VAo6oi47N5cAOCvvFguGE',
+    apiKey: '', // HIDDEN
     appId: '1:307046751911:android:3e5786bfcc3eb90d4a0582',
     messagingSenderId: '307046751911',
     projectId: 'fbla-finance',
@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyA_0mdNR51YlUVxgOwZu2WC2xPhbNfXSKs',
+    apiKey: '', // HIDDEN
     appId: '1:307046751911:ios:5a02f6612760fae84a0582',
     messagingSenderId: '307046751911',
     projectId: 'fbla-finance',
